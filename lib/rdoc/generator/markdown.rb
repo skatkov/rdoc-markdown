@@ -9,9 +9,11 @@ class RDoc::Generator::Markdown
     def initialize(store, options)
         @store = store
         @options = options
+
+        $stderr.puts("rdoc-markdown initialized")
     end
 
     def generate
-        binding.irb
+        $stderr.puts("rdoc-markdown #generate called")
     end
 end
