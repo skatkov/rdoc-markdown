@@ -60,6 +60,8 @@ class RDoc::Generator::Markdown
 
     output_dir.mkpath
 
+    debug("Generate documentation in #{@output_dir}")
+
     generate_class_files
   end
 
