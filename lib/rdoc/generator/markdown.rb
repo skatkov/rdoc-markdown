@@ -1,7 +1,12 @@
+# frozen_string_literal: true
+
 gem "rdoc"
 
 require "pathname"
 
+# Markdown generator.
+# Registers command line options and generates markdown files
+# RDoc documentation and options.
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
 

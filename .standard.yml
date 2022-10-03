@@ -4,7 +4,6 @@ ruby_version: 2.7
 parallel: true
 format: progress
 
-
 ignore:
  - 'docs/example.rb'
  - '**/*':
