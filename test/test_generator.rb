@@ -2,8 +2,8 @@
 
 require_relative "test_helper"
 
-require 'rdoc/rdoc'
-require 'rdoc/markdown'
+require "rdoc/rdoc"
+require "rdoc/markdown"
 
 class TestGenerator < MiniTest::Test
   def source_file
@@ -30,10 +30,10 @@ class TestGenerator < MiniTest::Test
   end
 
   def test_generator
-    dir = run_generator(source_file, 'test title')
+    dir = run_generator(source_file, "test title")
 
-    classes = ['Waterfowl', 'Object', 'Duck', 'Bird']
-    Dir[dir+"/*.html"].each do |file|
+    classes = ["Waterfowl", "Object", "Duck", "Bird"]
+    Dir[dir + "/*.html"].each do |file|
       p = Pathname.new(file)
 
       assert_includes classes, p.basename.to_s.chomp(p.extname)

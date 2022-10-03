@@ -3,5 +3,4 @@
 require "rdoc/generator/markdown"
 
 class RDoc::Markdown
-
 end

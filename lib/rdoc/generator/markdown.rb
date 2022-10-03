@@ -1,6 +1,6 @@
-gem 'rdoc'
+gem "rdoc"
 
-require 'pathname'
+require "pathname"
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -44,7 +44,6 @@ class RDoc::Generator::Markdown
   def class_dir
     nil
   end
-
 
   def initialize(store, options)
     @store = store
@@ -105,23 +104,23 @@ class RDoc::Generator::Markdown
     debug "Outputting to %s" % [out_file.expand_path]
 
     out_file.dirname.mkpath
-    out_file.open("w", 0644) do |io|
+    out_file.open("w", 0o644) do |io|
       io.set_encoding options.encoding
 
-      'test'
+      "test"
     end
   end
 
   def setup
     return if instance_variable_defined?(:@output_dir)
 
-    @output_dir = Pathname.new( @options.op_dir).expand_path( @base_dir )
+    @output_dir = Pathname.new(@options.op_dir).expand_path(@base_dir)
 
     return unless @store
 
     @classes = @store.all_classes_and_modules.sort
     @files = @store.all_files.sort
-    @methods = @classes.map {|m| m.method_list }.flatten.sort
+    @methods = @classes.map { |m| m.method_list }.flatten.sort
     @modsort = get_sorted_module_list @classes
   end
 
