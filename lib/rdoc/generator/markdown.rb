@@ -107,9 +107,9 @@ class RDoc::Generator::Markdown
   # Generates a class file for +klass+
 
   def generate_class klass
-    debug "  working on %s (%s)" % [klass.full_name, klass.path]
+    debug "working on %s (%s)" % [klass.full_name, "#{klass.full_name}.md"]
 
-    out_file = output_dir + klass.path
+    out_file = Pathname.new("#{output_dir.to_s}/#{klass.full_name}.md")
 
     debug "Outputting to %s" % [out_file.expand_path]
 

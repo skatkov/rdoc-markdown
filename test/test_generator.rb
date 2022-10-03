@@ -29,14 +29,19 @@ class TestGenerator < MiniTest::Test
     dir
   end
 
+  CLASSES = ["Waterfowl", "Object", "Duck", "Bird"]
+
   def test_generator
     dir = run_generator(source_file, "test title")
 
-    classes = ["Waterfowl", "Object", "Duck", "Bird"]
-    Dir[dir + "/*.html"].each do |file|
+    files = Dir[dir + "/*.md"]
+
+    assert_equal 4, files.count
+
+    files.each do |file|
       p = Pathname.new(file)
 
-      assert_includes classes, p.basename.to_s.chomp(p.extname)
+      assert_includes CLASSES, p.basename.to_s.chomp(p.extname)
     end
   end
 end
