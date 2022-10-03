@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "test_helper"
+require_relative "test_helper"
 
 require 'rdoc/rdoc'
 require 'rdoc/markdown'
@@ -32,11 +32,11 @@ class TestGenerator < MiniTest::Test
   def test_generator
     dir = run_generator(source_file, 'test title')
 
-    expect = ['Waterfowl', 'Object', 'Duck', 'Bird']
+    classes = ['Waterfowl', 'Object', 'Duck', 'Bird']
     Dir[dir+"/*.html"].each do |file|
       p = Pathname.new(file)
 
-      assert_includes expect, p.basename.to_s.chomp(p.extname)
+      assert_includes classes, p.basename.to_s.chomp(p.extname)
     end
   end
 end
