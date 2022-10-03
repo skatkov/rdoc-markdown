@@ -55,6 +55,11 @@ class RDoc::Generator::Markdown
     @options = options
 
     @base_dir = Pathname.pwd.expand_path
+
+    @classes = nil
+    @files = nil
+    @methods = nil
+    @modsort = nil
   end
 
   def generate
