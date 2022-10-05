@@ -4,6 +4,7 @@ require_relative "test_helper"
 
 require "rdoc/rdoc"
 require "rdoc/markdown"
+require 'rdiscount'
 
 class TestGenerator < MiniTest::Test
   def source_file
@@ -42,6 +43,13 @@ class TestGenerator < MiniTest::Test
       p = Pathname.new(file)
 
       assert_includes CLASSES, p.basename.to_s.chomp(p.extname)
+    end
+
+    markdown = RDiscount.new("Hello World!")
+    begin
+      refute_empty markdown.to_html
+    rescue => e
+      assert false, "markdown is not formatted correctly: #{e}"
     end
   end
 end

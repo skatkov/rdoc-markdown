@@ -1,0 +1,68 @@
+# <%= klass.name %>
+
+##  <% if klass.type == 'class' %>
+        <span class="class">
+          <%= klass.type.capitalize %>
+          <a href="<%= klass.path %>">
+            <%= klass.full_name %>
+          </a>
+          <% if klass.superclass %>
+            inherits from
+          <% end %>
+          <% unless String === klass.superclass %>
+            <a href="<%= klass.superclass.path %>">
+              <%= klass.superclass.name %>
+            </a>
+          <% else %>
+            <%= klass.superclass %>
+          <% end %>
+        </span>
+      <% else %>
+        <span class="module">
+          <%= klass.type.capitalize %>
+          <a href="<%= klass.path %>">
+            <%= klass.name %>
+          </a>
+        </span>
+      <% end %>
+
+<% if klass.description && !klass.description.empty? %>
+  <%= klass.description %>
+<% end %>
+
+
+<!-- Constants -->
+<% unless klass.constants.empty? %>
+  ### Constants
+  <% klass.constants.sort_by { |x| x.name }.each do |const| %>
+    <%= const.name %>
+  <% end %>
+<% end %>
+
+<!-- Attributes -->
+<% unless klass.attributes.empty? %>
+  ### Attributes
+  <% klass.attributes.sort_by { |x| x.name }.each do |attr| %>
+    <%= attr.name %>
+    <%= attr.rw %>
+    <%= attr.description %>
+  <% end %>
+<% end %>
+
+<!-- Class Methods -->
+<% unless klass_methods.empty? %>
+  ### Public Class Methods
+  <% klass_methods.each do |method| %>
+    [<%= method.name %><%= method.params %>](<%= method.aref %>)
+    <%= method.description %>
+  <% end %>
+<% end %>
+
+<!-- Instance Methods -->
+<% unless instance_methods.empty? %>
+  ### Public Instance Methods
+  <% instance_methods.each do |method| %>
+    [<%= method.name %><%= method.params %>](<%= method.aref %>)
+    <%= method.description %>
+  <% end %>
+<% end %>
