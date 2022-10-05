@@ -106,7 +106,7 @@ class RDoc::Generator::Markdown
 
       template = ERB.new File.read(File.join(TEMPLATE_DIR, 'classfile.md.erb'))
 
-      out_file = Pathname.new("#{output_dir.to_s}/#{klass.full_name}.md")
+      out_file = Pathname.new("#{output_dir}/#{klass.full_name}.md")
       out_file.dirname.mkpath
 
       File.open(out_file, 'wb') do |f|
@@ -124,7 +124,7 @@ class RDoc::Generator::Markdown
 
     @classes = @store.all_classes_and_modules.sort
     @files = @store.all_files.sort
-    @methods = @classes.map { |m| m.method_list }.flatten.sort
+    @methods = @classes.map(&:method_list).flatten.sort
     @modsort = get_sorted_module_list @classes
   end
 
