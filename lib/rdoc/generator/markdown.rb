@@ -3,12 +3,17 @@
 gem "rdoc"
 
 require "pathname"
+require "erb"
 
 # Markdown generator.
 # Registers command line options and generates markdown files
 # RDoc documentation and options.
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
+
+  TEMPLATE_DIR = File.expand_path(
+    File.join(File.dirname(__FILE__), "..", "..", "templates")
+  )
 
   ##
   # The RDoc::Store that is the source of the generated content
@@ -71,7 +76,7 @@ class RDoc::Generator::Markdown
 
     debug("Generate documentation in #{@output_dir}")
 
-    generate_class_files
+    emit_classfiles
   end
 
   private
@@ -86,38 +91,27 @@ class RDoc::Generator::Markdown
     end
   end
 
-  ##
-  # Generate a documentation file for each class and module
-
-  def generate_class_files
-    setup
-
-    debug("Generate class documentation in #{output_dir}")
-
-    current = nil
-
+  def emit_classfiles
     @classes.each do |klass|
-      current = klass
+      klass_methods = []
+      instance_methods = []
 
-      generate_class klass
-    end
-  end
+      klass.method_list.each do |method|
+        next if method.visibility.to_s.eql?("private")
 
-  ##
-  # Generates a class file for +klass+
+        if method.type == "class"
+          klass_methods << method
+        else
+          instance_methods << method
+        end
+      end
 
-  def generate_class klass
-    debug "working on %s (%s)" % [klass.full_name, "#{klass.full_name}.md"]
+      template = ERB.new File.read(File.join(TEMPLATE_DIR, "classfile.md.erb"))
 
-    out_file = Pathname.new("#{output_dir.to_s}/#{klass.full_name}.md")
+      out_file = Pathname.new("#{output_dir}/#{klass.full_name}.md")
+      out_file.dirname.mkpath
 
-    debug "Outputting to %s" % [out_file.expand_path]
-
-    out_file.dirname.mkpath
-    out_file.open("w", 0o644) do |io|
-      io.set_encoding options.encoding
-
-      "test"
+      File.write(out_file, template.result(binding))
     end
   end
 
@@ -130,7 +124,7 @@ class RDoc::Generator::Markdown
 
     @classes = @store.all_classes_and_modules.sort
     @files = @store.all_files.sort
-    @methods = @classes.map { |m| m.method_list }.flatten.sort
+    @methods = @classes.map(&:method_list).flatten.sort
     @modsort = get_sorted_module_list @classes
   end
 

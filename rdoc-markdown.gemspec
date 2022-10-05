@@ -10,10 +10,10 @@ Gem::Specification.new do |spec|
 
   spec.summary = "rdoc generator that produces markdown files"
   spec.description = "rdoc generator that produces markdown files"
-  spec.homepage = "https://github.com/skatkov/rdoc-markdown"
+  spec.homepage = "https://poshtui.com"
   spec.required_ruby_version = ">= 2.6.0"
 
-  spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
+  # spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/skatkov/rdoc-markdown"
@@ -32,11 +32,13 @@ Gem::Specification.new do |spec|
 
   # Uncomment to register a new dependency of your gem
   spec.add_dependency "rdoc", "~> 6.0"
+  spec.add_dependency "erb"
 
   spec.add_development_dependency "minitest"
   spec.add_development_dependency "rake"
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "standard"
+  spec.add_development_dependency "rdiscount"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
