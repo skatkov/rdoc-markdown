@@ -12,7 +12,8 @@ class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
 
   TEMPLATE_DIR = File.expand_path(
-    File.join(File.dirname(__FILE__), '..', '..', 'templates'))
+    File.join(File.dirname(__FILE__), "..", "..", "templates")
+  )
 
   ##
   # The RDoc::Store that is the source of the generated content
@@ -92,26 +93,25 @@ class RDoc::Generator::Markdown
 
   def emit_classfiles
     @classes.each do |klass|
-      klass_methods    = []
+      klass_methods = []
       instance_methods = []
 
       klass.method_list.each do |method|
-        next if 'private' == method.visibility.to_s
-        if method.type == 'class'
+        next if method.visibility.to_s.eql?("private")
+
+        if method.type == "class"
           klass_methods << method
         else
           instance_methods << method
         end
       end
 
-      template = ERB.new File.read(File.join(TEMPLATE_DIR, 'classfile.md.erb'))
+      template = ERB.new File.read(File.join(TEMPLATE_DIR, "classfile.md.erb"))
 
       out_file = Pathname.new("#{output_dir}/#{klass.full_name}.md")
       out_file.dirname.mkpath
 
-      File.open(out_file, 'wb') do |f|
-        f.write template.result binding
-      end
+      File.write(out_file, template.result(binding))
     end
   end
 
