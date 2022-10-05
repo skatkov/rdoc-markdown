@@ -45,11 +45,17 @@ class TestGenerator < MiniTest::Test
       assert_includes CLASSES, p.basename.to_s.chomp(p.extname)
     end
 
-    markdown = RDiscount.new("Hello World!")
-    begin
-      refute_empty markdown.to_html
-    rescue => e
-      assert false, "markdown is not formatted correctly: #{e}"
+    files.each do |file|
+      begin
+        contents = File.read(file)
+        puts "---file start---"
+        puts contents
+        puts "---file end---"
+
+        refute_empty RDiscount.new(contents).to_html
+      rescue => e
+        assert(False, "#{file} file is not formatted correctly: #{e}")
+      end
     end
   end
 end
