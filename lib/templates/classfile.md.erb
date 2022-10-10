@@ -1,14 +1,19 @@
-# <%= klass.name %>
-## <% if klass.type == 'class' %><%= klass.type.capitalize %>[<%= klass.full_name %>](<%= klass.path %>)<% if klass.superclass %> inherits from <% end %><% unless String === klass.superclass %> [<%= klass.superclass.name %>](<%= klass.superclass.path %>) <% else %> <%= klass.superclass %> <% end %> <% else %> <%= klass.type.capitalize %> [<%= klass.name %>](<%= klass.path %>) <% end %>
+<>
+<% puts("rdoc-markdown: Starting #{klass.inspect}") %>
+# <%= klass&.name %>
+<% puts("rdoc-markdown: Generate class and superclass") %>
+## <% if klass.type == 'class' %><%= klass.type.capitalize %>[<%= klass.full_name %>](<%= klass&.path %>)<% if klass.superclass %> inherits from <% end %><% unless String === klass.superclass %> [<%= klass.superclass&.name %>](<%= klass.superclass&.path %>) <% else %> <%= klass.superclass %> <% end %> <% else %> <%= klass.type.capitalize %> [<%= klass&.name %>](<%= klass&.path %>) <% end %>
 <% if klass.description && !klass.description.empty? %><%= klass.description %><% end %>
 <% unless klass.constants.empty? %><!-- Constants -->
 ### Constants
-<% klass.constants.sort_by { |x| x.name }.each do |const| %> <%= const.name %> <% end %>
-
+<% puts("rdoc-markdown: Let's go through Constants") %>
+<% klass.constants.sort_by { |x| x&.name }.each do |const| %> <%= const&.name %> <% end %>
+ek
 <% end %>
 <% unless klass.attributes.empty? %><!-- Attributes -->
 ### Attributes
-<% klass.attributes.sort_by { |x| x.name }.each do |attr| %><%= attr.name %>
+<% puts("rdoc-markdown: Let's go through Attributes") %>
+<% klass.attributes.sort_by { |x| x&.name }.each do |attr| %><%= attr&.name %>
 <%= attr.rw %>
 <%= attr.description %>
 
@@ -16,11 +21,13 @@
 <% unless klass_methods.empty? %>
 <!-- Class Methods -->
 ### Public Class Methods
-<% klass_methods.each do |method| %>[<%= method.name %><%= method.params %>](<%= method.aref %>)
+<% puts("rdoc-markdown: Let's go through class methods") %>
+<% klass_methods.each do |method| %>[<%= method&.name %><%= method.params %>](<%= method.aref %>)
 <%= method.description %><% end %>
 
 <% end %>
 <% unless instance_methods.empty? %><!-- Instance Methods -->
 ### Public Instance Methods
-<% instance_methods.each do |method| %>[<%= method.name %><%= method.params %>](<%= method.aref %>)
+<% puts("rdoc-markdown: Let's go through public instance methods") %>
+<% instance_methods.each do |method| %>[<%= method&.name %><%= method.params %>](<%= method.aref %>)
 <%= method.description %><% end %><% end %>

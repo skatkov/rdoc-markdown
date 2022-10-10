@@ -2,6 +2,6 @@
 
 module Rdoc
   module Markdown
-    VERSION = "0.1.2"
+    VERSION = "0.1.4"
   end
 end
