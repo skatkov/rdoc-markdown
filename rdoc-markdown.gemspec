@@ -7,11 +7,12 @@ Gem::Specification.new do |spec|
   spec.version = Rdoc::Markdown::VERSION
   spec.authors = ["Stanislav (Stas) Katkov"]
   spec.email = ["github@skatkov.com"]
+  spec.license = 'GPL-3.0-or-later'
 
   spec.summary = "rdoc generator that produces markdown files"
-  spec.description = "rdoc generator that produces markdown files"
+  spec.description = "rdoc generator that produces markdown files and sqlite database with index of all file"
   spec.homepage = "https://poshtui.com"
-  spec.required_ruby_version = ">= 2.6.0"
+  spec.required_ruby_version = ">= 2.7.0"
 
   # spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
 
@@ -32,13 +33,13 @@ Gem::Specification.new do |spec|
 
   # Uncomment to register a new dependency of your gem
   spec.add_dependency "rdoc", "~> 6.0"
-  spec.add_dependency "erb"
+  spec.add_dependency "erb", "~> 2.0"
 
-  spec.add_development_dependency "minitest"
-  spec.add_development_dependency "rake"
-  spec.add_development_dependency "bundler"
-  spec.add_development_dependency "standard"
-  spec.add_development_dependency "rdiscount"
+  spec.add_development_dependency "minitest", "~> 5.0"
+  spec.add_development_dependency "rake", "~> 13.0"
+  spec.add_development_dependency "bundler", "~> 2.0"
+  spec.add_development_dependency "standard", "~> 1.0"
+  spec.add_development_dependency "rdiscount", "~> 2.0"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
