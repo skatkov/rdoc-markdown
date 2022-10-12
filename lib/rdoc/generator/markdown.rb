@@ -55,6 +55,9 @@ class RDoc::Generator::Markdown
     nil
   end
 
+  # this alias is required for rdoc to work
+  alias_method :file_dir, :class_dir
+
   def initialize(store, options)
     @store = store
     @options = options
