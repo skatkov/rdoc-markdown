@@ -1,26 +1,22 @@
 # <%= klass.name %>
-## <% if klass.type == 'class' %><%= klass.type.capitalize %>[<%= klass.full_name %>](<%= klass.path %>)<% if klass.superclass %> inherits from <% end %><% unless String === klass.superclass %> [<%= klass.superclass.name %>](<%= klass.superclass.path %>) <% else %> <%= klass.superclass %> <% end %> <% else %> <%= klass.type.capitalize %> [<%= klass.name %>](<%= klass.path %>) <% end %>
+## <% if klass.type == 'class' %><%= klass.type.capitalize %>[<%= klass.full_name %>](<%= klass&.path %>)<% if klass.superclass %> inherits from <% end %><% unless String === klass.superclass %> [<%= klass.superclass&.name %>](<%= klass.superclass&.path %>) <% else %> <%= klass.superclass %> <% end %> <% else %> <%= klass.type.capitalize %> [<%= klass&.name %>](<%= klass&.path %>) <% end %>
 <% if klass.description && !klass.description.empty? %><%= klass.description %><% end %>
-<% unless klass.constants.empty? %><!-- Constants -->
+<% unless klass.constants.empty? %>
 ### Constants
 <% klass.constants.sort_by { |x| x.name }.each do |const| %> <%= const.name %> <% end %>
-
 <% end %>
-<% unless klass.attributes.empty? %><!-- Attributes -->
+<% unless klass.attributes.empty? %>
 ### Attributes
 <% klass.attributes.sort_by { |x| x.name }.each do |attr| %><%= attr.name %>
 <%= attr.rw %>
 <%= attr.description %>
-
 <% end %><% end %>
 <% unless klass_methods.empty? %>
-<!-- Class Methods -->
 ### Public Class Methods
 <% klass_methods.each do |method| %>[<%= method.name %><%= method.params %>](<%= method.aref %>)
 <%= method.description %><% end %>
-
 <% end %>
-<% unless instance_methods.empty? %><!-- Instance Methods -->
+<% unless instance_methods.empty? %>
 ### Public Instance Methods
 <% instance_methods.each do |method| %>[<%= method.name %><%= method.params %>](<%= method.aref %>)
 <%= method.description %><% end %><% end %>
