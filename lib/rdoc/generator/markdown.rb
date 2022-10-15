@@ -4,6 +4,7 @@ gem "rdoc"
 
 require "pathname"
 require "erb"
+require "reverse_markdown"
 
 # Markdown generator.
 # Registers command line options and generates markdown files
@@ -114,8 +115,17 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{klass.full_name}.md")
       out_file.dirname.mkpath
 
-      File.write(out_file, template.result(binding))
+      result = template.result(binding)
+
+      File.write(out_file, result)
     end
+  end
+
+
+  private
+
+  def h(string)
+    ReverseMarkdown.convert string.strip, github_flavored: true
   end
 
   def setup

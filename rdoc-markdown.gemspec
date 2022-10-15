@@ -34,6 +34,7 @@ Gem::Specification.new do |spec|
   # Uncomment to register a new dependency of your gem
   spec.add_dependency "rdoc", "~> 6.0"
   spec.add_dependency "erb", "~> 2.0"
+  spec.add_dependency "reverse_markdown", "~> 2.0"
 
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "rake", "~> 13.0"
