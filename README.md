@@ -20,7 +20,7 @@ First thing to do, is to install a gem
 
 Then proceed to directory where you want to generate documentation:
 
-`rdoc --format=markdown"
+`rdoc --format=markdown`
 
 Don't forget to append `--debug` to have a bit more information in case thing fail (and they will probably do, because this entire thing is experimental).
 
