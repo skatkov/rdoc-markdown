@@ -3,19 +3,19 @@
 <% if klass.description && !klass.description.empty? %><%= h klass.description %><% end %>
 <% unless klass.constants.empty? %>
 ### Constants
-<% klass.constants.sort_by { |x| x.name }.each do |const| %> <%= h const.name %>
+<% klass.constants.sort_by { |x| x.name }.each do |const| %> <%= const.name %>
 <%= h const.description %>
 <% end %><% end %>
 <% unless klass.attributes.empty? %>
 ### Attributes
-<% klass.attributes.sort_by { |x| x.name }.each do |attr| %><%= h attr.name %>
+<% klass.attributes.sort_by { |x| x.name }.each do |attr| %><%= attr.name %>
 <%= attr.rw %>
 <%= h attr.description %><% end %><% end %>
 <% unless klass_methods.empty? %>
 ### Public Class Methods
-<% klass_methods.each do |method| %>[<%= h method.name %><%= h method.params %>](<%= method.aref %>)
+<% klass_methods.each do |method| %>[<%= method.name %><%= method.params %>](<%= method.aref %>)
 <%= h method.description %><% end %><% end %>
 <% unless instance_methods.empty? %>
 ### Public Instance Methods
-<% instance_methods.each do |method| %>[<%= h method.name %><%= h method.params %>](<%= method.aref %>)
+<% instance_methods.each do |method| %>[<%= method.name %><%= method.params %>](<%= method.aref %>)
 <% if method.name %><%= h method.description %><% end %><% end %><% end %>
