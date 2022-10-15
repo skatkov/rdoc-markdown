@@ -1,7 +1,7 @@
-!!! This is just experimental gem
-
 # Rdoc::Markdown
 This gem is focused on spitting readable markdown files based on rdoc documentation. It should also come with sqlite database as an index (but this is so far only in plans). 
+
+It is still actively in development and while works as proof of concept, still has some quirks here and there.
 
 ## Installation
 
