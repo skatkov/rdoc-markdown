@@ -107,10 +107,8 @@ class RDoc::Generator::Markdown
     class_name.gsub("::", "/")
   end
 
-  alias_method  :h, :markdownify
-
   def markdownify(input)
-    md= ReverseMarkdown.convert string.strip, github_flavored: true
+    md= ReverseMarkdown.convert input, github_flavored: true
 
     # Replace .html to .md extension in all markdown links
     md = md.gsub(/\[(.+)\]\((.+).html(.*)\)/) do |_|
@@ -123,6 +121,8 @@ class RDoc::Generator::Markdown
 
     md.gsub("[↑](#top)", "").lstrip
   end
+
+  alias_method  :h, :markdownify
 
   def setup
     return if instance_variable_defined?(:@output_dir)
