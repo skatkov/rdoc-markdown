@@ -112,7 +112,7 @@ class RDoc::Generator::Markdown
 
       template = ERB.new File.read(File.join(TEMPLATE_DIR, "classfile.md.erb"))
 
-      out_file = Pathname.new("#{output_dir}/#{klass.full_name}.md")
+      out_file = Pathname.new("#{output_dir}/#{turn_to_path klass.full_name}.md")
       out_file.dirname.mkpath
 
       result = template.result(binding)
@@ -123,6 +123,10 @@ class RDoc::Generator::Markdown
 
 
   private
+
+  def turn_to_path(class_name)
+    class_name.gsub("::", "/")
+  end
 
   def h(string)
     ReverseMarkdown.convert string.strip, github_flavored: true
