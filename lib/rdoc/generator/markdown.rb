@@ -124,12 +124,20 @@ class RDoc::Generator::Markdown
 
   private
 
+  def replace_extensions_in_links(text)
+    text.gsub(/\[(.+)\]\((.+).html(.*)\)/) do |_|
+      match = Regexp.last_match
+
+      "[#{match[1]}](#{match[2]}.md#{match[3]})"
+    end
+  end
+
   def turn_to_path(class_name)
     class_name.gsub("::", "/")
   end
 
   def h(string)
-    ReverseMarkdown.convert string.strip, github_flavored: true
+    replace_extensions_in_links ReverseMarkdown.convert string.strip, github_flavored: true
   end
 
   def setup
