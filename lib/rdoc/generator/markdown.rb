@@ -6,9 +6,6 @@ require "pathname"
 require "erb"
 require "reverse_markdown"
 
-# Markdown generator.
-# Registers command line options and generates markdown files
-# RDoc documentation and options.
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
 
@@ -34,21 +31,6 @@ class RDoc::Generator::Markdown
   attr_reader :classes
 
   ##
-  # Files to be displayed by this generator
-
-  attr_reader :files
-
-  ##
-  # Methods to be displayed by this generator
-
-  attr_reader :methods
-
-  ##
-  # Sorted list of classes and modules to be displayed by this generator
-
-  attr_reader :modsort
-
-  ##
   # Directory where generated class HTML files live relative to the output
   # dir.
 
@@ -66,9 +48,6 @@ class RDoc::Generator::Markdown
     @base_dir = Pathname.pwd.expand_path
 
     @classes = nil
-    @files = nil
-    @methods = nil
-    @modsort = nil
   end
 
   def generate
@@ -124,24 +103,25 @@ class RDoc::Generator::Markdown
 
   private
 
-  def replace_extensions_in_links(text)
-    text.gsub(/\[(.+)\]\((.+).html(.*)\)/) do |_|
-      match = Regexp.last_match
-
-      "[#{match[1]}](#{match[2]}.md#{match[3]})"
-    end
-  end
-
   def turn_to_path(class_name)
     class_name.gsub("::", "/")
   end
 
-  def clean(text)
-    text.gsub("[↑](#top)", "").lstrip
-  end
+  alias_method  :h, :markdownify
 
-  def h(string)
-    clean replace_extensions_in_links(ReverseMarkdown.convert string.strip, github_flavored: true)
+  def markdownify(input)
+    md= ReverseMarkdown.convert string.strip, github_flavored: true
+
+    # Replace .html to .md extension in all markdown links
+    md = md.gsub(/\[(.+)\]\((.+).html(.*)\)/) do |_|
+      match = Regexp.last_match
+
+      "[#{match[1]}](#{match[2]}.md#{match[3]})"
+    end
+
+    # clean up things, to make it look neat.
+
+    md.gsub("[↑](#top)", "").lstrip
   end
 
   def setup
@@ -152,8 +132,6 @@ class RDoc::Generator::Markdown
     return unless @store
 
     @classes = @store.all_classes_and_modules.sort
-    @files = @store.all_files.sort
-    @methods = @classes.map(&:method_list).flatten.sort
     @modsort = get_sorted_module_list @classes
   end
 
