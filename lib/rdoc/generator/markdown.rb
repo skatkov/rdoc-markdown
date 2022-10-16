@@ -136,8 +136,12 @@ class RDoc::Generator::Markdown
     class_name.gsub("::", "/")
   end
 
+  def clean(text)
+    text.gsub("[↑](#top)", "").lstrip
+  end
+
   def h(string)
-    replace_extensions_in_links ReverseMarkdown.convert string.strip, github_flavored: true
+    clean replace_extensions_in_links(ReverseMarkdown.convert string.strip, github_flavored: true)
   end
 
   def setup
