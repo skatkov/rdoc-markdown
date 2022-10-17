@@ -5,6 +5,7 @@ gem "rdoc"
 require "pathname"
 require "erb"
 require "reverse_markdown"
+require 'extralite'
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -60,6 +61,8 @@ class RDoc::Generator::Markdown
     debug("Generate documentation in #{@output_dir}")
 
     emit_classfiles
+
+    debug("Generate index db file")
   end
 
   private
@@ -71,6 +74,27 @@ class RDoc::Generator::Markdown
     if $DEBUG_RDOC
       puts "[rdoc-markdown] #{str}" if str
       yield if block_given?
+    end
+  end
+
+  def emit_sqlite
+    db = Extralite::Database.new("#{output_dir}index.db")
+
+    db.execute <<-SQL
+      create table contentIndex (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        type TEXT,
+        path TEXT
+      );
+    SQL
+
+    {
+      name: "Enumerable",
+      type: "Module",
+      path: "Enumerable.md"
+    }.each do |rec|
+      db.execute "insert into contentIndex (name, type, path) values (:name, :type, :path)", rec
     end
   end
 
