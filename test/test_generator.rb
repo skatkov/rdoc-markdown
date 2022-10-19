@@ -55,5 +55,18 @@ class TestGenerator < MiniTest::Test
     rescue => e
       assert(False, "#{file} file is not formatted correctly: #{e}")
     end
+
+    db = Extralite::Database.new("#{dir}/index.db")
+    result = db.query("select name, type, path from contentIndex")
+
+    assert_equal 4, result.count
+    expected = [
+      {:name=>"Bird", :type=>"Class", :path=>"Bird.md"},
+      {:name=>"Duck", :type=>"Class", :path=>"Duck.md"},
+      {:name=>"Object", :type=>"Class", :path=>"Object.md"},
+      {:name=>"Waterfowl", :type=>"Module", :path=>"Waterfowl.md"}
+    ]
+
+    assert_equal(expected, result)
   end
 end
