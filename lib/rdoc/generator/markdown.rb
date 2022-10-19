@@ -104,7 +104,7 @@ class RDoc::Generator::Markdown
         next if method.visibility.to_s.eql?("private")
 
         result << {
-          name: "#{klass.full_name}##{method.name}",
+          name: "#{klass.full_name}.#{method.name}",
           type: "Method",
           path: turn_to_path(klass.full_name)
         }
@@ -112,12 +112,22 @@ class RDoc::Generator::Markdown
 
       klass.constants.sort_by { |x| x.name }.each do |const|
         result << {
-          name: "#{klass.full_name}::#{const.name}",
+          name: "#{klass.full_name}.#{const.name}",
           type: "Constant",
           path: turn_to_path(klass.full_name)
         }
       end
-    end.each do |rec|
+
+      klass.attributes.sort_by { |x| x.name }.each do |attr|
+        result << {
+          name: "#{klass.full_name}.#{attr.name}",
+          type: "Attribute",
+          path: turn_to_path(klass.full_name)
+        }
+      end
+    end
+
+    result.each do |rec|
       db.execute "insert into contentIndex (name, type, path) values (:name, :type, :path)", rec
     end
   end
