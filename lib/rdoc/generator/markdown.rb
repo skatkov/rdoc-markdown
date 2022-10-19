@@ -91,12 +91,32 @@ class RDoc::Generator::Markdown
       );
     SQL
 
+    result = []
+
     @classes.map do |klass|
-      {
+      result << {
         name: klass.full_name,
         type: klass.type.capitalize,
         path: turn_to_path(klass.full_name)
       }
+
+      klass.method_list.each do |method|
+        next if method.visibility.to_s.eql?("private")
+
+        result << {
+          name: "#{klass.full_name}##{method.name}",
+          type: "Method",
+          path: turn_to_path(klass.full_name)
+        }
+      end
+
+      klass.constants.sort_by { |x| x.name }.each do |const|
+        result << {
+          name: "#{klass.full_name}::#{const.name}",
+          type: "Constant",
+          path: turn_to_path(klass.full_name)
+        }
+      end
     end.each do |rec|
       db.execute "insert into contentIndex (name, type, path) values (:name, :type, :path)", rec
     end
