@@ -59,12 +59,23 @@ class TestGenerator < MiniTest::Test
     db = Extralite::Database.new("#{dir}/index.db")
     result = db.query("select name, type, path from contentIndex")
 
-    assert_equal 4, result.count
+    assert_equal 15, result.count
     expected = [
       {:name=>"Bird", :type=>"Class", :path=>"Bird.md"},
+      {:name=>"Bird.speak", :type=>"Method", :path=>"Bird.md"},
+      {:name=>"Bird.fly", :type=>"Method", :path=>"Bird.md"},
       {:name=>"Duck", :type=>"Class", :path=>"Duck.md"},
+      {:name=>"Duck.speak", :type=>"Method", :path=>"Duck.md"},
+      {:name=>"Duck.rubber_ducks", :type=>"Method", :path=>"Duck.md"},
+      {:name=>"Duck.new", :type=>"Method", :path=>"Duck.md"},
+      {:name=>"Duck.useful?", :type=>"Method", :path=>"Duck.md"},
+      {:name=>"Duck.MAX_VELOCITY", :type=>"Constant", :path=>"Duck.md"},
+      {:name=>"Duck.domestic", :type=>"Attribute", :path=>"Duck.md"},
+      {:name=>"Duck.rubber", :type=>"Attribute", :path=>"Duck.md"},
       {:name=>"Object", :type=>"Class", :path=>"Object.md"},
-      {:name=>"Waterfowl", :type=>"Module", :path=>"Waterfowl.md"}
+      {:name=>"Object.DEFAULT_DUCK_VELOCITY", :type=>"Constant", :path=>"Object.md"},
+      {:name=>"Waterfowl", :type=>"Module", :path=>"Waterfowl.md"},
+      {:name=>"Waterfowl.swim", :type=>"Method", :path=>"Waterfowl.md"}
     ]
 
     assert_equal(expected, result)
