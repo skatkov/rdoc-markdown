@@ -13,11 +13,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - run: bundle config unset deployment
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: '3.0'
-        bundler-cache: true
+        #bundler-cache: true
+    - run: bundle config unset deployment
+    - run: bundle install
     - name: Run the default task
       run: bundle exec rake
