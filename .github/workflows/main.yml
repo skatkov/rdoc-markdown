@@ -3,25 +3,22 @@ name: Ruby
 on:
   push:
     branches:
-      - master
+      - main
 
   pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Ruby ${{ matrix.ruby }}
-    strategy:
-      matrix:
-        ruby:
-          - '2.7.6'
 
     steps:
     - uses: actions/checkout@v3
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: ${{ matrix.ruby }}
-        bundler-cache: true
+        ruby-version: '3.0'
+        #bundler-cache: true
+    - run: bundle config unset deployment
+    - run: bundle install
     - name: Run the default task
       run: bundle exec rake
