@@ -1,14 +1,14 @@
 ##
-# === RDoc::Generator::SolarFish example.
+# === RDoc::Generator::Markdown example.
 #
-# This example employs variois RDoc features to demonstrate
+# This example employs various RDoc features to demonstrate
 # generator output.
 #
 # ---
 #
 # Links:
 #
-#  1. {Project Home Page}[https://github.com/rbdoc/rdoc-generator-solarfish)
+#  1. {Project Home Page}[https://github.com/skatkov/rdoc-markdown)
 #  2. {RDoc Documentation}[http://ruby-doc.org/stdlib-2.0.0/libdoc/rdoc/rdoc/RDoc/Markup.html]
 #
 
