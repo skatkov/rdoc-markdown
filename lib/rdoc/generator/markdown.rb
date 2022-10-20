@@ -6,6 +6,7 @@ require "pathname"
 require "erb"
 require "reverse_markdown"
 require 'extralite'
+require 'active_support/core_ext/string/inflections'
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -106,7 +107,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{method.name}",
           type: "Method",
-          path: turn_to_path(klass.full_name)
+          path: "#{turn_to_path(klass.full_name)}#meth-#{ActiveSupport::Inflector.parameterize method.name}"
         }
       end
 
@@ -114,7 +115,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{const.name}",
           type: "Constant",
-          path: turn_to_path(klass.full_name)
+          path: "#{turn_to_path(klass.full_name)}#const-#{ActiveSupport::Inflector.parameterize const.name}"
         }
       end
 
@@ -122,7 +123,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{attr.name}",
           type: "Attribute",
-          path: turn_to_path(klass.full_name)
+          path: "#{turn_to_path(klass.full_name)}#attr-#{ActiveSupport::Inflector.parameterize attr.name}"
         }
       end
     end
