@@ -3,22 +3,22 @@
 <% unless klass.constants.empty? %>
 ## Constants
 ***
-<% klass.constants.sort_by { |x| x.name }.each do |const| %> **<%= const.name %>**
+<% klass.constants.sort_by { |x| x.name }.each do |const| %> **<%= const.name %>** [[⚓]](#const-<%= ActiveSupport::Inflector.parameterize const.name%>)
   <%= h const.description %>
 <% end %><% end %>
 <% unless klass.attributes.empty? %>
 ## Attributes
 <% klass.attributes.sort_by { |x| x.name }.each do |attr| %>
-  **[<%= attr.rw %>]** <%= attr.name %>
+  **[<%= attr.rw %>]** <%= attr.name %> [[⚓]](#attr-<%= ActiveSupport::Inflector.parameterize attr.name %>)
 <% end %><% end %>
 <% unless klass_methods.empty? %>
 ## Public Class Methods
 ***
-<% klass_methods.each do |method| %>### <%= method.name %><%= method.params %>
+<% klass_methods.each do |method| %>### <%= method.name %><%= method.params %> [[⚓]](#meth-<%= ActiveSupport::Inflector.parameterize method.name %>)
 
 <%= h method.description %><% end %><% end %>
 <% unless instance_methods.empty? %>
 ## Public Instance Methods
-<% instance_methods.each do |method| %>### <%= method.name %><%= method.params %>
+<% instance_methods.each do |method| %>### <%= method.name %><%= method.params %> [[⚓]](#meth-<%= ActiveSupport::Inflector.parameterize method.name %>)
 
 <%= h method.description %><% end %><% end %>
