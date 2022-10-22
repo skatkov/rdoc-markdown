@@ -7,9 +7,13 @@ require "erb"
 require "reverse_markdown"
 require 'extralite'
 require 'active_support/core_ext/string/inflections'
+require 'unindent'
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
+
+  ##
+  # Defines a constant for directory where templates could be found
 
   TEMPLATE_DIR = File.expand_path(
     File.join(File.dirname(__FILE__), "..", "..", "templates")
@@ -43,6 +47,9 @@ class RDoc::Generator::Markdown
   # this alias is required for rdoc to work
   alias_method :file_dir, :class_dir
 
+  ##
+  # Initializer method for Rdoc::Generator::Markdown
+
   def initialize(store, options)
     @store = store
     @options = options
@@ -51,6 +58,9 @@ class RDoc::Generator::Markdown
 
     @classes = nil
   end
+
+  ##
+  # Generates markdown files and search index file
 
   def generate
     setup
@@ -73,6 +83,9 @@ class RDoc::Generator::Markdown
   attr_reader :options
   attr_reader :output_dir
 
+  ##
+  # This method is used to output debugging information in case rdoc is run with --debug parameter
+
   def debug(str = nil)
     if $DEBUG_RDOC
       puts "[rdoc-markdown] #{str}" if str
@@ -80,8 +93,12 @@ class RDoc::Generator::Markdown
     end
   end
 
-  def emit_sqlite
-    db = Extralite::Database.new("#{output_dir}/index.db")
+  ##
+  # This class emits a search index for generated documentation as sqlite database
+  #
+
+  def emit_sqlite(name="index.db")
+    db = Extralite::Database.new("#{output_dir}/#{name}")
 
     db.execute <<-SQL
       create table contentIndex (
@@ -159,15 +176,21 @@ class RDoc::Generator::Markdown
     end
   end
 
-
-  private
+  ##
+  # Takes a class name and converts it into a Pathname
 
   def turn_to_path(class_name)
     "#{class_name.gsub("::", "/")}.md"
   end
 
+  ##
+  # Converts HTML string into a Markdown string with some cleaning and improvements.
+
   def markdownify(input)
     md= ReverseMarkdown.convert input, github_flavored: true
+
+    # unintent multiline strings
+    md.unindent!
 
     # Replace .html to .md extension in all markdown links
     md = md.gsub(/\[(.+)\]\((.+).html(.*)\)/) do |_|
@@ -181,7 +204,12 @@ class RDoc::Generator::Markdown
     md.gsub("[↑](#top)", "").lstrip
   end
 
+  # Aliasing a shorter method name for use in templates
   alias_method  :h, :markdownify
+
+  ##
+  # Prepares for document generation, by creating required folders and initializing variables.
+  # Could be called multiple times.
 
   def setup
     return if instance_variable_defined?(:@output_dir)

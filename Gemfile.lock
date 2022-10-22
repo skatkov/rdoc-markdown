@@ -7,6 +7,7 @@ PATH
       extralite-bundle (~> 1.0)
       rdoc (~> 6.0)
       reverse_markdown (~> 2.0)
+      unindent (~> 1.0)
 
 GEM
   remote: https://rubygems.org/
@@ -68,6 +69,7 @@ GEM
     tzinfo (2.0.5)
       concurrent-ruby (~> 1.0)
     unicode-display_width (2.3.0)
+    unindent (1.0)
 
 PLATFORMS
   arm64-darwin-21
