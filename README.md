@@ -1,5 +1,5 @@
 # Rdoc::Markdown
-Rdoc Generator plugin to generate markdown documentation and search index as sqlite database that goes along with it.
+RDoc plugin to generate markdown documentation and search index as sqlite database for entire content.
 
 ## Installation
 
