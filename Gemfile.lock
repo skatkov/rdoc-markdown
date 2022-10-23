@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rdoc-markdown (0.1.14)
+    rdoc-markdown (0.2.1)
       activesupport (~> 7.0)
       erb (~> 2.0)
       extralite-bundle (~> 1.0)

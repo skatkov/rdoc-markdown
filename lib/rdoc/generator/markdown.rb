@@ -122,7 +122,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{method.name}",
           type: "Method",
-          path: "#{turn_to_path(klass.full_name)}#meth-#{ActiveSupport::Inflector.parameterize method.name}"
+          path: "#{turn_to_path(klass.full_name)}##{method.aref}"
         }
       end
 
@@ -130,7 +130,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{const.name}",
           type: "Constant",
-          path: "#{turn_to_path(klass.full_name)}#const-#{ActiveSupport::Inflector.parameterize const.name}"
+          path: "#{turn_to_path(klass.full_name)}##{ActiveSupport::Inflector.parameterize const.name}"
         }
       end
 
@@ -138,7 +138,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{attr.name}",
           type: "Attribute",
-          path: "#{turn_to_path(klass.full_name)}#attr-#{ActiveSupport::Inflector.parameterize attr.name}"
+          path: "#{turn_to_path(klass.full_name)}##{attr.aref}"
         }
       end
     end
