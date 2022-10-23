@@ -32,7 +32,7 @@ class RDoc::Generator::Markdown
 
   ##
   # Classes and modules to be used by this generator, not necessarily
-  # displayed.  See also #modsort
+  # displayed.
 
   attr_reader :classes
 
@@ -63,11 +63,9 @@ class RDoc::Generator::Markdown
   # Generates markdown files and search index file
 
   def generate
+    debug("Setting things up #{@output_dir}")
+
     setup
-
-    debug("Create directory #{@output_dir}")
-
-    output_dir.mkpath
 
     debug("Generate documentation in #{@output_dir}")
 
@@ -215,11 +213,11 @@ class RDoc::Generator::Markdown
     return if instance_variable_defined?(:@output_dir)
 
     @output_dir = Pathname.new(@options.op_dir).expand_path(@base_dir)
+    @output_dir.mkpath
 
     return unless @store
 
     @classes = @store.all_classes_and_modules.sort
-    @modsort = get_sorted_module_list @classes
   end
 
   ##

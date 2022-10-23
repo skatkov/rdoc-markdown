@@ -9,8 +9,8 @@ Gem::Specification.new do |spec|
   spec.email = ["github@skatkov.com"]
   spec.license = 'GPL-3.0-or-later'
 
-  spec.summary = "rdoc generator that produces markdown files"
-  spec.description = "rdoc generator that produces markdown files and sqlite database with index of all file"
+  spec.summary = "RDoc plugin to generate markdown documentation  "
+  spec.description = "RDoc plugin to generate markdown documentation and search index as sqlite database for entire content."
   spec.homepage = "https://poshtui.com"
   spec.required_ruby_version = ">= 2.7.0"
 
