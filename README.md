@@ -15,7 +15,7 @@ If bundler is not being used to manage dependencies, install the gem by executin
 
 `rdoc --format=markdown`
 
-No additional parameters are currently available, that that may change.
+No additional parameters are currently available, but that may change.
 
 ## Development
 Biggest issue is testing this locally, but that's not as hard to do these days.
