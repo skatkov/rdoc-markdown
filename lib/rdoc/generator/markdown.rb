@@ -32,7 +32,7 @@ class RDoc::Generator::Markdown
 
   ##
   # Classes and modules to be used by this generator, not necessarily
-  # displayed.  See also #modsort
+  # displayed.
 
   attr_reader :classes
 
@@ -63,11 +63,9 @@ class RDoc::Generator::Markdown
   # Generates markdown files and search index file
 
   def generate
+    debug("Setting things up #{@output_dir}")
+
     setup
-
-    debug("Create directory #{@output_dir}")
-
-    output_dir.mkpath
 
     debug("Generate documentation in #{@output_dir}")
 
@@ -124,7 +122,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{method.name}",
           type: "Method",
-          path: "#{turn_to_path(klass.full_name)}#meth-#{ActiveSupport::Inflector.parameterize method.name}"
+          path: "#{turn_to_path(klass.full_name)}##{method.aref}"
         }
       end
 
@@ -132,7 +130,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{const.name}",
           type: "Constant",
-          path: "#{turn_to_path(klass.full_name)}#const-#{ActiveSupport::Inflector.parameterize const.name}"
+          path: "#{turn_to_path(klass.full_name)}##{ActiveSupport::Inflector.parameterize const.name}"
         }
       end
 
@@ -140,7 +138,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{attr.name}",
           type: "Attribute",
-          path: "#{turn_to_path(klass.full_name)}#attr-#{ActiveSupport::Inflector.parameterize attr.name}"
+          path: "#{turn_to_path(klass.full_name)}##{attr.aref}"
         }
       end
     end
@@ -215,11 +213,11 @@ class RDoc::Generator::Markdown
     return if instance_variable_defined?(:@output_dir)
 
     @output_dir = Pathname.new(@options.op_dir).expand_path(@base_dir)
+    @output_dir.mkpath
 
     return unless @store
 
     @classes = @store.all_classes_and_modules.sort
-    @modsort = get_sorted_module_list @classes
   end
 
   ##
