@@ -60,23 +60,7 @@ class TestGenerator < MiniTest::Test
     result = db.query("select name, type, path from contentIndex")
 
     assert_equal 15, result.count
-    expected = [
-      {:name=>"Bird", :type=>"Class", :path=>"Bird.md"},
-      {:name=>"Bird.speak", :type=>"Method", :path=>"Bird.md#meth-speak"},
-      {:name=>"Bird.fly", :type=>"Method", :path=>"Bird.md#meth-fly"},
-      {:name=>"Duck", :type=>"Class", :path=>"Duck.md"},
-      {:name=>"Duck.speak", :type=>"Method", :path=>"Duck.md#meth-speak"},
-      {:name=>"Duck.rubber_ducks", :type=>"Method", :path=>"Duck.md#meth-rubber_ducks"},
-      {:name=>"Duck.new", :type=>"Method", :path=>"Duck.md#meth-new"},
-      {:name=>"Duck.useful?", :type=>"Method", :path=>"Duck.md#meth-useful"},
-      {:name=>"Duck.MAX_VELOCITY", :type=>"Constant", :path=>"Duck.md#const-max_velocity"},
-      {:name=>"Duck.domestic", :type=>"Attribute", :path=>"Duck.md#attr-domestic"},
-      {:name=>"Duck.rubber", :type=>"Attribute", :path=>"Duck.md#attr-rubber"},
-      {:name=>"Object", :type=>"Class", :path=>"Object.md"},
-      {:name=>"Object.DEFAULT_DUCK_VELOCITY", :type=>"Constant", :path=>"Object.md#const-default_duck_velocity"},
-      {:name=>"Waterfowl", :type=>"Module", :path=>"Waterfowl.md"},
-      {:name=>"Waterfowl.swim", :type=>"Method", :path=>"Waterfowl.md#meth-swim"}
-    ]
+    expected = [{:name=>"Bird", :type=>"Class", :path=>"Bird.md"}, {:name=>"Bird.speak", :type=>"Method", :path=>"Bird.md#method-i-speak"}, {:name=>"Bird.fly", :type=>"Method", :path=>"Bird.md#method-i-fly"}, {:name=>"Duck", :type=>"Class", :path=>"Duck.md"}, {:name=>"Duck.speak", :type=>"Method", :path=>"Duck.md#method-i-speak"}, {:name=>"Duck.rubber_ducks", :type=>"Method", :path=>"Duck.md#method-c-rubber_ducks"}, {:name=>"Duck.new", :type=>"Method", :path=>"Duck.md#method-c-new"}, {:name=>"Duck.useful?", :type=>"Method", :path=>"Duck.md#method-i-useful-3F"}, {:name=>"Duck.MAX_VELOCITY", :type=>"Constant", :path=>"Duck.md#max_velocity"}, {:name=>"Duck.domestic", :type=>"Attribute", :path=>"Duck.md#attribute-i-domestic"}, {:name=>"Duck.rubber", :type=>"Attribute", :path=>"Duck.md#attribute-i-rubber"}, {:name=>"Object", :type=>"Class", :path=>"Object.md"}, {:name=>"Object.DEFAULT_DUCK_VELOCITY", :type=>"Constant", :path=>"Object.md#default_duck_velocity"}, {:name=>"Waterfowl", :type=>"Module", :path=>"Waterfowl.md"}, {:name=>"Waterfowl.swim", :type=>"Method", :path=>"Waterfowl.md#method-i-swim"}]
 
     assert_equal(expected, result)
   end
