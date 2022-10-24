@@ -6,7 +6,6 @@ require "pathname"
 require "erb"
 require "reverse_markdown"
 require 'extralite'
-require 'active_support/core_ext/string/inflections'
 require 'unindent'
 
 class RDoc::Generator::Markdown
@@ -150,19 +149,6 @@ class RDoc::Generator::Markdown
 
   def emit_classfiles
     @classes.each do |klass|
-      klass_methods = []
-      instance_methods = []
-
-      klass.method_list.each do |method|
-        next if method.visibility.to_s.eql?("private")
-
-        if method.type == "class"
-          klass_methods << method
-        else
-          instance_methods << method
-        end
-      end
-
       template = ERB.new File.read(File.join(TEMPLATE_DIR, "classfile.md.erb"))
 
       out_file = Pathname.new("#{output_dir}/#{turn_to_path klass.full_name}")
@@ -214,15 +200,5 @@ class RDoc::Generator::Markdown
     return unless @store
 
     @classes = @store.all_classes_and_modules.sort
-  end
-
-  ##
-  # Return a list of the documented modules sorted by salience first, then
-  # by name.
-
-  def get_sorted_module_list classes
-    classes.select do |klass|
-      klass.display?
-    end.sort
   end
 end
