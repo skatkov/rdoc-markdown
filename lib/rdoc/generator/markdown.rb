@@ -130,7 +130,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{const.name}",
           type: "Constant",
-          path: "#{turn_to_path(klass.full_name)}##{ActiveSupport::Inflector.parameterize const.name}"
+          path: "#{turn_to_path(klass.full_name)}##{const.name}-const"
         }
       end
 
@@ -196,10 +196,6 @@ class RDoc::Generator::Markdown
 
       "[#{match[1]}](#{match[2]}.md#{match[3]})"
     end
-
-    # clean up things, to make it look neat.
-
-    md.gsub("[↑](#top)", "").lstrip
   end
 
   # Aliasing a shorter method name for use in templates

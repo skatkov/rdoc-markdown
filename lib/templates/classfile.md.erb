@@ -1,23 +1,41 @@
-# <% if klass.type == 'class' %><%= klass.type.capitalize %>: **<%= klass.full_name %>**<% if klass.superclass %> < <% end %><% unless String === klass.superclass %><%= klass.superclass&.name %> <% else %> <%= klass.superclass %> <% end %> <% else %> <%= klass.type.capitalize %>: <%= klass&.name %> <% end %>
-<%= h klass.description %>
+# <%= klass.type %> <%= klass.full_name %> [](#<%= h klass.aref %>) [](#top)
+<%= klass.description %>
+<% klass.each_section do |section, constants, attributes| %>
+  <% if section.title %>## <%= section.title%> <% end %>
+  <% if section.comment %> <%= section.description %><% end%>
+<% end %>
 <% unless klass.constants.empty? %>
-| Constants | Description |
-| ------------- | ------------- |
-<% klass.constants.sort_by { |x| x.name }.each do |const| %> |**[<%= const.name %>](#<%= ActiveSupport::Inflector.parameterize const.name%>)** | <%= h const.description %> |
-<% end %><% end %>
-<% unless klass.attributes.empty? %>
-## Attributes
-<% klass.attributes.sort_by { |x| x.name }.each do |attr| %>
-  [[**<%= attr.rw %>**] <%= attr.name %>](#<%= attr.aref %>)
-<% end %><% end %>
-<% unless klass_methods.empty? %>
-## Public Class Methods
-***
-<% klass_methods.each do |method| %>### [<%= method.name %><%= method.params %>](#<%= method.aref %>)
+  ### Constants
+  <% klass.constants.each do |const| %>
+    | [<%= const.name %>](#<%= const.name %>-const) | <% if const.comment %> <%= h const.description %> <%else%> (Not documented) <% end %> |
+  <% end %>
+<% end %>
+<% unless attributes&.empty? %>
+  ### Attributes
+  <% attributes.each do |attr| %>
+    | [[**<%= attrib.rw %>**]<%=h attr.name %>](#<%= attr.aref %>) | <% if attr.comment %> <%= h attr.description %> <%else%> (Not documented) <% end %> |
+  <% end %>
+<% end %>
+<% klass.methods_by_type(section).each do |type, visibilities| %>
+  <% next if visibilities.empty? %>
+  <% visibilities.each do |visibility, methods| %>
+    <% next if methods.empty? %>
+    ###  <%= visibility.capitalize %> <%= type.capitalize %> Methods
+    <% methods.each do |method|%>
+    | [<%= h method.name %><%= h method.param_seq %>](#<%= method.aref %>) | <% if method.comment %> <%= h method.description %>  <% else %> (Not documented) <%end%> |
+    <% unless method.aliases.empty?%>
+      <%= method.aliases.map do |aka|
+            if aka.parent then # HACK lib/rexml/encodings
+              %{[#{h aka.name}](#{klass.aref_to aka.path}")}
+            else
+              h aka.name
+            end
+          end.join ", " %>
+    <% end %>
+    <% if method.is_alias_for then %>
+        Alias for: [<%= h method.is_alias_for.name %>](#<%= klass.aref_to method.is_alias_for.path %>)
+    <% end %>
+    <% end %>
+  <% end %>
+<% end %>
 
-<%= h method.description %><% end %><% end %>
-<% unless instance_methods.empty? %>
-## Public Instance Methods
-<% instance_methods.each do |method| %>### [<%= method.name %><%= method.params %>](#<%= method.aref %>)
-
-<%= h method.description %><% end %><% end %>
