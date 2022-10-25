@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.version = Rdoc::Markdown::VERSION
   spec.authors = ["Stanislav (Stas) Katkov"]
   spec.email = ["github@skatkov.com"]
-  spec.license = 'GPL-3.0-or-later'
+  spec.license = "GPL-3.0-or-later"
 
   spec.summary = "RDoc plugin to generate markdown documentation  "
   spec.description = "RDoc plugin to generate markdown documentation and search index as sqlite database for entire content."

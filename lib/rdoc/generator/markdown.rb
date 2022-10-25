@@ -5,8 +5,8 @@ gem "rdoc"
 require "pathname"
 require "erb"
 require "reverse_markdown"
-require 'extralite'
-require 'unindent'
+require "extralite"
+require "unindent"
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -94,7 +94,7 @@ class RDoc::Generator::Markdown
   # This class emits a search index for generated documentation as sqlite database
   #
 
-  def emit_sqlite(name="index.db")
+  def emit_sqlite(name = "index.db")
     db = Extralite::Database.new("#{output_dir}/#{name}")
 
     db.execute <<-SQL
@@ -171,7 +171,7 @@ class RDoc::Generator::Markdown
   # Converts HTML string into a Markdown string with some cleaning and improvements.
 
   def markdownify(input)
-    md= ReverseMarkdown.convert input
+    md = ReverseMarkdown.convert input
 
     # unintent multiline strings
     md.unindent!
@@ -185,7 +185,7 @@ class RDoc::Generator::Markdown
   end
 
   # Aliasing a shorter method name for use in templates
-  alias_method  :h, :markdownify
+  alias_method :h, :markdownify
 
   ##
   # Prepares for document generation, by creating required folders and initializing variables.
