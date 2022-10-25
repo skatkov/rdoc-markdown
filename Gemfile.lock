@@ -1,8 +1,7 @@
 PATH
   remote: .
   specs:
-    rdoc-markdown (0.2.1)
-      activesupport (~> 7.0)
+    rdoc-markdown (0.3)
       erb (~> 2.0)
       extralite-bundle (~> 1.0)
       rdoc (~> 6.0)
@@ -12,19 +11,11 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (7.0.4)
-      concurrent-ruby (~> 1.0, >= 1.0.2)
-      i18n (>= 1.6, < 2)
-      minitest (>= 5.1)
-      tzinfo (~> 2.0)
     ast (2.4.2)
     cgi (0.3.3)
-    concurrent-ruby (1.1.10)
     erb (2.2.3)
       cgi
     extralite-bundle (1.16)
-    i18n (1.12.0)
-      concurrent-ruby (~> 1.0)
     json (2.6.2)
     minitest (5.16.3)
     nokogiri (1.13.9-arm64-darwin)
@@ -66,8 +57,6 @@ GEM
       rubocop (= 1.35.1)
       rubocop-performance (= 1.14.3)
     stringio (3.0.2)
-    tzinfo (2.0.5)
-      concurrent-ruby (~> 1.0)
     unicode-display_width (2.3.0)
     unindent (1.0)
 

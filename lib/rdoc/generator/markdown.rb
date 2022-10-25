@@ -5,9 +5,8 @@ gem "rdoc"
 require "pathname"
 require "erb"
 require "reverse_markdown"
-require 'extralite'
-require 'active_support/core_ext/string/inflections'
-require 'unindent'
+require "extralite"
+require "unindent"
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -95,7 +94,7 @@ class RDoc::Generator::Markdown
   # This class emits a search index for generated documentation as sqlite database
   #
 
-  def emit_sqlite(name="index.db")
+  def emit_sqlite(name = "index.db")
     db = Extralite::Database.new("#{output_dir}/#{name}")
 
     db.execute <<-SQL
@@ -130,7 +129,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{const.name}",
           type: "Constant",
-          path: "#{turn_to_path(klass.full_name)}##{ActiveSupport::Inflector.parameterize const.name}"
+          path: "#{turn_to_path(klass.full_name)}##{const.name}"
         }
       end
 
@@ -150,19 +149,6 @@ class RDoc::Generator::Markdown
 
   def emit_classfiles
     @classes.each do |klass|
-      klass_methods = []
-      instance_methods = []
-
-      klass.method_list.each do |method|
-        next if method.visibility.to_s.eql?("private")
-
-        if method.type == "class"
-          klass_methods << method
-        else
-          instance_methods << method
-        end
-      end
-
       template = ERB.new File.read(File.join(TEMPLATE_DIR, "classfile.md.erb"))
 
       out_file = Pathname.new("#{output_dir}/#{turn_to_path klass.full_name}")
@@ -185,7 +171,7 @@ class RDoc::Generator::Markdown
   # Converts HTML string into a Markdown string with some cleaning and improvements.
 
   def markdownify(input)
-    md= ReverseMarkdown.convert input, github_flavored: true
+    md = ReverseMarkdown.convert input
 
     # unintent multiline strings
     md.unindent!
@@ -196,14 +182,10 @@ class RDoc::Generator::Markdown
 
       "[#{match[1]}](#{match[2]}.md#{match[3]})"
     end
-
-    # clean up things, to make it look neat.
-
-    md.gsub("[↑](#top)", "").lstrip
   end
 
   # Aliasing a shorter method name for use in templates
-  alias_method  :h, :markdownify
+  alias_method :h, :markdownify
 
   ##
   # Prepares for document generation, by creating required folders and initializing variables.
@@ -218,15 +200,5 @@ class RDoc::Generator::Markdown
     return unless @store
 
     @classes = @store.all_classes_and_modules.sort
-  end
-
-  ##
-  # Return a list of the documented modules sorted by salience first, then
-  # by name.
-
-  def get_sorted_module_list classes
-    classes.select do |klass|
-      klass.display?
-    end.sort
   end
 end

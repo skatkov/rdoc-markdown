@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.version = Rdoc::Markdown::VERSION
   spec.authors = ["Stanislav (Stas) Katkov"]
   spec.email = ["github@skatkov.com"]
-  spec.license = 'GPL-3.0-or-later'
+  spec.license = "GPL-3.0-or-later"
 
   spec.summary = "RDoc plugin to generate markdown documentation  "
   spec.description = "RDoc plugin to generate markdown documentation and search index as sqlite database for entire content."
@@ -35,7 +35,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "erb", "~> 2.0"
   spec.add_dependency "reverse_markdown", "~> 2.0"
   spec.add_dependency "extralite-bundle", "~> 1.0"
-  spec.add_dependency "activesupport", "~> 7.0"
   spec.add_dependency "unindent", "~> 1.0"
 
   spec.add_development_dependency "minitest", "~> 5.0"
