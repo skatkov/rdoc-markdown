@@ -20,5 +20,5 @@ jobs:
         #bundler-cache: true
     - run: bundle config unset deployment
     - run: bundle install
-    - name: Run the default task
-      run: bundle exec rake
+    - name: Run tests
+      run: bundle exec rake test
