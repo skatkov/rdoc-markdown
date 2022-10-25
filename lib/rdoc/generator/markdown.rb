@@ -129,7 +129,7 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{const.name}",
           type: "Constant",
-          path: "#{turn_to_path(klass.full_name)}##{const.name}-const"
+          path: "#{turn_to_path(klass.full_name)}##{const.name}"
         }
       end
 

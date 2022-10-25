@@ -6,7 +6,7 @@
   <% unless klass.constants.empty? %>
 ## Constants
     <% klass.constants.each do |const| %>
-### <%= const.name.strip %>[](#<%= const.name.strip %>-const)
+### <%= const.name.strip %>[](#<%= const.name.strip %>)
 <% if const.comment %> <%= h const.description %> <%else%> (Not documented) <% end %>
     <% end %>
   <% end %>
