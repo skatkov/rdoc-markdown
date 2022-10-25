@@ -171,7 +171,7 @@ class RDoc::Generator::Markdown
   # Converts HTML string into a Markdown string with some cleaning and improvements.
 
   def markdownify(input)
-    md= ReverseMarkdown.convert input, github_flavored: true
+    md= ReverseMarkdown.convert input
 
     # unintent multiline strings
     md.unindent!
