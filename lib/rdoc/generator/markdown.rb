@@ -177,7 +177,7 @@ class RDoc::Generator::Markdown
     md.unindent!
 
     # Replace .html to .md extension in all markdown links
-    md = md.gsub(/\[(.+)\]\((.+).html(.*)\)/) do |_|
+    md.gsub(/\[(.+)\]\((.+).html(.*)\)/) do |_|
       match = Regexp.last_match
 
       "[#{match[1]}](#{match[2]}.md#{match[3]})"
