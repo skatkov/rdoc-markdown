@@ -22,3 +22,7 @@ jobs:
     - run: bundle install
     - name: Run tests
       run: bundle exec rake test
+    - name: StandardRB Linter
+      uses: andrewmcodes/standardrb-action@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
