@@ -1,4 +1,3 @@
-Resolving dependencies...
 # frozen_string_literal: true
 
 module Rdoc
