@@ -15,7 +15,7 @@ If bundler is not being used to manage dependencies, install the gem by executin
     $ gem install rdoc-markdown
 
 ## Usage
-RDoc will auto-detect rdoc-markdown plugin if it was installed. You just need to instruct RDoc to produce markdown output instead of standard HTML through `format` parameter. 
+RDoc will auto-detect rdoc-markdown plugin if it was installed. You just need to instruct RDoc to produce markdown output instead of standard HTML through `format` parameter.
 
 Run following command in directory with ruby source code:
 
@@ -52,7 +52,7 @@ gem build rdoc-markdown.gemspec
 gem push rdoc-markdown-0.1.2.gem
 ```
 
-There is `./publish.sh` script that does that. But it assumes, that you have [gum library](https://github.com/charmbracelet/gum) installed.
+There is `./bin/publish.sh` script that does that. But it assumes, that you have [gum library](https://github.com/charmbracelet/gum) installed.
 
 ## Contributing
 
