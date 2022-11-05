@@ -156,7 +156,7 @@ class RDoc::Generator::Markdown
 
       result = template.result(binding)
 
-      File.write(out_file, result)
+      File.write(out_file, result.squeeze("\n"))
     end
   end
 
