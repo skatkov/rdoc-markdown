@@ -1,5 +1,8 @@
-# Rdoc::Markdown
-RDoc plugin to generate markdown documentation and search index as sqlite database for entire content.
+# RDoc-Markdown
+RDoc plugin to generate markdown documentation and search index backed by sqlite database.
+
+## Motivation
+I'm trying to depend less on software with GUI and use move software that could be used through console. Documentation in markdown format allows me to review documentation in command console, instead of browser or GUI software like DevDocs.
 
 ## Installation
 
@@ -12,10 +15,13 @@ If bundler is not being used to manage dependencies, install the gem by executin
     $ gem install rdoc-markdown
 
 ## Usage
+RDoc will auto-detect rdoc-markdown plugin. You just need to instruct RDoc to produce markdown output instead of standard HTML through `format` parameter. 
+
+Run following command in directory with ruby source code:
 
 `rdoc --format=markdown`
 
-No additional parameters are currently available, but that may change.
+This will produce a tree of markdown documents and search index in `/doc` folder.
 
 ## Development
 Biggest issue is testing this locally, but that's not as hard to do these days.
