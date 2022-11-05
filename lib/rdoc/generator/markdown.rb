@@ -62,6 +62,8 @@ class RDoc::Generator::Markdown
   # Generates markdown files and search index file
 
   def generate
+    # TODO: Make sure to set --markup parameter to 'markdown'.
+
     debug("Setting things up #{@output_dir}")
 
     setup
@@ -70,7 +72,7 @@ class RDoc::Generator::Markdown
 
     emit_classfiles
 
-    debug("Generate index db file: #{output_dir}/index.db")
+    debug("Generate search index in #{output_dir}/index.db")
 
     emit_sqlite
   end
@@ -154,7 +156,7 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{turn_to_path klass.full_name}")
       out_file.dirname.mkpath
 
-      result = template.result(binding).squeeze.gsub("\n ", "\n").squeeze("\n")
+      result = template.result(binding).squeeze(" ").gsub("\n ", "\n").squeeze("\n\n")
 
       File.write(out_file, result)
     end
@@ -171,7 +173,14 @@ class RDoc::Generator::Markdown
   # Converts HTML string into a Markdown string with some cleaning and improvements.
 
   def markdownify(input)
-    md = ReverseMarkdown.convert input
+    # TODO: I should be able to set unknown_tags to "raise" for debugging purposes. Probably through rdoc parameters?
+    # Allowed parameters:
+    # - pass_through - (default) Include the unknown tag completely into the result
+    # - drop - Drop the unknown tag and its content
+    # - bypass - Ignore the unknown tag but try to convert its content
+    # - raise - Raise an error to let you know
+
+    md = ReverseMarkdown.convert input, unknown_tags: :pass_through, github_flavored: true
 
     # unintent multiline strings
     md.unindent!
@@ -182,6 +191,8 @@ class RDoc::Generator::Markdown
 
       "[#{match[1]}](#{match[2]}.md#{match[3]})"
     end
+
+    md.gsub("=== ", "### ").gsub("== ", "## ")
   end
 
   # Aliasing a shorter method name for use in templates

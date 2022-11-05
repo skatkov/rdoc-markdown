@@ -1,20 +1,21 @@
-# <%= klass.type %> <%= klass.full_name.strip %> [](#<%= klass.aref.strip %>) [](#top)
+# <%= klass.type %> <%= klass.full_name %> [](#<%= klass.aref.strip %>) [](#top)
 <%= h klass.description %>
 <% klass.each_section do |section, constants, attributes| %>
   <% if section.title %>## <%= section.title.strip %> <% end %>
   <% if section.comment %> <%=h  section.description %><% end%>
   <% unless klass.constants.empty? %>
 ## Constants
+ | Name | Description |
+ | ---- | ----------- |
     <% klass.constants.each do |const| %>
-### <%= const.name.strip %>[](#<%= const.name.strip %>)
-<% if const.comment %> <%= h const.description %> <%else%> (Not documented) <% end %>
+ | **<%= const.name %>[](#<%= const.name %>)** | <% unless const.description.empty? %> <%= h const.description %> <%else%> Not documented <% end %> |
     <% end %>
   <% end %>
   <% unless attributes&.empty? %>
 ## Attributes
     <% attributes.each do |attr| %>
 ### <%= attr.name %>[<%= attr.rw %>] [](#<%= attr.aref.strip %>)
-<% if attr.comment %> <%= h attr.description %> <%else%> (Not documented) <% end %>
+<% if attr.comment %> <%= h(attr.description) %> <%else%> Not documented <% end %>
     <% end %>
   <% end %>
   <% klass.methods_by_type(section).each do |type, visibilities| %>
@@ -23,8 +24,8 @@
       <% next if methods.empty? %>
 ##  <%= visibility.capitalize %> <%= type.capitalize %> Methods
       <% methods.each do |method|%>
-### <%= method.name.strip %><%= method.param_seq.strip %> [](#<%= method.aref.strip %>)
-<% if method.comment %> <%= h method.description %>  <% else %> (Not documented) <%end%>
+### <%= method.name %><%= method.param_seq %> [](#<%= method.aref %>)
+<% if method.comment %> <%= h(method.description) %>  <% else %> Not documented <%end%>
       <% end %>
     <% end %>
   <% end %>
