@@ -13,7 +13,7 @@
   <% unless attributes&.empty? %>
 ## Attributes
     <% attributes.each do |attr| %>
-### <%= attr.rw %><%=h attr.name.strip %>[](#<%= attr.aref.strip %>)
+### <%= attr.name %>[<%= attr.rw %>] [](#<%= attr.aref.strip %>)
 <% if attr.comment %> <%= h attr.description %> <%else%> (Not documented) <% end %>
     <% end %>
   <% end %>
