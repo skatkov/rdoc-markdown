@@ -21,7 +21,7 @@ Run following command in directory with ruby source code:
 
 `rdoc --format=markdown`
 
-This will produce a tree of markdown documents and search index in `/doc` folder.
+This will produce a tree of markdown documents and search index in `/doc` folder. Every class in library will have it's own markdown file.
 
 ## Development
 Biggest issue is testing this locally, but that's not as hard to do these days.
