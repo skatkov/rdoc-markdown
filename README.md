@@ -6,7 +6,7 @@ I'm trying to depend less on software with GUI, instead using software that coul
 
 ## Installation
 
-Install gem and add to the application's Gemfile by executing:
+Install gem and add to application's Gemfile by executing:
 
     $ bundle add rdoc-markdown
 
