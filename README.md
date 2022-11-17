@@ -13,6 +13,9 @@ Install gem and add to application's Gemfile by executing:
 If bundler is not being used to manage dependencies, install the gem by executing:
 
     $ gem install rdoc-markdown
+## Examples
+Find examples in [/examples](/example/) folder. You can regenerate examples by running `./bin/generate.sh`, it will produce examples based on file in `test/data/*` folder.
+
 
 ## Usage
 RDoc will auto-detect rdoc-markdown plugin if it was installed. You just need to instruct RDoc to produce markdown output instead of standard HTML through `format` parameter.

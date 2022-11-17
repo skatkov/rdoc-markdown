@@ -8,3 +8,4 @@
 /tmp/
 *.gem
 .DS_Store
+example/created.rid
