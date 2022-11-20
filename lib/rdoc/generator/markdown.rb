@@ -151,12 +151,14 @@ class RDoc::Generator::Markdown
 
   def emit_classfiles
     @classes.each do |klass|
-      template = ERB.new File.read(File.join(TEMPLATE_DIR, "classfile.md.erb"))
+      template_content = File.read(File.join(TEMPLATE_DIR, "classfile.md.erb"))
+
+      template = ERB.new template_content, trim_mode: ">"
 
       out_file = Pathname.new("#{output_dir}/#{turn_to_path klass.full_name}")
       out_file.dirname.mkpath
 
-      result = template.result(binding).squeeze(" ").gsub("\n ", "\n").squeeze("\n\n")
+      result = template.result(binding).squeeze("  ")
 
       File.write(out_file, result)
     end
@@ -172,6 +174,7 @@ class RDoc::Generator::Markdown
   ##
   # Converts HTML string into a Markdown string with some cleaning and improvements.
 
+  # FIXME: This could return string with newlines in the end, which is not good.
   def markdownify(input)
     # TODO: I should be able to set unknown_tags to "raise" for debugging purposes. Probably through rdoc parameters?
     # Allowed parameters:

@@ -7,8 +7,7 @@
 ## Constants
  | Name | Description |
  | ---- | ----------- |
-    <% klass.constants.each do |const| %>
- | **<%= const.name %>[](#<%= const.name %>)** | <% unless const.description.empty? %> <%= h const.description %> <%else%> Not documented <% end %> |
+<% klass.constants.each do |const| %> | **<%= const.name %>[](#<%= const.name %>)** | <% unless const.description.empty? %> <%= h const.description %> <%else%> Not documented <% end %> |
     <% end %>
   <% end %>
   <% unless attributes&.empty? %>
