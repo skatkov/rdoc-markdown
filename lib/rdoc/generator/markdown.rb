@@ -156,7 +156,7 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{turn_to_path klass.full_name}")
       out_file.dirname.mkpath
 
-      result = template.result(binding).squeeze(" ").gsub("\n ", "\n").squeeze("\n\n")
+      result = template.result(binding)
 
       File.write(out_file, result)
     end
