@@ -1,25 +1,6 @@
 # module Rdoc::Markdown [](#module-Rdoc::Markdown) [](#top)
- 
- 
- 
-## Constants
+ ## Constants
  | Name | Description |
  | ---- | ----------- |
- 
  | **VERSION[](#VERSION)** | Not documented |
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
  
