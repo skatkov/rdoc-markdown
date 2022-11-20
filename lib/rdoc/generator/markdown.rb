@@ -174,6 +174,7 @@ class RDoc::Generator::Markdown
   ##
   # Converts HTML string into a Markdown string with some cleaning and improvements.
 
+  # FIXME: This could return string with newlines in the end, which is not good.
   def markdownify(input)
     # TODO: I should be able to set unknown_tags to "raise" for debugging purposes. Probably through rdoc parameters?
     # Allowed parameters:
