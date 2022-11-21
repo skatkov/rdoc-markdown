@@ -2,7 +2,5 @@
  ## Constants
  | Name | Description |
  | ---- | ----------- |
- | **DEFAULT_DUCK_VELOCITY[](#DEFAULT_DUCK_VELOCITY)** | Default velocity for a flying duck.
-
- |
+ | **DEFAULT_DUCK_VELOCITY[](#DEFAULT_DUCK_VELOCITY)** | Default velocity for a flying duck. |
  

@@ -7,4 +7,5 @@
  ### run_generator(file, title) { |options| ... } [](#method-i-run_generator)
  ### source_file() [](#method-i-source_file)
  ### test_generator() [](#method-i-test_generator)
+ ### test_markdownify() [](#method-i-test_markdownify)
  
