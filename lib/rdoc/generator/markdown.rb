@@ -77,6 +77,35 @@ class RDoc::Generator::Markdown
     emit_sqlite
   end
 
+  ##
+  # Converts HTML string into a Markdown string with some cleaning and improvements.
+
+  def markdownify(input)
+    # TODO: I should be able to set unknown_tags to "raise" for debugging purposes. Probably through rdoc parameters?
+    # Allowed parameters:
+    # - pass_through - (default) Include the unknown tag completely into the result
+    # - drop - Drop the unknown tag and its content
+    # - bypass - Ignore the unknown tag but try to convert its content
+    # - raise - Raise an error to let you know
+
+    md = ReverseMarkdown.convert input, unknown_tags: :pass_through, github_flavored: true
+
+    # unintent multiline strings
+    md.unindent!
+
+    # Replace .html to .md extension in all markdown links
+    md.gsub(/\[(.+)\]\((.+).html(.*)\)/) do |_|
+      match = Regexp.last_match
+
+      "[#{match[1]}](#{match[2]}.md#{match[3]})"
+    end
+
+    md.gsub("=== ", "### ").gsub("== ", "## ").rstrip
+  end
+
+  # Aliasing a shorter method name for use in templates
+  alias_method :h, :markdownify
+
   private
 
   attr_reader :options
@@ -170,36 +199,6 @@ class RDoc::Generator::Markdown
   def turn_to_path(class_name)
     "#{class_name.gsub("::", "/")}.md"
   end
-
-  ##
-  # Converts HTML string into a Markdown string with some cleaning and improvements.
-
-  # FIXME: This could return string with newlines in the end, which is not good.
-  def markdownify(input)
-    # TODO: I should be able to set unknown_tags to "raise" for debugging purposes. Probably through rdoc parameters?
-    # Allowed parameters:
-    # - pass_through - (default) Include the unknown tag completely into the result
-    # - drop - Drop the unknown tag and its content
-    # - bypass - Ignore the unknown tag but try to convert its content
-    # - raise - Raise an error to let you know
-
-    md = ReverseMarkdown.convert input, unknown_tags: :pass_through, github_flavored: true
-
-    # unintent multiline strings
-    md.unindent!
-
-    # Replace .html to .md extension in all markdown links
-    md.gsub(/\[(.+)\]\((.+).html(.*)\)/) do |_|
-      match = Regexp.last_match
-
-      "[#{match[1]}](#{match[2]}.md#{match[3]})"
-    end
-
-    md.gsub("=== ", "### ").gsub("== ", "## ")
-  end
-
-  # Aliasing a shorter method name for use in templates
-  alias_method :h, :markdownify
 
   ##
   # Prepares for document generation, by creating required folders and initializing variables.
