@@ -2,9 +2,7 @@
  ## Constants
  | Name | Description |
  | ---- | ----------- |
- | **TEMPLATE_DIR[](#TEMPLATE_DIR)** | Defines a constant for directory where templates could be found
-
- |
+ | **TEMPLATE_DIR[](#TEMPLATE_DIR)** | Defines a constant for directory where templates could be found |
  ## Attributes
  ### base_dir[R] [](#attribute-i-base_dir)
  The path to generate files into, combined with `--op` from the options for a full path.
