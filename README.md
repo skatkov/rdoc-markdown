@@ -22,7 +22,7 @@ RDoc will auto-detect rdoc-markdown plugin if it was installed. You just need to
 
 Run following command in directory with ruby source code:
 
-`rdoc --format=markdown --markup=markdown`
+`rdoc --format=markdown`
 
 This will produce a tree of markdown documents and search index in `/doc` folder. Every class in library will have it's own markdown file.
 
