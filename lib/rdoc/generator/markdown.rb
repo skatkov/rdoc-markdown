@@ -14,9 +14,7 @@ class RDoc::Generator::Markdown
   ##
   # Defines a constant for directory where templates could be found
 
-  TEMPLATE_DIR = File.expand_path(
-    File.join(File.dirname(__FILE__), "..", "..", "templates")
-  )
+  TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
 
   ##
   # The RDoc::Store that is the source of the generated content
@@ -114,7 +112,7 @@ class RDoc::Generator::Markdown
       result << {
         name: klass.full_name,
         type: klass.type.capitalize,
-        path: turn_to_path(klass.full_name)
+        path: turn_to_path(klass.full_name),
       }
 
       klass.method_list.each do |method|
@@ -123,25 +121,31 @@ class RDoc::Generator::Markdown
         result << {
           name: "#{klass.full_name}.#{method.name}",
           type: "Method",
-          path: "#{turn_to_path(klass.full_name)}##{method.aref}"
+          path: "#{turn_to_path(klass.full_name)}##{method.aref}",
         }
       end
 
-      klass.constants.sort_by { |x| x.name }.each do |const|
-        result << {
-          name: "#{klass.full_name}.#{const.name}",
-          type: "Constant",
-          path: "#{turn_to_path(klass.full_name)}##{const.name}"
-        }
-      end
+      klass
+        .constants
+        .sort_by { |x| x.name }
+        .each do |const|
+          result << {
+            name: "#{klass.full_name}.#{const.name}",
+            type: "Constant",
+            path: "#{turn_to_path(klass.full_name)}##{const.name}",
+          }
+        end
 
-      klass.attributes.sort_by { |x| x.name }.each do |attr|
-        result << {
-          name: "#{klass.full_name}.#{attr.name}",
-          type: "Attribute",
-          path: "#{turn_to_path(klass.full_name)}##{attr.aref}"
-        }
-      end
+      klass
+        .attributes
+        .sort_by { |x| x.name }
+        .each do |attr|
+          result << {
+            name: "#{klass.full_name}.#{attr.name}",
+            type: "Attribute",
+            path: "#{turn_to_path(klass.full_name)}##{attr.aref}",
+          }
+        end
     end
 
     result.each do |rec|

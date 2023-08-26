@@ -1,6 +1,5 @@
 require "bundler/gem_tasks"
 require "rake/testtask"
-require "standard/rake"
 
 Rake::TestTask.new do |t|
   t.verbose = true
@@ -8,4 +7,4 @@ Rake::TestTask.new do |t|
   t.test_files = FileList["test/test*.rb"]
 end
 
-task default: [:test, "standard:fix"]
+task default: [:test]
