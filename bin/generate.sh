@@ -2,4 +2,4 @@
 
 
 rm -r example/
-bundle exec rdoc --format=markdown --markup=markdownrdoc --format=markdown --markup=markdown -o example/ --root=test/data/
+bundle exec rdoc --format=markdown -o example/ --root=test/data/ -D
