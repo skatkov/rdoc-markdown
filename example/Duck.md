@@ -3,21 +3,22 @@ A duck is a [`Waterfowl`](Waterfowl.html) [`Bird`](Bird.html).
 
 Features:
 
+```
 bird::
 
-- speak
-
-- fly
+ * speak
+ * fly
 
 waterfowl::
 
-- swim
-
+ * swim
+```
  ## Constants
  | Name | Description |
  | ---- | ----------- |
  | **MAX_VELOCITY[](#MAX_VELOCITY)** | Not documented |
- ## Bird overrides ## Constants
+ # Bird overrides
+ ## Constants
  | Name | Description |
  | ---- | ----------- |
  | **MAX_VELOCITY[](#MAX_VELOCITY)** | Not documented |
@@ -25,7 +26,8 @@ waterfowl::
  ### speak() { |speech| ... } [](#method-i-speak)
  [`Duck`](Duck.html) overrides generic implementation.
 
- ## Duck extensions ## Constants
+ # Duck extensions
+ ## Constants
  | Name | Description |
  | ---- | ----------- |
  | **MAX_VELOCITY[](#MAX_VELOCITY)** | Not documented |

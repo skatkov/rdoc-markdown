@@ -1,8 +1,12 @@
 # <%= klass.type %> <%= klass.full_name %> [](#<%= klass.aref.strip %>) [](#top)
 <%= h klass.description %>
 <% klass.each_section do |section, constants, attributes| %>
-  <% if section.title %>## <%= section.title.strip %> <% end %>
-  <% if section.comment %> <%=h  section.description %><% end%>
+  <% if section.title %># <%= section.title.strip %>
+
+  <% end %>
+  <% if section.comment %> <%=h  section.description %>
+
+  <%end%>
   <% unless klass.constants.empty? %>
 ## Constants
  | Name | Description |

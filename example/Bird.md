@@ -7,10 +7,11 @@ The base class for all birds.
 
 Flying is the most critical feature of birds.
 
-= Example
+# Example[¶](#method-i-fly-label-Example) [↑](#top)
 
-fly(:south, 70)
-
+```
+fly(:south,70)
+```
  ### speak() { |text| ... } [](#method-i-speak)
  Produce some noise.
 
