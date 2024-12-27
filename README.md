@@ -1,9 +1,6 @@
 # RDoc-Markdown
 RDoc plugin to generate markdown documentation and search index backed by sqlite database.
 
-## Motivation
-I'm trying to depend less on software with GUI, instead using software that could be used through console. **Documentation in markdown format allows me to review documentation in console**, instead of browser or GUI software like DevDocs.
-
 ## Installation
 
 Install gem and add to application's Gemfile by executing:
