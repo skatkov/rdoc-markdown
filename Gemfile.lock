@@ -2,18 +2,18 @@ PATH
   remote: .
   specs:
     rdoc-markdown (0.4.2)
-      erb (~> 2.0)
-      rdoc (~> 6.0)
-      reverse_markdown (~> 2.0)
-      unindent (~> 1.0)
+      erb
+      rdoc
+      reverse_markdown
+      unindent
 
 GEM
   remote: https://rubygems.org/
   specs:
     cgi (0.4.1)
     date (3.4.1)
-    erb (2.2.3)
-      cgi
+    erb (4.0.4)
+      cgi (>= 0.3.3)
     minitest (5.25.4)
     nokogiri (1.18.0-aarch64-linux-gnu)
       racc (~> 1.4)
@@ -39,7 +39,7 @@ GEM
     rdiscount (2.2.7.3)
     rdoc (6.10.0)
       psych (>= 4.0.0)
-    reverse_markdown (2.1.1)
+    reverse_markdown (3.0.0)
       nokogiri
     stringio (3.1.2)
     unindent (1.0)

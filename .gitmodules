@@ -1,0 +1,3 @@
+[submodule "source_ruby"]
+	path = source_ruby
+	url = https://github.com/ruby/ruby
