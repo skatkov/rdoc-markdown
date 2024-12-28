@@ -5,8 +5,8 @@ gem "rdoc"
 require "pathname"
 require "erb"
 require "reverse_markdown"
-require "extralite"
 require "unindent"
+require "csv"
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -60,8 +60,6 @@ class RDoc::Generator::Markdown
   # Generates markdown files and search index file
 
   def generate
-    # TODO: Make sure to set --markup parameter to 'markdown'.
-
     debug("Setting things up #{@output_dir}")
 
     setup
@@ -70,9 +68,9 @@ class RDoc::Generator::Markdown
 
     emit_classfiles
 
-    debug("Generate search index in #{output_dir}/index.db")
+    debug("Generate index file in #{@output_dir}")
 
-    emit_sqlite
+    emit_csv_index
   end
 
   private
@@ -94,62 +92,52 @@ class RDoc::Generator::Markdown
   # This class emits a search index for generated documentation as sqlite database
   #
 
-  def emit_sqlite(name = "index.db")
-    db = Extralite::Database.new("#{output_dir}/#{name}")
+  def emit_csv_index(name = "index.csv")
+    filepath = "#{output_dir}/#{name}"
 
-    db.execute <<-SQL
-      create table contentIndex (
-        id INTEGER PRIMARY KEY,
-        name TEXT,
-        type TEXT,
-        path TEXT
-      );
-    SQL
+    CSV.open(filepath, "wb") do |csv|
+       csv << %w[name type path]
 
-    result = []
+      @classes.map do |klass|
+        csv << [
+          klass.full_name,
+          klass.type.capitalize,
+          turn_to_path(klass.full_name),
+        ]
 
-    @classes.map do |klass|
-      result << {
-        name: klass.full_name,
-        type: klass.type.capitalize,
-        path: turn_to_path(klass.full_name),
-      }
+        klass.method_list.each do |method|
+          next if method.visibility.to_s.eql?("private")
+          next if method.visibility.to_s.eql?("protected")
 
-      klass.method_list.each do |method|
-        next if method.visibility.to_s.eql?("private")
+          csv << [
+            "#{klass.full_name}.#{method.name}",
+            "Method",
+            "#{turn_to_path(klass.full_name)}##{method.aref}",
+          ]
+        end
 
-        result << {
-          name: "#{klass.full_name}.#{method.name}",
-          type: "Method",
-          path: "#{turn_to_path(klass.full_name)}##{method.aref}",
-        }
+        klass
+          .constants
+          .sort_by { |x| x.name }
+          .each do |const|
+            csv << [
+              "#{klass.full_name}.#{const.name}",
+              "Constant",
+              "#{turn_to_path(klass.full_name)}##{const.name}",
+            ]
+          end
+
+        klass
+          .attributes
+          .sort_by { |x| x.name }
+          .each do |attr|
+            csv << [
+              "#{klass.full_name}.#{attr.name}",
+              "Attribute",
+              "#{turn_to_path(klass.full_name)}##{attr.aref}",
+            ]
+          end
       end
-
-      klass
-        .constants
-        .sort_by { |x| x.name }
-        .each do |const|
-          result << {
-            name: "#{klass.full_name}.#{const.name}",
-            type: "Constant",
-            path: "#{turn_to_path(klass.full_name)}##{const.name}",
-          }
-        end
-
-      klass
-        .attributes
-        .sort_by { |x| x.name }
-        .each do |attr|
-          result << {
-            name: "#{klass.full_name}.#{attr.name}",
-            type: "Attribute",
-            path: "#{turn_to_path(klass.full_name)}##{attr.aref}",
-          }
-        end
-    end
-
-    result.each do |rec|
-      db.execute "insert into contentIndex (name, type, path) values (:name, :type, :path)", rec
     end
   end
 

@@ -2,44 +2,59 @@ PATH
   remote: .
   specs:
     rdoc-markdown (0.4.2)
-      erb (~> 2.0)
-      extralite-bundle (~> 1.0)
-      rdoc (~> 6.0)
-      reverse_markdown (~> 2.0)
-      unindent (~> 1.0)
+      csv
+      erb
+      rdoc
+      reverse_markdown
+      unindent
 
 GEM
   remote: https://rubygems.org/
   specs:
-    cgi (0.3.3)
-    erb (2.2.3)
-      cgi
-    extralite-bundle (1.17)
-    mini_portile2 (2.8.4)
-    minitest (5.16.3)
-    nokogiri (1.13.9)
-      mini_portile2 (~> 2.8.0)
+    cgi (0.4.1)
+    csv (3.3.2)
+    date (3.4.1)
+    erb (4.0.4)
+      cgi (>= 0.3.3)
+    minitest (5.25.4)
+    nokogiri (1.18.0-aarch64-linux-gnu)
       racc (~> 1.4)
-    prettier_print (1.2.1)
-    psych (4.0.6)
+    nokogiri (1.18.0-aarch64-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.18.0-arm-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.18.0-arm-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.18.0-arm64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.18.0-x86_64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.18.0-x86_64-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.18.0-x86_64-linux-musl)
+      racc (~> 1.4)
+    psych (5.2.2)
+      date
       stringio
-    racc (1.6.0)
-    rake (13.0.6)
-    rdiscount (2.2.7)
-    rdoc (6.4.0)
+    racc (1.8.1)
+    rake (13.2.1)
+    rdiscount (2.2.7.3)
+    rdoc (6.10.0)
       psych (>= 4.0.0)
-    reverse_markdown (2.1.1)
+    reverse_markdown (3.0.0)
       nokogiri
-    stringio (3.0.2)
-    syntax_tree (6.1.1)
-      prettier_print (>= 1.2.0)
-    syntax_tree-disable_ternary (1.0.0)
+    stringio (3.1.2)
     unindent (1.0)
 
 PLATFORMS
-  arm64-darwin-21
-  arm64-darwin-22
-  x86_64-linux
+  aarch64-linux-gnu
+  aarch64-linux-musl
+  arm-linux-gnu
+  arm-linux-musl
+  arm64-darwin
+  x86_64-darwin
+  x86_64-linux-gnu
+  x86_64-linux-musl
 
 DEPENDENCIES
   bundler (~> 2.0)
@@ -47,8 +62,6 @@ DEPENDENCIES
   rake (~> 13.0)
   rdiscount (~> 2.0)
   rdoc-markdown!
-  syntax_tree
-  syntax_tree-disable_ternary
 
 BUNDLED WITH
-   2.4.19
+   2.6.1

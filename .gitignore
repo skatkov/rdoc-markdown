@@ -10,3 +10,6 @@
 .DS_Store
 example/created.rid
 .vscode/
+example_ruby/*
+source_ruby/*
+

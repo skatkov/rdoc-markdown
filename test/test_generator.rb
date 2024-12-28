@@ -6,7 +6,7 @@ require "rdoc/rdoc"
 require "rdoc/markdown"
 require "rdiscount"
 
-class TestGenerator < MiniTest::Test
+class TestGenerator < Minitest::Test
   def source_file
     File.join(File.dirname(__FILE__), "data/example.rb")
   end
@@ -47,17 +47,23 @@ class TestGenerator < MiniTest::Test
 
     files.each do |file|
       contents = File.read(file)
-      puts "---file start---"
-      puts contents
-      puts "---file end---"
+      #puts "---file start---"
+      #puts contents
+      #puts "---file end---"
 
       refute_empty RDiscount.new(contents).to_html
     rescue => e
       assert(False, "#{file} file is not formatted correctly: #{e}")
     end
 
-    db = Extralite::Database.new("#{dir}/index.db")
-    result = db.query("select name, type, path from contentIndex")
+    csv_data = File.read("#{dir}/index.csv")
+    result = CSV.parse(csv_data, headers: true).map do |row|
+      {
+        name: row["name"],
+        type: row["type"],
+        path: row["path"]
+      }
+    end
 
     assert_equal 15, result.count
     expected = [
