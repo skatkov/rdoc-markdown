@@ -5,7 +5,6 @@ gem "rdoc"
 require "pathname"
 require "erb"
 require "reverse_markdown"
-require "extralite"
 require "unindent"
 
 class RDoc::Generator::Markdown
@@ -60,8 +59,6 @@ class RDoc::Generator::Markdown
   # Generates markdown files and search index file
 
   def generate
-    # TODO: Make sure to set --markup parameter to 'markdown'.
-
     debug("Setting things up #{@output_dir}")
 
     setup
@@ -69,10 +66,6 @@ class RDoc::Generator::Markdown
     debug("Generate documentation in #{@output_dir}")
 
     emit_classfiles
-
-    debug("Generate search index in #{output_dir}/index.db")
-
-    emit_sqlite
   end
 
   private
@@ -87,69 +80,6 @@ class RDoc::Generator::Markdown
     if $DEBUG_RDOC
       puts "[rdoc-markdown] #{str}" if str
       yield if block_given?
-    end
-  end
-
-  ##
-  # This class emits a search index for generated documentation as sqlite database
-  #
-
-  def emit_sqlite(name = "index.db")
-    db = Extralite::Database.new("#{output_dir}/#{name}")
-
-    db.execute <<-SQL
-      create table contentIndex (
-        id INTEGER PRIMARY KEY,
-        name TEXT,
-        type TEXT,
-        path TEXT
-      );
-    SQL
-
-    result = []
-
-    @classes.map do |klass|
-      result << {
-        name: klass.full_name,
-        type: klass.type.capitalize,
-        path: turn_to_path(klass.full_name),
-      }
-
-      klass.method_list.each do |method|
-        next if method.visibility.to_s.eql?("private")
-
-        result << {
-          name: "#{klass.full_name}.#{method.name}",
-          type: "Method",
-          path: "#{turn_to_path(klass.full_name)}##{method.aref}",
-        }
-      end
-
-      klass
-        .constants
-        .sort_by { |x| x.name }
-        .each do |const|
-          result << {
-            name: "#{klass.full_name}.#{const.name}",
-            type: "Constant",
-            path: "#{turn_to_path(klass.full_name)}##{const.name}",
-          }
-        end
-
-      klass
-        .attributes
-        .sort_by { |x| x.name }
-        .each do |attr|
-          result << {
-            name: "#{klass.full_name}.#{attr.name}",
-            type: "Attribute",
-            path: "#{turn_to_path(klass.full_name)}##{attr.aref}",
-          }
-        end
-    end
-
-    result.each do |rec|
-      db.execute "insert into contentIndex (name, type, path) values (:name, :type, :path)", rec
     end
   end
 
