@@ -6,6 +6,7 @@ require "pathname"
 require "erb"
 require "reverse_markdown"
 require "unindent"
+require "csv"
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -66,6 +67,10 @@ class RDoc::Generator::Markdown
     debug("Generate documentation in #{@output_dir}")
 
     emit_classfiles
+
+    debug("Generate index file in #{@output_dir}")
+
+    emit_csv_index
   end
 
   private
@@ -80,6 +85,59 @@ class RDoc::Generator::Markdown
     if $DEBUG_RDOC
       puts "[rdoc-markdown] #{str}" if str
       yield if block_given?
+    end
+  end
+
+  ##
+  # This class emits a search index for generated documentation as sqlite database
+  #
+
+  def emit_csv_index(name = "index.csv")
+    filepath = "#{output_dir}/#{name}"
+
+    CSV.open(filepath, "wb") do |csv|
+       csv << %w[name type path]
+
+      @classes.map do |klass|
+        csv << [
+          klass.full_name,
+          klass.type.capitalize,
+          turn_to_path(klass.full_name),
+        ]
+
+        klass.method_list.each do |method|
+          next if method.visibility.to_s.eql?("private")
+          next if method.visibility.to_s.eql?("protected")
+
+          csv << [
+            "#{klass.full_name}.#{method.name}",
+            "Method",
+            "#{turn_to_path(klass.full_name)}##{method.aref}",
+          ]
+        end
+
+        klass
+          .constants
+          .sort_by { |x| x.name }
+          .each do |const|
+            csv << [
+              "#{klass.full_name}.#{const.name}",
+              "Constant",
+              "#{turn_to_path(klass.full_name)}##{const.name}",
+            ]
+          end
+
+        klass
+          .attributes
+          .sort_by { |x| x.name }
+          .each do |attr|
+            csv << [
+              "#{klass.full_name}.#{attr.name}",
+              "Attribute",
+              "#{turn_to_path(klass.full_name)}##{attr.aref}",
+            ]
+          end
+      end
     end
   end
 
