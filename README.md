@@ -2,8 +2,8 @@
 RDoc plugin to generate markdown documentation and search index backed by sqlite database.
 
 > [!CAUTION]
-> This should not be used in production. This is a quick "hack" to get to attempt to implement markdown output.
-> To reliably produce markdown with rdoc, rdoc itselfs requires improvements in it's internals. 
+> This should not be used in production. This is a quick "hack" to get markdown output supported.
+> To reliably produce markdown with rdoc - rdoc itselfs requires improvements in it's internals. 
 > Consider this as a demo of a simple looking task that's extremely hard to pull out with rdoc (not the case for yard, though).
 
 ## Motivation
