@@ -181,6 +181,7 @@ class RDoc::Generator::Markdown
     md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i, '](\\1.md\\2)')
 
     md = md.gsub('=== ', '### ').gsub('== ', '## ')
+    md = normalize_definition_list_code_blocks(md)
     md.lines.map(&:rstrip).join("\n").strip
   end
 
@@ -199,13 +200,10 @@ class RDoc::Generator::Markdown
   end
 
   def section_description(section, heading_level_offset: 0)
-    comments = section.respond_to?(:comments) ? section.comments : nil
-    return '' if comments.nil? || comments.empty?
+    description = section_description_html(section)
+    return '' if description.strip.empty?
 
-    text = comments.map { |comment| comment.respond_to?(:text) ? comment.text : comment.to_s }.join("\n")
-    return '' if text.strip.empty?
-
-    shift_headings(markdownify(text), heading_level_offset)
+    shift_headings(markdownify(description), heading_level_offset)
   end
 
   def method_signature(method)
@@ -233,6 +231,49 @@ class RDoc::Generator::Markdown
       level = [hashes.length + heading_level_offset, 6].min
       "#{'#' * level}#{spaces}"
     end
+  end
+
+  def section_description_html(section)
+    if section.instance_variable_defined?(:@store)
+      section_store = section.instance_variable_get(:@store)
+      parent_store = section.respond_to?(:parent) && section.parent.respond_to?(:store) ? section.parent.store : nil
+      section.instance_variable_set(:@store, parent_store) if section_store.nil? && !parent_store.nil?
+    end
+
+    section.description.to_s
+  rescue NoMethodError
+    comments = section.respond_to?(:comments) ? section.comments : nil
+    return '' if comments.nil? || comments.empty?
+
+    comments.map { |comment| comment.respond_to?(:text) ? comment.text : comment.to_s }.join("\n")
+  end
+
+  def normalize_definition_list_code_blocks(markdown)
+    markdown.gsub(/```\n(.*?)\n```/m) do
+      body = Regexp.last_match(1)
+      converted = convert_definition_list_block(body)
+      converted.nil? ? Regexp.last_match(0) : converted
+    end
+  end
+
+  def convert_definition_list_block(body)
+    lines = body.lines.map(&:rstrip)
+    return nil if lines.empty?
+    return nil unless lines.any? { |line| line.strip.end_with?('::') }
+    return nil unless lines.all? { |line| definition_list_line?(line) }
+
+    lines.filter_map do |line|
+      stripped = line.strip
+      next '' if stripped.empty?
+      next "#{stripped.sub(/::\z/, '')}:" if stripped.end_with?('::')
+
+      "- #{stripped.sub(/^\*\s+/, '')}"
+    end.join("\n")
+  end
+
+  def definition_list_line?(line)
+    stripped = line.strip
+    stripped.empty? || stripped.end_with?('::') || stripped.match?(/^\*\s+/)
   end
 
   ##

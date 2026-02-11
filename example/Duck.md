@@ -5,16 +5,14 @@ A duck is a [`Waterfowl`](Waterfowl.md) [`Bird`](Bird.md).
 
 Features:
 
-```
-bird::
+bird:
 
-  * speak
-  * fly
+- speak
+- fly
 
-waterfowl::
+waterfowl:
 
-  * swim
-```
+- swim
 
 ## Bird overrides
 
