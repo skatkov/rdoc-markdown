@@ -1,52 +1,66 @@
-# class Duck [](#class-Duck) [](#top)
-A duck is a [`Waterfowl`](Waterfowl.html) [`Bird`](Bird.html).
+# Class Duck
+<a id="class-Duck"></a>
+
+A duck is a [`Waterfowl`](Waterfowl.md) [`Bird`](Bird.md).
 
 Features:
 
 ```
 bird::
 
- * speak
- * fly
+  * speak
+  * fly
 
 waterfowl::
 
- * swim
+  * swim
 ```
- ## Constants
- | Name | Description |
- | ---- | ----------- |
- | **MAX_VELOCITY[](#MAX_VELOCITY)** | Not documented |
- # Bird overrides
- ## Constants
- | Name | Description |
- | ---- | ----------- |
- | **MAX_VELOCITY[](#MAX_VELOCITY)** | Not documented |
- ## Public Instance Methods
- ### speak() { |speech| ... } [](#method-i-speak)
- [`Duck`](Duck.html) overrides generic implementation.
 
- # Duck extensions
- ## Constants
- | Name | Description |
- | ---- | ----------- |
- | **MAX_VELOCITY[](#MAX_VELOCITY)** | Not documented |
- ## Attributes
- ### domestic[RW] [](#attribute-i-domestic)
- True for domestic ducks.
+## Bird overrides
 
- ### rubber[R] [](#attribute-i-rubber)
- True for rubber ducks.
+### Public Instance Methods
 
- ## Public Class Methods
- ### new(domestic, rubber) [](#method-c-new)
- Creates a new duck.
+#### `speak() { |speech| ... }`
+<a id="method-i-speak"></a>
 
- ### rubber_ducks() [](#method-c-rubber_ducks)
- Returns list of all rubber ducks.
+[`Duck`](Duck.md) overrides generic implementation.
 
- ## Public Instance Methods
- ### useful? -> bool [](#method-i-useful-3F)
- Checks if this duck is a useful one.
+## Duck extensions
 
- 
+### Constants
+
+#### `MAX_VELOCITY`
+<a id="MAX_VELOCITY"></a>
+
+Not documented.
+
+### Attributes
+
+#### `domestic` [RW]
+<a id="attribute-i-domestic"></a>
+
+True for domestic ducks.
+
+#### `rubber` [R]
+<a id="attribute-i-rubber"></a>
+
+True for rubber ducks.
+
+### Public Class Methods
+
+#### `new(domestic, rubber)`
+<a id="method-c-new"></a>
+
+Creates a new duck.
+
+#### `rubber_ducks()`
+<a id="method-c-rubber_ducks"></a>
+
+Returns list of all rubber ducks.
+
+### Public Instance Methods
+
+#### `useful? -> bool`
+<a id="method-i-useful-3F"></a>
+
+Checks if this duck is a useful one.

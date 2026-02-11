@@ -1,9 +1,7 @@
 #!/bin/sh
 
-rm -r example/
-# convert example code into a markdown documentation.
-bundle exec rdoc --format=markdown -o example/ --root=test/data/ -D
+set -eu
 
-rm -r example_ruby/
-## convert ruby source into a markdown documentation.
-bundle exec rdoc --format=markdown -o example_ruby/ --root=source_ruby/ -D --force-output
+rm -rf example/
+# convert example code into a markdown documentation.
+bundle exec rdoc --format=markdown -o example/ --root=test/data/ -D test/data/example.rb
