@@ -1,6 +1,9 @@
-# class Object [](#class-Object) [](#top)
- ## Constants
- | Name | Description |
- | ---- | ----------- |
- | **DEFAULT_DUCK_VELOCITY[](#DEFAULT_DUCK_VELOCITY)** | Default velocity for a flying duck. |
- 
+# Class Object
+<a id="class-Object"></a>
+
+### Constants
+
+#### `DEFAULT_DUCK_VELOCITY`
+<a id="DEFAULT_DUCK_VELOCITY"></a>
+
+Default velocity for a flying duck.

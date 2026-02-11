@@ -1,35 +1,56 @@
-# <%= klass.type %> <%= klass.full_name %> [](#<%= klass.aref.strip %>) [](#top)
-<%= h klass.description %>
-<% klass.each_section do |section, constants, attributes| %>
-  <% if section.title %># <%= section.title.strip %>
+# <%= klass.type.capitalize %> <%= klass.full_name %>
+<%= anchor(klass.aref.strip) %>
+<%- class_description = describe(klass) -%>
+<%- unless class_description.empty? -%>
 
-  <% end %>
-  <% if section.comment %> <%=h  section.description %>
+<%= class_description %>
+<%- end -%>
 
-  <%end%>
-  <% unless klass.constants.empty? %>
-## Constants
- | Name | Description |
- | ---- | ----------- |
-<% klass.constants.each do |const| %> | **<%= const.name %>[](#<%= const.name %>)** | <% unless const.description.empty? %> <%= h(const.description).rstrip %> <%else%> Not documented <% end %> |
-    <% end %>
-  <% end %>
-  <% unless attributes&.empty? %>
-## Attributes
-    <% attributes.each do |attr| %>
-### <%= attr.name %>[<%= attr.rw %>] [](#<%= attr.aref.strip %>)
-<% if attr.comment %> <%= h(attr.description) %> <%else%> Not documented <% end %>
-    <% end %>
-  <% end %>
-  <% klass.methods_by_type(section).each do |type, visibilities| %>
-    <% next if visibilities.empty? %>
-    <% visibilities.each do |visibility, methods| %>
-      <% next if methods.empty? %>
-##  <%= visibility.capitalize %> <%= type.capitalize %> Methods
-      <% methods.each do |method|%>
-### <%= method.name %><%= method.param_seq %> [](#<%= method.aref %>)
-<% if method.comment %> <%= h(method.description) %>  <% else %> Not documented <%end%>
-      <% end %>
-    <% end %>
-  <% end %>
-<% end %>
+<% klass.each_section do |section, constants, attributes| -%>
+<%- section_title = section.title.to_s.strip -%>
+<%- unless section_title.empty? -%>
+
+## <%= section_title %>
+<%- end -%>
+<%- section_description = section_description(section, heading_level_offset: 2) -%>
+<%- unless section_description.empty? -%>
+
+<%= section_description %>
+<%- end -%>
+<%- unless constants.empty? -%>
+
+### Constants
+<% constants.sort_by(&:name).each do |const| -%>
+
+#### `<%= const.name %>`
+<%= anchor(const.name) %>
+
+<%= describe(const, fallback: "Not documented.", heading_level_offset: 4) %>
+<% end -%>
+<%- end -%>
+<%- unless attributes.empty? -%>
+
+### Attributes
+<% attributes.sort_by(&:name).each do |attr| -%>
+
+#### `<%= attr.name %>` [<%= attr.rw %>]
+<%= anchor(attr.aref.strip) %>
+
+<%= describe(attr, fallback: "Not documented.", heading_level_offset: 4) %>
+<% end -%>
+<%- end -%>
+<% klass.methods_by_type(section).each do |type, visibilities| -%>
+<% visibilities.each do |visibility, methods| -%>
+<% next if methods.empty? -%>
+
+### <%= visibility.capitalize %> <%= type.capitalize %> Methods
+<% methods.each do |method| -%>
+
+#### `<%= method.name %><%= method_signature(method) %>`
+<%= anchor(method.aref) %>
+
+<%= describe(method, fallback: "Not documented.", heading_level_offset: 4) %>
+<% end -%>
+<% end -%>
+<% end -%>
+<% end -%>
