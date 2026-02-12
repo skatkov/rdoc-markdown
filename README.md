@@ -1,10 +1,5 @@
 # RDoc-Markdown
-RDoc plugin to generate markdown documentation and search index backed by sqlite database.
-
-> [!CAUTION]
-> This should not be used in production. This is a quick "hack" to get markdown output supported.
-> To reliably produce markdown with rdoc - rdoc itselfs requires improvements in it's internals. 
-> Consider this as a demo of a simple looking task that's extremely hard to pull out with rdoc (not the case for yard, though).
+RDoc plugin to generate markdown documentation and search index file (CSV).
 
 ## Motivation
 Markdown has become the de-facto documentation standard. I heavily rely on Obsidian to render my storage of markdown notes. But markdown is used not just for scribbles, supported is far and wide. We can render markdown file on any device, probably even on thermometer with a screen. But also everyone knows enough markdown to be dangerous (or productive).
