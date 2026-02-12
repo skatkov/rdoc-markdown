@@ -70,11 +70,16 @@ namespace :markdown do
   end
 end
 
-def ensure_git_checkout(path:, url:)
+def ensure_git_checkout(path:, url:, ref: nil)
   return if Dir.exist?(path)
 
   FileUtils.mkdir_p(File.dirname(path))
-  sh "git clone #{url} #{path}"
+
+  clone_command = ["git", "clone", "--depth", "1"]
+  clone_command += ["--branch", ref] if ref
+  clone_command += [url, path]
+
+  sh clone_command.join(" ")
 end
 
 def generate_markdown_docs(title:, root:, output:, files:)
@@ -126,18 +131,18 @@ end
 
 namespace :vendor do
   namespace :setup do
+    MINITEST_REF = "v6.0.1"
+    RAILS_REF = ENV.fetch("RAILS_REF", "main")
+
     desc "Clone/update vendor/minitest and checkout docs-aligned tag"
     task :minitest do
-      ensure_git_checkout(path: "vendor/minitest", url: "https://github.com/minitest/minitest.git")
-      Dir.chdir("vendor/minitest") do
-        sh "git fetch --tags --quiet"
-        sh "git checkout v6.0.1"
-      end
+      ensure_git_checkout(path: "vendor/minitest", url: "https://github.com/minitest/minitest.git", ref: MINITEST_REF)
+      Dir.chdir("vendor/minitest") { sh "git checkout #{MINITEST_REF}" }
     end
 
     desc "Clone/update vendor/rails"
     task :rails do
-      ensure_git_checkout(path: "vendor/rails", url: "https://github.com/rails/rails.git")
+      ensure_git_checkout(path: "vendor/rails", url: "https://github.com/rails/rails.git", ref: RAILS_REF)
     end
   end
 
