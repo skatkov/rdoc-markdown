@@ -15,7 +15,7 @@ Flying is the most critical feature of birds.
 ##### Example
 
 ```
-fly(:south,70)
+fly(:south, 70)
 ```
 
 #### `speak() { |text| ... }`

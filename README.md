@@ -63,6 +63,17 @@ Following command should run entire testsuit:
 rake test
 ```
 Testing is not excessive, just verifies that basic functionality is operational.
+
+### Integration harness: minitest
+To run the integration harness against minitest (aligned with docs.seattlerb.org/minitest):
+
+```
+git clone https://github.com/minitest/minitest.git vendor/minitest
+git -C vendor/minitest checkout v6.0.1
+bundle exec rake test
+```
+
+The harness validates markdown formatting quality, generated page files, class/module paths, and search index output.
 ## Release
 ```
 gem build rdoc-markdown.gemspec
