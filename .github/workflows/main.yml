@@ -17,9 +17,17 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4.1"
-          #bundler-cache: true
+          bundler-cache: true
+      - name: Cache vendored repositories
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor/minitest
+            vendor/rails
+          key: ${{ runner.os }}-vendored-repos-v1-${{ hashFiles('Rakefile') }}
+          restore-keys: |
+            ${{ runner.os }}-vendored-repos-v1-
       - run: bundle config unset deployment
-      - run: bundle install
       - name: Run tests
         run: bundle exec rake test
       - name: Validate markdown output (GFM)
