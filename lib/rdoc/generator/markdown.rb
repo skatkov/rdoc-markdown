@@ -153,7 +153,7 @@ class RDoc::Generator::Markdown
     template = ERB.new(template_content, trim_mode: '-')
 
     @classes.each do |klass|
-      result = finalize_markdown(template.result(binding))
+      result = finalize_markdown(template.result(binding), current_output_path: output_path_for(klass))
 
       out_file = Pathname.new("#{output_dir}/#{output_path_for(klass)}")
       out_file.dirname.mkpath
@@ -173,7 +173,7 @@ class RDoc::Generator::Markdown
       out_file.dirname.mkpath
 
       content = markdownify(page.description.to_s)
-      File.write(out_file, finalize_markdown(content))
+      File.write(out_file, finalize_markdown(content, current_output_path: page_output_path(page)))
     end
   end
 
@@ -185,7 +185,13 @@ class RDoc::Generator::Markdown
   end
 
   def page_output_path(page)
-    "#{page.base_name.tr('.', '_')}.md"
+    source_path = normalize_input_path_for_output(page.relative_name.to_s)
+    dirname = File.dirname(source_path)
+    basename = "#{File.basename(source_path).tr('.', '_')}.md"
+
+    return basename if dirname == '.'
+
+    "#{dirname}/#{basename}"
   end
 
   def display_name(code_object)
@@ -231,7 +237,11 @@ class RDoc::Generator::Markdown
 
     # Turn site-root markdown links into relative links.
     md.gsub!(%r{\]\(/([^)]+?\.md(?:[?#][^)]+)?)\)}, '](\\1)')
-    md = normalize_internal_links(md)
+
+    # Strip RDoc structural path segments from internal links.
+    md.gsub!(%r{\]\(((?:\.\./)*)files/([^)]+?\.md(?:[?#][^)]+)?)\)}, '](\\1\\2)')
+    md.gsub!(%r{\]\(((?:\.\./)*)classes/([^)]+?\.md(?:[?#][^)]+)?)\)}, '](\\1\\2)')
+    md.gsub!(%r{\]\(((?:\.\./)*)modules/([^)]+?\.md(?:[?#][^)]+)?)\)}, '](\\1\\2)')
 
     md = md.gsub('=== ', '### ').gsub('== ', '## ')
     md = normalize_definition_list_code_blocks(md)
@@ -269,8 +279,19 @@ class RDoc::Generator::Markdown
     signature
   end
 
-  def finalize_markdown(content)
+  def method_description(method, current_class:)
+    text = describe(method, fallback: nil, heading_level_offset: 4)
+    return text unless text.empty?
+
+    aliased_method = method.respond_to?(:is_alias_for) ? method.is_alias_for : nil
+    return 'Not documented.' unless aliased_method
+
+    "Alias for: [`#{aliased_method.name}`](#{method_link(aliased_method, current_class: current_class)})"
+  end
+
+  def finalize_markdown(content, current_output_path: nil)
     output = content.lines.map(&:rstrip).join("\n")
+    output = normalize_internal_links(output, current_output_path: current_output_path) if current_output_path
     output.gsub!(/\n{3,}/, "\n\n")
     "#{output.strip}\n"
   end
@@ -329,6 +350,20 @@ class RDoc::Generator::Markdown
     stripped.empty? || stripped.end_with?('::') || stripped.match?(/^\*\s+/)
   end
 
+  def method_link(method, current_class:)
+    target_parent = method.parent
+    return "##{method.aref}" if target_parent == current_class
+
+    target_path = output_path_for(target_parent)
+    current_path = output_path_for(current_class)
+    "#{relative_output_path(current_path, target_path)}##{method.aref}"
+  end
+
+  def relative_output_path(from_path, to_path)
+    from_dir = Pathname.new(from_path).dirname
+    Pathname.new(to_path).relative_path_from(from_dir).to_s
+  end
+
   def normalize_rdoc_pre_blocks(html)
     html.gsub(%r{<pre\b[^>]*>(.*?)</pre>}m) do
       raw = Regexp.last_match(1)
@@ -339,22 +374,54 @@ class RDoc::Generator::Markdown
     end
   end
 
-  def normalize_internal_links(markdown)
+  def normalize_internal_links(markdown, current_output_path:)
     return markdown if @known_output_paths.nil? || @known_output_paths.empty?
+
+    current_dir = Pathname.new(current_output_path).dirname
 
     markdown.gsub(%r{\]\((?!https?://|mailto:|#)([^)]+)\)}) do
       target = Regexp.last_match(1)
       path = target.sub(/[?#].*\z/, '')
       suffix = target[path.length..] || ''
 
-      normalized = [path]
-      if @root_path_segment && path.start_with?("#{@root_path_segment}/")
-        normalized << path.delete_prefix("#{@root_path_segment}/")
-      end
-
-      resolved = normalized.find { |candidate| @known_output_paths.include?(candidate) } || path
-      "](#{resolved}#{suffix})"
+      resolved = resolve_output_path(path, current_dir)
+      rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir).to_s : path
+      "](#{rewritten}#{suffix})"
     end
+  end
+
+  def resolve_output_path(path, current_dir)
+    normalized_path = path.to_s.sub(%r{\A/}, '')
+    candidates = [normalized_path]
+
+    stripped = normalized_path.sub(%r{\A(?:files|classes|modules)/}, '')
+    candidates << stripped unless stripped == normalized_path
+
+    if @root_path_segment && stripped.start_with?("#{@root_path_segment}/")
+      candidates << stripped.delete_prefix("#{@root_path_segment}/")
+    end
+
+    candidates.each do |candidate|
+      return candidate if @known_output_paths.include?(candidate)
+    end
+
+    candidates.each do |candidate|
+      expanded = current_dir.join(candidate).cleanpath.to_s
+      return expanded if @known_output_paths.include?(expanded)
+    end
+
+    nil
+  end
+
+  def normalize_input_path_for_output(path)
+    normalized = path.to_s.tr('\\', '/').sub(%r{\A\./}, '')
+    normalized = normalized.sub(%r{\A/}, '')
+
+    root = File.expand_path(@options.root || '.', @base_dir).tr('\\', '/')
+    normalized = normalized.sub(%r{\A#{Regexp.escape(root)}/}, '')
+
+    root_basename = File.basename(root)
+    normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, '')
   end
 
   def class_doc_for(code_object)

@@ -49,7 +49,7 @@
 #### `<%= method.name %><%= method_signature(method) %>`
 <%= anchor(method.aref) %>
 
-<%= describe(method, fallback: "Not documented.", heading_level_offset: 4) %>
+<%= method_description(method, current_class: klass) %>
 <% end -%>
 <% end -%>
 <% end -%>
