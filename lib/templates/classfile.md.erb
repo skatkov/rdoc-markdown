@@ -1,4 +1,4 @@
-# <%= klass.type.capitalize %> <%= klass.full_name %>
+# <%= klass.type.capitalize %> <%= display_name(klass) %>
 <%= anchor(klass.aref.strip) %>
 <%- class_description = describe(klass) -%>
 <%- unless class_description.empty? -%>

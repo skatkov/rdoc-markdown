@@ -7,6 +7,7 @@ require 'erb'
 require 'reverse_markdown'
 require 'unindent'
 require 'csv'
+require 'cgi'
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -19,7 +20,7 @@ class RDoc::Generator::Markdown
   ##
   # The RDoc::Store that is the source of the generated content
 
-  attr_reader :store, :base_dir, :classes
+  attr_reader :store, :base_dir, :classes, :pages
 
   ##
   # The path to generate files into, combined with <tt>--op</tt> from the
@@ -64,6 +65,10 @@ class RDoc::Generator::Markdown
 
     emit_classfiles
 
+    debug("Generate pages in #{@output_dir}")
+
+    emit_pagefiles
+
     debug("Generate index file in #{@output_dir}")
 
     emit_csv_index
@@ -95,16 +100,16 @@ class RDoc::Generator::Markdown
 
       @classes.map do |klass|
         csv << [
-          klass.full_name,
+          display_name(klass),
           klass.type.capitalize,
-          turn_to_path(klass.full_name)
+          output_path_for(klass)
         ]
 
         klass.method_list.select(&:display?).each do |method|
           csv << [
-            "#{klass.full_name}.#{method.name}",
+            "#{display_name(klass)}.#{method.name}",
             'Method',
-            "#{turn_to_path(klass.full_name)}##{method.aref}"
+            "#{output_path_for(klass)}##{method.aref}"
           ]
         end
 
@@ -114,9 +119,9 @@ class RDoc::Generator::Markdown
           .sort_by { |x| x.name }
           .each do |const|
             csv << [
-              "#{klass.full_name}.#{const.name}",
+              "#{display_name(klass)}.#{const.name}",
               'Constant',
-              "#{turn_to_path(klass.full_name)}##{const.name}"
+              "#{output_path_for(klass)}##{const.name}"
             ]
           end
 
@@ -126,11 +131,19 @@ class RDoc::Generator::Markdown
           .sort_by { |x| x.name }
           .each do |attr|
             csv << [
-              "#{klass.full_name}.#{attr.name}",
+              "#{display_name(klass)}.#{attr.name}",
               'Attribute',
-              "#{turn_to_path(klass.full_name)}##{attr.aref}"
+              "#{output_path_for(klass)}##{attr.aref}"
             ]
           end
+      end
+
+      @pages.each do |page|
+        csv << [
+          page.page_name,
+          'Page',
+          page_output_path(page)
+        ]
       end
     end
   end
@@ -140,12 +153,27 @@ class RDoc::Generator::Markdown
     template = ERB.new(template_content, trim_mode: '-')
 
     @classes.each do |klass|
-      out_file = Pathname.new("#{output_dir}/#{turn_to_path klass.full_name}")
-      out_file.dirname.mkpath
-
       result = finalize_markdown(template.result(binding))
 
+      out_file = Pathname.new("#{output_dir}/#{output_path_for(klass)}")
+      out_file.dirname.mkpath
       File.write(out_file, result)
+
+      legacy_paths_for(klass).each do |legacy_path|
+        legacy_file = Pathname.new("#{output_dir}/#{legacy_path}")
+        legacy_file.dirname.mkpath
+        File.write(legacy_file, result)
+      end
+    end
+  end
+
+  def emit_pagefiles
+    @pages.each do |page|
+      out_file = Pathname.new("#{output_dir}/#{page_output_path(page)}")
+      out_file.dirname.mkpath
+
+      content = markdownify(page.description.to_s)
+      File.write(out_file, finalize_markdown(content))
     end
   end
 
@@ -154,6 +182,25 @@ class RDoc::Generator::Markdown
 
   def turn_to_path(class_name)
     "#{class_name.gsub('::', '/')}.md"
+  end
+
+  def page_output_path(page)
+    "#{page.base_name.tr('.', '_')}.md"
+  end
+
+  def display_name(code_object)
+    class_doc = class_doc_for(code_object)
+    class_doc ? class_doc[:display_name] : code_object.full_name
+  end
+
+  def output_path_for(code_object)
+    class_doc = class_doc_for(code_object)
+    class_doc ? class_doc[:output_path] : turn_to_path(code_object.full_name)
+  end
+
+  def legacy_paths_for(code_object)
+    class_doc = class_doc_for(code_object)
+    class_doc ? class_doc[:legacy_paths] : []
   end
 
   ##
@@ -168,7 +215,9 @@ class RDoc::Generator::Markdown
     # - bypass - Ignore the unknown tag but try to convert its content
     # - raise - Raise an error to let you know
 
-    md = ReverseMarkdown.convert(input.to_s, unknown_tags: :bypass, github_flavored: true)
+    html = normalize_rdoc_pre_blocks(input.to_s)
+
+    md = ReverseMarkdown.convert(html, unknown_tags: :bypass, github_flavored: true)
 
     # unintent multiline strings
     md.unindent!
@@ -179,6 +228,10 @@ class RDoc::Generator::Markdown
 
     # Replace .html to .md extension in all local markdown links.
     md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i, '](\\1.md\\2)')
+
+    # Turn site-root markdown links into relative links.
+    md.gsub!(%r{\]\(/([^)]+?\.md(?:[?#][^)]+)?)\)}, '](\\1)')
+    md = normalize_internal_links(md)
 
     md = md.gsub('=== ', '### ').gsub('== ', '## ')
     md = normalize_definition_list_code_blocks(md)
@@ -276,6 +329,119 @@ class RDoc::Generator::Markdown
     stripped.empty? || stripped.end_with?('::') || stripped.match?(/^\*\s+/)
   end
 
+  def normalize_rdoc_pre_blocks(html)
+    html.gsub(%r{<pre\b[^>]*>(.*?)</pre>}m) do
+      raw = Regexp.last_match(1)
+      text = raw
+             .gsub(%r{<br\s*/?>}i, "\n")
+             .gsub(/<[^>]+>/, '')
+      "<pre>#{CGI.unescapeHTML(text)}</pre>"
+    end
+  end
+
+  def normalize_internal_links(markdown)
+    return markdown if @known_output_paths.nil? || @known_output_paths.empty?
+
+    markdown.gsub(%r{\]\((?!https?://|mailto:|#)([^)]+)\)}) do
+      target = Regexp.last_match(1)
+      path = target.sub(/[?#].*\z/, '')
+      suffix = target[path.length..] || ''
+
+      normalized = [path]
+      if @root_path_segment && path.start_with?("#{@root_path_segment}/")
+        normalized << path.delete_prefix("#{@root_path_segment}/")
+      end
+
+      resolved = normalized.find { |candidate| @known_output_paths.include?(candidate) } || path
+      "](#{resolved}#{suffix})"
+    end
+  end
+
+  def class_doc_for(code_object)
+    @class_docs_by_object_id[code_object.object_id]
+  end
+
+  def build_class_docs(classes)
+    docs_by_name = {}
+
+    classes.each do |klass|
+      display_name = normalized_full_name(klass.full_name)
+      output_path = turn_to_path(display_name)
+      legacy_path = turn_to_path(klass.full_name)
+      score = class_content_score(klass)
+
+      candidate = {
+        klass: klass,
+        display_name: display_name,
+        output_path: output_path,
+        legacy_paths: legacy_path == output_path ? [] : [legacy_path],
+        score: score
+      }
+
+      existing = docs_by_name[display_name]
+
+      if existing.nil?
+        docs_by_name[display_name] = candidate
+      elsif candidate[:score] > existing[:score]
+        if existing[:score].positive?
+          candidate[:legacy_paths] |= existing[:legacy_paths] + [turn_to_path(existing[:klass].full_name)]
+        end
+        docs_by_name[display_name] = candidate
+      elsif candidate[:score].positive?
+        existing[:legacy_paths] |= candidate[:legacy_paths] + [legacy_path]
+      end
+    end
+
+    docs_by_name.values
+                .select do |doc|
+                  doc[:score].positive? ||
+                    (doc[:klass].full_name == doc[:display_name] && !synthetic_full_name?(doc[:klass].full_name))
+    end
+      .sort_by { |doc| doc[:display_name] }
+                .map { |doc| doc.tap { |d| d[:legacy_paths].uniq! } }
+  end
+
+  def normalized_full_name(full_name)
+    normalized = full_name.dup
+
+    loop do
+      break unless normalized
+
+      if normalized =~ /\A(.+?)::\1::(.+)\z/
+        normalized = "#{::Regexp.last_match(1)}::#{::Regexp.last_match(2)}"
+        next
+      end
+
+      if normalized =~ /\A([^:]+)(?:::[^:]+)+::\1::(.+)\z/
+        normalized = "#{::Regexp.last_match(1)}::#{::Regexp.last_match(2)}"
+        next
+      end
+
+      if normalized =~ /\A(.+?)::\1\z/
+        normalized = Regexp.last_match(1)
+        next
+      end
+
+      break
+    end
+
+    normalized
+  end
+
+  def class_content_score(klass)
+    score = klass.method_list.size + klass.constants.size + klass.attributes.size
+    score += 1 unless klass.description.to_s.strip.empty?
+    score
+  end
+
+  def synthetic_full_name?(full_name)
+    parts = full_name.split('::')
+    return false if parts.size < 3
+
+    root = parts.first
+    parts.count(root) > 1
+  end
+
   ##
   # Prepares for document generation, by creating required folders and initializing variables.
   # Could be called multiple times.
@@ -288,6 +454,18 @@ class RDoc::Generator::Markdown
 
     return unless @store
 
-    @classes = @store.all_classes_and_modules.sort
+    @class_docs = build_class_docs(@store.all_classes_and_modules.sort)
+    @class_docs_by_object_id = @class_docs.to_h { |doc| [doc[:klass].object_id, doc] }
+    @classes = @class_docs.map { |doc| doc[:klass] }
+    @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
+
+    @known_output_paths = Set.new
+    @class_docs.each do |doc|
+      @known_output_paths << doc[:output_path]
+      doc[:legacy_paths].each { |path| @known_output_paths << path }
+    end
+    @pages.each { |page| @known_output_paths << page_output_path(page) }
+
+    @root_path_segment = Pathname.new(@options.root || '.').basename.to_s
   end
 end
