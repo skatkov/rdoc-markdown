@@ -22,3 +22,5 @@ jobs:
       - run: bundle install
       - name: Run tests
         run: bundle exec rake test
+      - name: Validate markdown output (GFM)
+        run: bundle exec rake markdown:validate

@@ -64,6 +64,28 @@ rake test
 ```
 Testing is not excessive, just verifies that basic functionality is operational.
 
+To validate generated markdown against GitHub Flavored Markdown and check local links/anchors:
+
+```
+rake markdown:validate
+```
+
+This task validates:
+
+- generated sample docs,
+- checked-in `example/` docs,
+- vendored minitest docs,
+- vendored rails docs (Active Support, Active Record, Action Pack, Railties slices).
+
+Validation artifacts are written to `tmp/markdown-validate/` inside this repository.
+To fail on every unresolved vendor local link/anchor, run with:
+
+```
+MARKDOWN_VALIDATE_STRICT_VENDOR=1 rake markdown:validate
+```
+
+This task is also executed in CI.
+
 ### Integration harness: minitest
 To run the integration harness against minitest (aligned with docs.seattlerb.org/minitest):
 
