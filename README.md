@@ -68,12 +68,38 @@ Testing is not excessive, just verifies that basic functionality is operational.
 To run the integration harness against minitest (aligned with docs.seattlerb.org/minitest):
 
 ```
-git clone https://github.com/minitest/minitest.git vendor/minitest
-git -C vendor/minitest checkout v6.0.1
+rake vendor:setup:minitest
 bundle exec rake test
 ```
 
 The harness validates markdown formatting quality, generated page files, class/module paths, and search index output.
+
+### Integration harness: rails
+To run the rails harness (focused on Active Support + Active Record API docs with sdoc-like structure):
+
+```
+rake vendor:setup:rails
+bundle exec rake test
+```
+
+The rails harness validates alias rendering, preserved code blocks, file/page links rewritten to markdown, and index stability (no synthetic nested class names).
+
+### Generate vendored docs
+Use rake tasks to generate markdown output for vendored projects:
+
+```
+rake vendor:setup
+rake vendor:docs:minitest
+rake vendor:docs:rails
+# or generate both
+rake vendor:docs
+```
+
+Output is written to:
+
+- `vendor/docs/minitest`
+- `vendor/docs/rails`
+
 ## Release
 ```
 gem build rdoc-markdown.gemspec

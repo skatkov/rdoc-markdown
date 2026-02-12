@@ -13,3 +13,5 @@ example/created.rid
 example_ruby/*
 source_ruby/*
 vendor/minitest/
+vendor/rails/
+vendor/docs/
