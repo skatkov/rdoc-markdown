@@ -12,6 +12,7 @@ GEM
   remote: https://rubygems.org/
   specs:
     cgi (0.4.1)
+    commonmarker (0.23.12)
     csv (3.3.2)
     date (3.4.1)
     erb (4.0.4)
@@ -58,6 +59,7 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 2.0)
+  commonmarker (~> 0.23)
   minitest (~> 5.0)
   rake (~> 13.0)
   rdiscount (~> 2.0)

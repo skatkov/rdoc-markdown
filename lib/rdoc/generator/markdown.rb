@@ -401,6 +401,8 @@ class RDoc::Generator::Markdown
       candidates << stripped.delete_prefix("#{@root_path_segment}/")
     end
 
+    candidates = candidates.flat_map { |candidate| candidate_with_parent_reductions(candidate) }.uniq
+
     candidates.each do |candidate|
       return candidate if @known_output_paths.include?(candidate)
     end
@@ -411,6 +413,18 @@ class RDoc::Generator::Markdown
     end
 
     nil
+  end
+
+  def candidate_with_parent_reductions(candidate)
+    reductions = [candidate.sub(%r{\A\./}, '')]
+    reduced = reductions.first
+
+    while reduced.start_with?('../')
+      reduced = reduced.delete_prefix('../')
+      reductions << reduced
+    end
+
+    reductions.uniq.reject(&:empty?)
   end
 
   def normalize_input_path_for_output(path)
