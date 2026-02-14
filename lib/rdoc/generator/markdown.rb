@@ -5,7 +5,6 @@ gem 'rdoc'
 require 'pathname'
 require 'erb'
 require 'reverse_markdown'
-require 'unindent'
 require 'csv'
 require 'cgi'
 
@@ -223,25 +222,36 @@ class RDoc::Generator::Markdown
 
     html = normalize_rdoc_pre_blocks(input.to_s)
 
-    md = ReverseMarkdown.convert(html, unknown_tags: :bypass, github_flavored: true)
+    md = String.new(ReverseMarkdown.convert(html, unknown_tags: :bypass, github_flavored: true))
 
-    # unintent multiline strings
-    md.unindent!
+    # unindent multiline strings
+    md = unindent_text(md)
 
     # Remove RDoc navigation links from generated headings.
-    md.gsub!(/(#+\s+[^\n]+?)\s*\[¶\]\([^)]+\)(?:\s*\[↑\]\(#top\))?/, '\\1')
+    md.gsub!(/(#+\s+[^\n]+?)\s*\[¶\]\([^)]+\)(?:\s*\[↑\]\(#top\))?/) { Regexp.last_match(1) }
     md.gsub!(/\s+\[↑\]\(#top\)$/, '')
 
+    # Flatten headings whose visible text is wrapped in a self-link.
+    md.gsub!(/^(#+)\s+\[([^\]]+)\]\((#[^)]+)\)\s*$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
+
     # Replace .html to .md extension in all local markdown links.
-    md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i, '](\\1.md\\2)')
+    md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
+      "](#{Regexp.last_match(1)}.md#{Regexp.last_match(2)})"
+    end
 
     # Turn site-root markdown links into relative links.
-    md.gsub!(%r{\]\(/([^)]+?\.md(?:[?#][^)]+)?)\)}, '](\\1)')
+    md.gsub!(%r{\]\(/([^)]+?\.md(?:[?#][^)]+)?)\)}) { "](#{Regexp.last_match(1)})" }
 
     # Strip RDoc structural path segments from internal links.
-    md.gsub!(%r{\]\(((?:\.\./)*)files/([^)]+?\.md(?:[?#][^)]+)?)\)}, '](\\1\\2)')
-    md.gsub!(%r{\]\(((?:\.\./)*)classes/([^)]+?\.md(?:[?#][^)]+)?)\)}, '](\\1\\2)')
-    md.gsub!(%r{\]\(((?:\.\./)*)modules/([^)]+?\.md(?:[?#][^)]+)?)\)}, '](\\1\\2)')
+    md.gsub!(%r{\]\(((?:\.\./)*)files/([^)]+?\.md(?:[?#][^)]+)?)\)}) do
+      "](#{Regexp.last_match(1)}#{Regexp.last_match(2)})"
+    end
+    md.gsub!(%r{\]\(((?:\.\./)*)classes/([^)]+?\.md(?:[?#][^)]+)?)\)}) do
+      "](#{Regexp.last_match(1)}#{Regexp.last_match(2)})"
+    end
+    md.gsub!(%r{\]\(((?:\.\./)*)modules/([^)]+?\.md(?:[?#][^)]+)?)\)}) do
+      "](#{Regexp.last_match(1)}#{Regexp.last_match(2)})"
+    end
 
     md = md.gsub('=== ', '### ').gsub('== ', '## ')
     md = normalize_definition_list_code_blocks(md)
@@ -374,6 +384,14 @@ class RDoc::Generator::Markdown
     end
   end
 
+  def unindent_text(text)
+    lines = text.to_s.lines
+    indent = lines.reject { |line| line.strip.empty? }.map { |line| line[/^[ \t]*/].size }.min || 0
+    return text if indent.zero?
+
+    lines.map { |line| line.sub(/^[ \t]{0,#{indent}}/, '') }.join
+  end
+
   def normalize_internal_links(markdown, current_output_path:)
     return markdown if @known_output_paths.nil? || @known_output_paths.empty?
 
@@ -478,7 +496,7 @@ class RDoc::Generator::Markdown
                   doc[:score].positive? ||
                     (doc[:klass].full_name == doc[:display_name] && !synthetic_full_name?(doc[:klass].full_name))
     end
-      .sort_by { |doc| doc[:display_name] }
+                .sort_by { |doc| doc[:display_name] }
                 .map { |doc| doc.tap { |d| d[:legacy_paths].uniq! } }
   end
 

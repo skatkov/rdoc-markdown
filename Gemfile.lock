@@ -6,46 +6,50 @@ PATH
       erb
       rdoc
       reverse_markdown
-      unindent
 
 GEM
   remote: https://rubygems.org/
   specs:
-    cgi (0.4.1)
-    commonmarker (0.23.12)
-    csv (3.3.2)
-    date (3.4.1)
-    erb (4.0.4)
-      cgi (>= 0.3.3)
-    minitest (5.25.4)
-    nokogiri (1.18.0-aarch64-linux-gnu)
+    commonmarker (2.6.3-aarch64-linux)
+    commonmarker (2.6.3-arm-linux)
+    commonmarker (2.6.3-arm64-darwin)
+    commonmarker (2.6.3-x86_64-darwin)
+    commonmarker (2.6.3-x86_64-linux)
+    commonmarker (2.6.3-x86_64-linux-musl)
+    csv (3.3.5)
+    date (3.5.1)
+    erb (6.0.1)
+    minitest (5.27.0)
+    nokogiri (1.19.0-aarch64-linux-gnu)
       racc (~> 1.4)
-    nokogiri (1.18.0-aarch64-linux-musl)
+    nokogiri (1.19.0-aarch64-linux-musl)
       racc (~> 1.4)
-    nokogiri (1.18.0-arm-linux-gnu)
+    nokogiri (1.19.0-arm-linux-gnu)
       racc (~> 1.4)
-    nokogiri (1.18.0-arm-linux-musl)
+    nokogiri (1.19.0-arm-linux-musl)
       racc (~> 1.4)
-    nokogiri (1.18.0-arm64-darwin)
+    nokogiri (1.19.0-arm64-darwin)
       racc (~> 1.4)
-    nokogiri (1.18.0-x86_64-darwin)
+    nokogiri (1.19.0-x86_64-darwin)
       racc (~> 1.4)
-    nokogiri (1.18.0-x86_64-linux-gnu)
+    nokogiri (1.19.0-x86_64-linux-gnu)
       racc (~> 1.4)
-    nokogiri (1.18.0-x86_64-linux-musl)
+    nokogiri (1.19.0-x86_64-linux-musl)
       racc (~> 1.4)
-    psych (5.2.2)
+    psych (5.3.1)
       date
       stringio
     racc (1.8.1)
-    rake (13.2.1)
+    rake (13.3.1)
     rdiscount (2.2.7.3)
-    rdoc (6.10.0)
+    rdoc (7.2.0)
+      erb
       psych (>= 4.0.0)
-    reverse_markdown (3.0.0)
+      tsort
+    reverse_markdown (3.0.2)
       nokogiri
-    stringio (3.1.2)
-    unindent (1.0)
+    stringio (3.2.0)
+    tsort (0.2.0)
 
 PLATFORMS
   aarch64-linux-gnu
@@ -59,7 +63,7 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 2.0)
-  commonmarker (~> 0.23)
+  commonmarker
   minitest (~> 5.0)
   rake (~> 13.0)
   rdiscount (~> 2.0)
