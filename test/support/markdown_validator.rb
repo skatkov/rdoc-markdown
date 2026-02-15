@@ -9,7 +9,6 @@ class MarkdownValidator
 
   LOCAL_LINK_REGEX = %r{\]\((?!https?://|mailto:|#)([^)]+)\)}
   LOCAL_HTML_LINK_REGEX = %r{\]\((?!https?://|mailto:|#)[^)]+\.html(?:[?#][^)]+)?\)}
-  GFM_EXTENSIONS = %i[table strikethrough autolink tagfilter tasklist].freeze
 
   attr_reader :unresolved_links
 
@@ -118,7 +117,7 @@ class MarkdownValidator
   end
 
   def render_gfm!(content, file)
-    CommonMarker.render_html(content, :GITHUB_PRE_LANG, GFM_EXTENSIONS)
+    Commonmarker.to_html(content)
   rescue StandardError => e
     raise ValidationError, "GFM render failed for #{relative_path(file)}: #{e.message}"
   end
