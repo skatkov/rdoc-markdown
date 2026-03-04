@@ -54,3 +54,16 @@
 <% end -%>
 <% end -%>
 <% end -%>
+
+<%- class_variables = class_variables_for(klass) -%>
+<%- unless class_variables.empty? -%>
+
+## Class Variables
+<% class_variables.each do |class_variable| -%>
+
+### `<%= class_variable.name %>`
+<%= anchor(class_variable_anchor(class_variable.name)) %>
+
+<%= class_variable_description(class_variable) %>
+<% end -%>
+<%- end -%>
