@@ -7,6 +7,7 @@ require 'erb'
 require 'reverse_markdown'
 require 'csv'
 require 'cgi'
+require 'prism'
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -15,6 +16,8 @@ class RDoc::Generator::Markdown
   # Defines a constant for directory where templates could be found
 
   TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'templates'))
+
+  ClassVariableDoc = Struct.new(:name, :description, keyword_init: true)
 
   ##
   # The RDoc::Store that is the source of the generated content
@@ -123,6 +126,14 @@ class RDoc::Generator::Markdown
               "#{output_path_for(klass)}##{const.name}"
             ]
           end
+
+        class_variables_for(klass).each do |class_variable|
+          csv << [
+            "#{display_name(klass)}.#{class_variable.name}",
+            'Constant',
+            "#{output_path_for(klass)}##{class_variable_anchor(class_variable.name)}"
+          ]
+        end
 
         klass
           .attributes
@@ -265,6 +276,21 @@ class RDoc::Generator::Markdown
     %(<a id="#{id}"></a>)
   end
 
+  def class_variables_for(klass)
+    @class_variables_by_object_id.fetch(klass.object_id, [])
+  end
+
+  def class_variable_anchor(name)
+    "classvariable-#{legacy_anchor_component(name, strip_leading_dash: false)}"
+  end
+
+  def class_variable_description(class_variable)
+    description = class_variable.description.to_s
+    return 'Not documented.' if description.strip.empty?
+
+    shift_headings(markdownify(description), 4)
+  end
+
   def describe(code_object, fallback: nil, heading_level_offset: 0)
     description = code_object.description.to_s
     return fallback.to_s if description.strip.empty? && !fallback.nil?
@@ -392,6 +418,11 @@ class RDoc::Generator::Markdown
     lines.map { |line| line.sub(/^[ \t]{0,#{indent}}/, '') }.join
   end
 
+  def legacy_anchor_component(text, strip_leading_dash: true)
+    escaped = CGI.escape(text.to_s.gsub('-', '-2D')).tr('%', '-')
+    strip_leading_dash ? escaped.sub(/^-/, '') : escaped
+  end
+
   def normalize_internal_links(markdown, current_output_path:)
     return markdown if @known_output_paths.nil? || @known_output_paths.empty?
 
@@ -458,6 +489,163 @@ class RDoc::Generator::Markdown
 
   def class_doc_for(code_object)
     @class_docs_by_object_id[code_object.object_id]
+  end
+
+  def extract_class_variables
+    class_variables = Hash.new { |hash, key| hash[key] = [] }
+
+    @store.all_files.each do |source_file|
+      source_path = source_path_for(source_file)
+      next unless source_path && File.file?(source_path)
+      next unless File.extname(source_path) == '.rb'
+
+      source = File.read(source_path)
+      parse_result = Prism.parse(source)
+      next unless parse_result.success?
+
+      extract_class_variables_from_node(
+        parse_result.value,
+        namespace: nil,
+        in_method: false,
+        source_lines: source.lines,
+        class_variables: class_variables
+      )
+    rescue Errno::ENOENT, Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
+      next
+    end
+
+    class_variables
+  end
+
+  def extract_class_variables_from_node(node, namespace:, in_method:, source_lines:, class_variables:)
+    return unless node.is_a?(Prism::Node)
+
+    case node
+    when Prism::ClassNode
+      class_name = qualified_namespace(prism_constant_path(node.constant_path), namespace)
+      extract_class_variables_from_node(
+        node.body,
+        namespace: class_name,
+        in_method: false,
+        source_lines: source_lines,
+        class_variables: class_variables
+      )
+      return
+    when Prism::ModuleNode
+      module_name = qualified_namespace(prism_constant_path(node.constant_path), namespace)
+      extract_class_variables_from_node(
+        node.body,
+        namespace: module_name,
+        in_method: false,
+        source_lines: source_lines,
+        class_variables: class_variables
+      )
+      return
+    when Prism::SingletonClassNode
+      extract_class_variables_from_node(
+        node.body,
+        namespace: namespace,
+        in_method: in_method,
+        source_lines: source_lines,
+        class_variables: class_variables
+      )
+      return
+    when Prism::DefNode
+      in_method = true
+    end
+
+    if namespace && !in_method
+      name, line_number = class_variable_assignment_details(node)
+
+      if name
+        description = comment_above_line(source_lines, line_number)
+        unless description.match?(/:nodoc:/)
+          class_variables[namespace] << ClassVariableDoc.new(name: name, description: description)
+        end
+      end
+    end
+
+    node.child_nodes.each do |child|
+      extract_class_variables_from_node(
+        child,
+        namespace: namespace,
+        in_method: in_method,
+        source_lines: source_lines,
+        class_variables: class_variables
+      )
+    end
+  end
+
+  def source_path_for(source_file)
+    path = if source_file.respond_to?(:absolute_name)
+             source_file.absolute_name.to_s
+           else
+             source_file.full_name.to_s
+           end
+
+    return nil if path.empty?
+
+    pathname = Pathname.new(path)
+    pathname = pathname.expand_path(@base_dir) unless pathname.absolute?
+    pathname.to_s
+  end
+
+  def qualified_namespace(path, namespace)
+    return namespace if path.nil? || path.empty?
+
+    normalized = path.delete_prefix('::')
+
+    return normalized if path.start_with?('::') || normalized.include?('::')
+    return normalized if namespace.nil? || namespace.empty?
+
+    "#{namespace}::#{normalized}"
+  end
+
+  def prism_constant_path(constant_path)
+    return nil unless constant_path
+
+    constant_path.full_name.to_s
+  end
+
+  def class_variable_assignment_details(node)
+    return [nil, nil] unless node.is_a?(Prism::Node)
+
+    case node.type
+    when :class_variable_write_node,
+         :class_variable_and_write_node,
+         :class_variable_or_write_node,
+         :class_variable_operator_write_node
+      [node.name.to_s, node.name_loc.start_line]
+    when :class_variable_target_node
+      [node.slice.to_s, node.start_line]
+    else
+      [nil, nil]
+    end
+  end
+
+  def comment_above_line(source_lines, line_number)
+    return '' unless line_number && line_number > 1
+
+    comments = []
+    cursor = line_number - 2
+
+    while cursor >= 0
+      line = source_lines[cursor]
+      break unless line
+
+      match = line.match(/^\s*#(.*)$/)
+      break unless match
+
+      comments << normalize_comment_line(match[1])
+      cursor -= 1
+    end
+
+    comments.reverse.join("\n").rstrip
+  end
+
+  def normalize_comment_line(comment_line)
+    text = comment_line.to_s
+    text.sub(/^ /, '')
   end
 
   def build_class_docs(classes)
@@ -557,6 +745,35 @@ class RDoc::Generator::Markdown
     @class_docs_by_object_id = @class_docs.to_h { |doc| [doc[:klass].object_id, doc] }
     @classes = @class_docs.map { |doc| doc[:klass] }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
+
+    extracted_class_variables = extract_class_variables
+    @class_variables_by_object_id = Hash.new { |hash, key| hash[key] = [] }
+
+    classes_by_full_name = {}
+    classes_by_normalized_name = {}
+
+    @classes.each do |klass|
+      classes_by_full_name[klass.full_name] = klass
+      classes_by_normalized_name[normalized_full_name(klass.full_name)] = klass
+    end
+
+    extracted_class_variables.each do |namespace, class_variables|
+      klass = classes_by_full_name[namespace] || classes_by_normalized_name[namespace]
+      next unless klass
+
+      merged_by_name = {}
+
+      class_variables.each do |class_variable|
+        existing = merged_by_name[class_variable.name]
+
+        if existing.nil? ||
+           (existing.description.to_s.strip.empty? && !class_variable.description.to_s.strip.empty?)
+          merged_by_name[class_variable.name] = class_variable
+        end
+      end
+
+      @class_variables_by_object_id[klass.object_id] = merged_by_name.values.sort_by(&:name)
+    end
 
     @known_output_paths = Set.new
     @class_docs.each do |doc|

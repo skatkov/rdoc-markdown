@@ -61,6 +61,8 @@ class TestGenerator < Minitest::Test
     assert_includes duck_doc, '[`Bird`](Bird.md)'
     refute_match(%r{\]\((?!https?://|mailto:|#)[^)]+\.html(?:#[^)]+)?\)}, duck_doc)
     assert_equal 1, duck_doc.scan('#### `MAX_VELOCITY`').count
+    assert_includes duck_doc, '### `@@rubber_ducks`'
+    assert_includes duck_doc, '<a id="classvariable--40-40rubber_ducks"></a>'
     refute_includes duck_doc, '[](#'
     assert_includes duck_doc, '#### `useful? -> bool`'
     assert_includes duck_doc, "bird:\n\n- speak\n- fly"
@@ -80,7 +82,7 @@ class TestGenerator < Minitest::Test
       }
     end
 
-    assert_equal 15, result.count
+    assert_equal 16, result.count
     expected = [
       { name: 'Bird', type: 'Class', path: 'Bird.md' },
       { name: 'Bird.speak', type: 'Method', path: 'Bird.md#method-i-speak' },
@@ -91,6 +93,11 @@ class TestGenerator < Minitest::Test
       { name: 'Duck.new', type: 'Method', path: 'Duck.md#method-c-new' },
       { name: 'Duck.useful?', type: 'Method', path: 'Duck.md#method-i-useful-3F' },
       { name: 'Duck.MAX_VELOCITY', type: 'Constant', path: 'Duck.md#MAX_VELOCITY' },
+      {
+        name: 'Duck.@@rubber_ducks',
+        type: 'Constant',
+        path: 'Duck.md#classvariable--40-40rubber_ducks'
+      },
       { name: 'Duck.domestic', type: 'Attribute', path: 'Duck.md#attribute-i-domestic' },
       { name: 'Duck.rubber', type: 'Attribute', path: 'Duck.md#attribute-i-rubber' },
       { name: 'Object', type: 'Class', path: 'Object.md' },
@@ -104,6 +111,15 @@ class TestGenerator < Minitest::Test
     ]
 
     assert_equal(expected, result)
+
+    result.each do |row|
+      next unless row[:path].include?('#')
+
+      relative_path, anchor = row[:path].split('#', 2)
+      file_contents = File.read("#{dir}/#{relative_path}")
+
+      assert_includes file_contents, %(id="#{anchor}"), "missing anchor #{anchor} in #{relative_path}"
+    end
   end
 
   def test_generator_with_private_visibility
@@ -124,7 +140,7 @@ class TestGenerator < Minitest::Test
       }
     end
 
-    assert_equal 16, result.count
+    assert_equal 17, result.count
     assert_includes result, { name: 'Duck.quack', type: 'Method', path: 'Duck.md#method-i-quack' }
   end
 end
