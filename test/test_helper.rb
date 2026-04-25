@@ -1,7 +1,14 @@
 # frozen_string_literal: true
 
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
-# require "rdoc/markdown"
 
 require "minitest/autorun"
 require "minitest/strict"
+
+begin
+  require "mutant/minitest/coverage"
+rescue LoadError
+  nil
+end
+
+require_relative "support/mutant_setup"

@@ -35,3 +35,6 @@ jobs:
         run: bundle exec rake test
       - name: Validate markdown output (GFM)
         run: bundle exec rake markdown:validate
+      - name: Run mutant
+        if: matrix.ruby-version == '4.0'
+        run: bundle exec mutant run

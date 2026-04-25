@@ -6,6 +6,7 @@
 /pkg/
 /spec/reports/
 /tmp/
+.mutant/
 *.gem
 .DS_Store
 example/created.rid

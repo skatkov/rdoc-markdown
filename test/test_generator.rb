@@ -7,6 +7,8 @@ require 'rdoc/markdown'
 require 'rdiscount'
 
 class TestGenerator < Minitest::Test
+  cover RDoc::Generator::Markdown if respond_to?(:cover)
+
   def source_file
     File.join(File.dirname(__FILE__), 'data/example.rb')
   end
@@ -135,5 +137,13 @@ class TestGenerator < Minitest::Test
 
     assert_includes bird_doc, '#### `fly(direction: string, velocity: number) -> bool`'
     refute_includes bird_doc, 'Arguments: `direction, velocity`'
+  end
+
+  def test_generator_writes_nested_namespaces_to_nested_paths
+    dir = run_generator(File.join(__dir__, 'data/namespaced_example.rb'), 'namespaced test title')
+
+    assert File.exist?(File.join(dir, 'Ocean.md'))
+    assert File.exist?(File.join(dir, 'Ocean/Deep.md'))
+    assert File.exist?(File.join(dir, 'Ocean/Deep/Salmon.md'))
   end
 end
