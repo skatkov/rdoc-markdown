@@ -34,7 +34,6 @@ class RDoc::Generator::Markdown
   # dir.
 
   def class_dir
-    nil
   end
 
   # this alias is required for rdoc to work

@@ -9,8 +9,19 @@ require 'rdiscount'
 class TestGenerator < Minitest::Test
   cover RDoc::Generator::Markdown if respond_to?(:cover)
 
+  GeneratorOptions = Struct.new(:op_dir)
+
   def source_file
     File.join(File.dirname(__FILE__), 'data/example.rb')
+  end
+
+  def generator(options = GeneratorOptions.new(Dir.mktmpdir))
+    RDoc::Generator::Markdown.new(nil, options)
+  end
+
+  def test_class_dir_and_file_dir_are_nil
+    assert_nil generator.class_dir
+    assert_nil generator.file_dir
   end
 
   def run_generator(file, title)

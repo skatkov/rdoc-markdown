@@ -12,4 +12,5 @@ requires:
 
 matcher:
   subjects:
+    - RDoc::Generator::Markdown#class_dir
     - RDoc::Generator::Markdown#turn_to_path
