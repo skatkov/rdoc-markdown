@@ -12,5 +12,7 @@ requires:
 
 matcher:
   subjects:
+    - RDoc::Generator::Markdown#anchor
     - RDoc::Generator::Markdown#class_dir
+    - RDoc::Generator::Markdown#page_output_path
     - RDoc::Generator::Markdown#turn_to_path

@@ -183,7 +183,7 @@ class RDoc::Generator::Markdown
   end
 
   def page_output_path(page)
-    source_path = normalize_input_path_for_output(page.relative_name.to_s)
+    source_path = normalize_input_path_for_output(page.relative_name)
     dirname = File.dirname(source_path)
     basename = "#{File.basename(source_path).tr('.', '_')}.md"
 
