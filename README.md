@@ -57,6 +57,7 @@ Following command should run entire testsuit:
 ```
 rake test
 ```
+The test suite loads `minitest-strict`, so boolean and nil assertions only pass on exact `true`, `false`, and `nil` values.
 Testing is not excessive, just verifies that basic functionality is operational.
 
 To validate generated markdown against GitHub Flavored Markdown and check local links/anchors:
