@@ -15,3 +15,5 @@ source_ruby/*
 vendor/minitest/
 vendor/rails/
 vendor/docs/
+gemfiles/*.lock
+.mutant/*

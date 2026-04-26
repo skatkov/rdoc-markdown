@@ -1,0 +1,34 @@
+name: RDoc HEAD
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/rdoc_head.gemfile
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+      - name: Cache vendored repositories
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor/minitest
+            vendor/rails
+          key: ${{ runner.os }}-vendored-repos-v1-${{ hashFiles('Rakefile') }}
+          restore-keys: |
+            ${{ runner.os }}-vendored-repos-v1-
+      - run: bundle config unset deployment
+      - name: Run tests
+        run: bundle exec rake test
+      - name: Validate markdown output (GFM)
+        run: bundle exec rake markdown:validate
