@@ -101,11 +101,36 @@ class TestMutantSignatureHelpers < Minitest::Test
     assert_eql '', probe.normalized_method_params('()')
   end
 
+  def test_normalized_method_params_collapses_internal_whitespace_runs
+    assert_eql 'foo, bar', probe.normalized_method_params("(foo,\n   \tbar)")
+  end
+
+  def test_normalized_method_params_collapses_multiple_whitespace_runs
+    assert_eql 'foo, bar, baz', probe.normalized_method_params("(foo,\n bar,\n\tbaz)")
+  end
+
+  def test_normalized_method_params_only_strips_balanced_wrapping_parens
+    assert_eql 'foo)', probe.normalized_method_params('foo)')
+    assert_eql '(foo', probe.normalized_method_params('(foo')
+  end
+
+  def test_normalized_method_params_returns_empty_string_for_nil
+    assert_eql '', probe.normalized_method_params(nil)
+  end
+
   def test_split_signature_arguments_and_suffix_handles_nested_parentheses
     args, suffix = probe.split_signature_arguments_and_suffix('(Array[String], Proc[(Integer) -> bool]) -> value')
 
     assert_eql 'Array[String], Proc[(Integer) -> bool]', args
     assert_eql ' -> value', suffix
+  end
+
+  def test_split_signature_arguments_and_suffix_requires_leading_open_paren
+    assert_eql [nil, nil], probe.split_signature_arguments_and_suffix('Proc(String) -> value')
+  end
+
+  def test_split_signature_arguments_and_suffix_returns_nil_pair_for_unclosed_signature
+    assert_eql [nil, nil], probe.split_signature_arguments_and_suffix('(String, Integer')
   end
 
   def test_split_signature_list_preserves_nested_delimiters
@@ -114,7 +139,38 @@ class TestMutantSignatureHelpers < Minitest::Test
     assert_eql ['foo', '[bar, baz]', 'proc(x, y)', '{a: 1, b: 2}'], parts
   end
 
+  def test_split_signature_list_resumes_top_level_splitting_after_closed_braces
+    parts = probe.split_signature_list('{a: 1, b: 2}, tail')
+
+    assert_eql ['{a: 1, b: 2}', 'tail'], parts
+  end
+
+  def test_split_signature_list_trims_trailing_space_before_split_commas
+    parts = probe.split_signature_list('foo   , bar')
+
+    assert_eql ['foo', 'bar'], parts
+  end
+
+  def test_split_signature_list_does_not_append_empty_trailing_part
+    parts = probe.split_signature_list('foo,')
+
+    assert_eql ['foo'], parts
+  end
+
+  def test_split_signature_list_trims_trailing_space_on_final_part
+    parts = probe.split_signature_list('foo   ')
+
+    assert_eql ['foo'], parts
+  end
+
+  def test_split_signature_list_ignores_unmatched_closing_delimiters_for_depth_tracking
+    assert_eql ['foo)', 'bar'], probe.split_signature_list('foo), bar')
+    assert_eql ['foo]', 'bar'], probe.split_signature_list('foo], bar')
+    assert_eql ['foo}', 'bar'], probe.split_signature_list('foo}, bar')
+  end
+
   def test_extract_parameter_name_handles_supported_parameter_forms
+    assert_eql 'x', probe.extract_parameter_name('x')
     assert_eql 'name', probe.extract_parameter_name('name')
     assert_eql 'items', probe.extract_parameter_name('*items')
     assert_eql 'options', probe.extract_parameter_name('**options')
@@ -122,8 +178,17 @@ class TestMutantSignatureHelpers < Minitest::Test
     assert_eql 'keyword', probe.extract_parameter_name('keyword:')
   end
 
+  def test_extract_parameter_name_ignores_surrounding_whitespace
+    assert_eql 'name', probe.extract_parameter_name('  name  ')
+    assert_eql 'items', probe.extract_parameter_name('  *items  ')
+  end
+
   def test_signature_part_mentions_name_uses_word_boundaries
     assert_true probe.signature_part_mentions_name?('name: String', 'name')
     assert_false probe.signature_part_mentions_name?('rename: String', 'name')
+  end
+
+  def test_signature_part_mentions_name_treats_name_as_literal_text
+    assert_true probe.signature_part_mentions_name?('a+b: String', 'a+b')
   end
 end

@@ -310,7 +310,6 @@ class RDoc::Generator::Markdown
   def normalized_method_params(raw_params)
     params = raw_params.to_s.gsub(/\s+/, ' ').strip
     params = params[1...-1].strip if params.start_with?('(') && params.end_with?(')')
-    return '' if params.empty? || params == '()'
 
     params
   end
