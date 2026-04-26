@@ -127,4 +127,13 @@ class TestGenerator < Minitest::Test
     assert_equal 16, result.count
     assert_includes result, { name: 'Duck.quack', type: 'Method', path: 'Duck.md#method-i-quack' }
   end
+
+  def test_generator_preserves_args_metadata_alongside_call_seq
+    dir = run_generator(source_file, 'test title')
+
+    bird_doc = File.read("#{dir}/Bird.md")
+
+    assert_includes bird_doc, '#### `fly(direction: string, velocity: number) -> bool`'
+    refute_includes bird_doc, 'Arguments: `direction, velocity`'
+  end
 end

@@ -5,7 +5,7 @@ The base class for all birds.
 
 ### Public Instance Methods
 
-#### `fly(string, number) -> bool`
+#### `fly(direction: string, velocity: number) -> bool`
 <a id="method-i-fly"></a>
 
 Fly somewhere.

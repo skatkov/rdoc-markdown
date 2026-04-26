@@ -286,7 +286,100 @@ class RDoc::Generator::Markdown
     signature = signature.gsub('->', ' -> ')
     signature = signature.gsub(/\s+/, ' ').strip
     signature = " #{signature}" if signature.start_with?('->')
-    signature
+    merge_method_signature_arguments(signature, method.params)
+  end
+
+  def merge_method_signature_arguments(signature, raw_params)
+    params = normalized_method_params(raw_params)
+    return signature if params.empty?
+
+    signature_args, signature_suffix = split_signature_arguments_and_suffix(signature)
+    return signature if signature_args.nil? || signature_args.empty?
+
+    param_parts = split_signature_list(params)
+    signature_parts = split_signature_list(signature_args)
+    return signature if param_parts.empty? || param_parts.length != signature_parts.length
+
+    param_names = param_parts.map { |part| extract_parameter_name(part) }
+    return signature if param_names.any?(&:nil?)
+    return signature if signature_parts.zip(param_names).all? { |part, name| signature_part_mentions_name?(part, name) }
+
+    merged_args = param_parts.zip(signature_parts).map do |param, type|
+      separator = param.end_with?(':') ? ' ' : ': '
+      "#{param}#{separator}#{type}"
+    end
+
+    "(#{merged_args.join(', ')})#{signature_suffix}"
+  end
+
+  def normalized_method_params(raw_params)
+    params = raw_params.to_s.gsub(/\s+/, ' ').strip
+    params = params[1...-1].strip if params.start_with?('(') && params.end_with?(')')
+    return '' if params.empty? || params == '()'
+
+    params
+  end
+
+  def split_signature_arguments_and_suffix(signature)
+    return [nil, nil] unless signature.start_with?('(')
+
+    depth = 0
+
+    signature.each_char.with_index do |char, index|
+      depth += 1 if char == '('
+
+      next unless char == ')'
+
+      depth -= 1
+      return [signature[1...index], signature[(index + 1)..]] if depth.zero?
+    end
+
+    [nil, nil]
+  end
+
+  def split_signature_list(list)
+    parts = []
+    current = +''
+    paren_depth = 0
+    bracket_depth = 0
+    brace_depth = 0
+
+    list.each_char do |char|
+      case char
+      when '('
+        paren_depth += 1
+      when ')'
+        paren_depth -= 1 if paren_depth.positive?
+      when '['
+        bracket_depth += 1
+      when ']'
+        bracket_depth -= 1 if bracket_depth.positive?
+      when '{'
+        brace_depth += 1
+      when '}'
+        brace_depth -= 1 if brace_depth.positive?
+      when ','
+        if paren_depth.zero? && bracket_depth.zero? && brace_depth.zero?
+          parts << current.strip
+          current = +''
+          next
+        end
+      end
+
+      current << char
+    end
+
+    parts << current.strip unless current.empty?
+    parts
+  end
+
+  def extract_parameter_name(parameter)
+    match = parameter.strip.match(/\A(?:\*\*|\*|&)?([a-z_]\w*):?\z/)
+    match && match[1]
+  end
+
+  def signature_part_mentions_name?(text, name)
+    text.match?(/(?<!\w)#{Regexp.escape(name)}(?!\w)/)
   end
 
   def method_description(method, current_class:)
