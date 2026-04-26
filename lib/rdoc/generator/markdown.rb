@@ -277,7 +277,7 @@ class RDoc::Generator::Markdown
 
   def method_signature(method)
     signature = method.param_seq.to_s
-    return '()' if signature.strip.empty?
+    return '()' unless signature.match?(/\S/)
 
     signature = signature.gsub('->', ' -> ')
     signature = signature.gsub(/\s+/, ' ').strip
@@ -287,14 +287,13 @@ class RDoc::Generator::Markdown
 
   def merge_method_signature_arguments(signature, raw_params)
     params = normalized_method_params(raw_params)
-    return signature if params.empty?
 
     signature_args, signature_suffix = split_signature_arguments_and_suffix(signature)
-    return signature if signature_args.nil? || signature_args.empty?
+    return signature if signature_args.nil?
 
     param_parts = split_signature_list(params)
     signature_parts = split_signature_list(signature_args)
-    return signature if param_parts.empty? || param_parts.length != signature_parts.length
+    return signature unless param_parts.length.eql?(signature_parts.length)
 
     param_names = param_parts.map { |part| extract_parameter_name(part) }
     return signature if param_names.any?(&:nil?)
