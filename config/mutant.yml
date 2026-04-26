@@ -13,6 +13,15 @@ requires:
 matcher:
   subjects:
     - RDoc::Generator::Markdown#anchor
+    - RDoc::Generator::Markdown#build_class_docs
+    - RDoc::Generator::Markdown#class_content_score
+    - RDoc::Generator::Markdown#class_doc_for
     - RDoc::Generator::Markdown#class_dir
+    - RDoc::Generator::Markdown#display_name
+    - RDoc::Generator::Markdown#legacy_paths_for
+    - RDoc::Generator::Markdown#normalized_full_name
+    - RDoc::Generator::Markdown#output_path_for
     - RDoc::Generator::Markdown#page_output_path
+    - RDoc::Generator::Markdown#setup
+    - RDoc::Generator::Markdown#synthetic_full_name?
     - RDoc::Generator::Markdown#turn_to_path

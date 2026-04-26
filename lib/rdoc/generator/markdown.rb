@@ -193,18 +193,15 @@ class RDoc::Generator::Markdown
   end
 
   def display_name(code_object)
-    class_doc = class_doc_for(code_object)
-    class_doc ? class_doc[:display_name] : code_object.full_name
+    class_doc_for(code_object).fetch(:display_name)
   end
 
   def output_path_for(code_object)
-    class_doc = class_doc_for(code_object)
-    class_doc ? class_doc[:output_path] : turn_to_path(code_object.full_name)
+    class_doc_for(code_object).fetch(:output_path)
   end
 
   def legacy_paths_for(code_object)
-    class_doc = class_doc_for(code_object)
-    class_doc ? class_doc[:legacy_paths] : []
+    class_doc_for(code_object).fetch(:legacy_paths)
   end
 
   ##
@@ -549,7 +546,7 @@ class RDoc::Generator::Markdown
   end
 
   def class_doc_for(code_object)
-    @class_docs_by_object_id[code_object.object_id]
+    @class_docs_by_object_id.fetch(code_object.object_id)
   end
 
   def build_class_docs(classes)
@@ -565,7 +562,7 @@ class RDoc::Generator::Markdown
         klass: klass,
         display_name: display_name,
         output_path: output_path,
-        legacy_paths: legacy_path == output_path ? [] : [legacy_path],
+        legacy_paths: [legacy_path],
         score: score
       }
 
@@ -573,44 +570,34 @@ class RDoc::Generator::Markdown
 
       if existing.nil?
         docs_by_name[display_name] = candidate
-      elsif candidate[:score] > existing[:score]
-        if existing[:score].positive?
-          candidate[:legacy_paths] |= existing[:legacy_paths] + [turn_to_path(existing[:klass].full_name)]
+      elsif candidate.fetch(:score) > existing.fetch(:score)
+        if existing.fetch(:score).positive?
+          candidate[:legacy_paths] |= existing.fetch(:legacy_paths)
         end
         docs_by_name[display_name] = candidate
-      elsif candidate[:score].positive?
-        existing[:legacy_paths] |= candidate[:legacy_paths] + [legacy_path]
+      elsif candidate.fetch(:score).positive?
+        existing[:legacy_paths] |= candidate.fetch(:legacy_paths)
       end
     end
 
     docs_by_name.values
                 .select do |doc|
-                  doc[:score].positive? ||
-                    (doc[:klass].full_name == doc[:display_name] && !synthetic_full_name?(doc[:klass].full_name))
+                  doc.fetch(:score).positive? ||
+                    (doc.fetch(:klass).full_name == doc.fetch(:display_name) && !synthetic_full_name?(doc.fetch(:klass).full_name))
     end
-                .sort_by { |doc| doc[:display_name] }
-                .map { |doc| doc.tap { |d| d[:legacy_paths].uniq! } }
+                .sort_by { |doc| doc.fetch(:display_name) }
   end
 
   def normalized_full_name(full_name)
-    normalized = full_name.dup
+    normalized = full_name
 
     loop do
-      break unless normalized
-
-      if normalized =~ /\A(.+?)::\1::(.+)\z/
-        normalized = "#{::Regexp.last_match(1)}::#{::Regexp.last_match(2)}"
-        next
-      end
-
       if normalized =~ /\A([^:]+)(?:::[^:]+)+::\1::(.+)\z/
-        normalized = "#{::Regexp.last_match(1)}::#{::Regexp.last_match(2)}"
-        next
+        normalized = "#{Regexp.last_match(1)}::#{Regexp.last_match(2)}"
       end
 
       if normalized =~ /\A(.+?)::\1\z/
         normalized = Regexp.last_match(1)
-        next
       end
 
       break
@@ -621,7 +608,7 @@ class RDoc::Generator::Markdown
 
   def class_content_score(klass)
     score = klass.method_list.size + klass.constants.size + klass.attributes.size
-    score += 1 unless klass.description.to_s.strip.empty?
+    score += 1 if klass.description.to_s.match?(/\S/)
     score
   end
 
@@ -638,22 +625,20 @@ class RDoc::Generator::Markdown
   # Could be called multiple times.
 
   def setup
-    return if instance_variable_defined?(:@output_dir)
-
-    @output_dir = Pathname.new(@options.op_dir).expand_path(@base_dir)
+    @output_dir = Pathname.new(@options.op_dir)
     @output_dir.mkpath
 
     return unless @store
 
     @class_docs = build_class_docs(@store.all_classes_and_modules.sort)
-    @class_docs_by_object_id = @class_docs.to_h { |doc| [doc[:klass].object_id, doc] }
-    @classes = @class_docs.map { |doc| doc[:klass] }
+    @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
+    @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
 
     @known_output_paths = Set.new
     @class_docs.each do |doc|
-      @known_output_paths << doc[:output_path]
-      doc[:legacy_paths].each { |path| @known_output_paths << path }
+      @known_output_paths << doc.fetch(:output_path)
+      doc.fetch(:legacy_paths).each { |path| @known_output_paths << path }
     end
     @pages.each { |page| @known_output_paths << page_output_path(page) }
 
