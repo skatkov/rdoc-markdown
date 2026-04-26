@@ -1,0 +1,5 @@
+# frozen_string_literal: true
+
+eval_gemfile "../Gemfile"
+
+gem "rdoc", git: "https://github.com/ruby/rdoc.git", branch: "master"
