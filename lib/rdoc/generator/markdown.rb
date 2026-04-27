@@ -263,7 +263,7 @@ class RDoc::Generator::Markdown
 
   def describe(code_object, fallback: nil, heading_level_offset: 0)
     description = code_object.description.to_s
-    return fallback.to_s if description.strip.empty? && !fallback.nil?
+    return fallback.to_s unless description.match?(/\S/)
 
     shift_headings(markdownify(description), heading_level_offset)
   end
@@ -420,10 +420,10 @@ class RDoc::Generator::Markdown
   end
 
   def normalize_definition_list_code_blocks(markdown)
-    markdown.gsub(/```\n(.*?)\n```/m) do
+    markdown.gsub(/```\n(.+?)\n```/m) do
       body = Regexp.last_match(1)
       converted = convert_definition_list_block(body)
-      converted.nil? ? Regexp.last_match(0) : converted
+      converted.nil? ? Regexp.last_match : converted
     end
   end
 
@@ -462,8 +462,8 @@ class RDoc::Generator::Markdown
   end
 
   def normalize_rdoc_pre_blocks(html)
-    html.gsub(%r{<pre\b[^>]*>(.*?)</pre>}m) do
-      raw = Regexp.last_match(1)
+    html.gsub(%r{<pre\b[^>]*>(?:.+?)</pre>}m) do
+      raw = Regexp.last_match(0)
       text = raw
              .gsub(%r{<br\s*/?>}i, "\n")
              .gsub(/<[^>]+>/, '')

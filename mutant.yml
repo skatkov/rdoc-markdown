@@ -18,17 +18,28 @@ matcher:
     - RDoc::Generator::Markdown#class_doc_for
     - RDoc::Generator::Markdown#class_dir
     - RDoc::Generator::Markdown#display_name
+    - RDoc::Generator::Markdown#describe
     - RDoc::Generator::Markdown#legacy_paths_for
     - RDoc::Generator::Markdown#merge_method_signature_arguments
     - RDoc::Generator::Markdown#method_signature
+    - RDoc::Generator::Markdown#normalize_definition_list_code_blocks
     - RDoc::Generator::Markdown#normalized_method_params
     - RDoc::Generator::Markdown#normalized_full_name
+    - RDoc::Generator::Markdown#normalize_rdoc_pre_blocks
     - RDoc::Generator::Markdown#output_path_for
     - RDoc::Generator::Markdown#page_output_path
+    - RDoc::Generator::Markdown#convert_definition_list_block
+    - RDoc::Generator::Markdown#definition_list_line?
     - RDoc::Generator::Markdown#extract_parameter_name
+    - RDoc::Generator::Markdown#finalize_markdown
+    - RDoc::Generator::Markdown#markdownify
+    - RDoc::Generator::Markdown#section_description
+    - RDoc::Generator::Markdown#section_description_html
     - RDoc::Generator::Markdown#signature_part_mentions_name?
     - RDoc::Generator::Markdown#split_signature_arguments_and_suffix
     - RDoc::Generator::Markdown#split_signature_list
     - RDoc::Generator::Markdown#setup
+    - RDoc::Generator::Markdown#shift_headings
     - RDoc::Generator::Markdown#synthetic_full_name?
     - RDoc::Generator::Markdown#turn_to_path
+    - RDoc::Generator::Markdown#unindent_text
