@@ -7,12 +7,13 @@ require 'rdoc/rdoc'
 require 'rdoc/markdown'
 
 class TestMutantPathHelpers < Minitest::Test
-  cover 'RDoc::Generator::Markdown#class_dir' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#emit_pagefiles' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#initialize' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#turn_to_path' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#page_output_path' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#anchor' if respond_to?(:cover)
+  cover 'RDoc::Generator::Markdown#class_dir'
+  cover 'RDoc::Generator::Markdown#emit_pagefiles'
+  cover 'RDoc::Generator::Markdown#initialize'
+  cover 'RDoc::Generator::Markdown#normalize_input_path_for_output'
+  cover 'RDoc::Generator::Markdown#turn_to_path'
+  cover 'RDoc::Generator::Markdown#page_output_path'
+  cover 'RDoc::Generator::Markdown#anchor'
 
   GeneratorOptions = Struct.new(:op_dir, :root)
   FakePage = Struct.new(:relative_name, :base_name, :page_name, :description) do
@@ -21,6 +22,9 @@ class TestMutantPathHelpers < Minitest::Test
     def display? = true
   end
   DescriptionToSOnly = Struct.new(:value) do
+    def to_s = value
+  end
+  PathToSOnly = Struct.new(:value) do
     def to_s = value
   end
   FakeStore = Struct.new(:pages) do
@@ -52,9 +56,16 @@ class TestMutantPathHelpers < Minitest::Test
       "final: #{current_output_path}: #{content}"
     end
   end
+  NormalizePathProbe = Class.new(RDoc::Generator::Markdown) do
+    public :normalize_input_path_for_output
+  end
 
   def generator(root: nil)
     RDoc::Generator::Markdown.new(nil, GeneratorOptions.new(stable_tmpdir('generator'), root))
+  end
+
+  def normalize_path_probe(root: nil)
+    NormalizePathProbe.new(nil, GeneratorOptions.new(stable_tmpdir('normalize-path-probe'), root))
   end
 
   def source_file
@@ -99,6 +110,75 @@ class TestMutantPathHelpers < Minitest::Test
 
     assert_eql Pathname.pwd, markdown_generator.base_dir
     assert_nil markdown_generator.classes
+  end
+
+  def test_normalize_input_path_for_output_normalizes_dot_prefix_leading_slash_and_backslashes
+    markdown_generator = normalize_path_probe
+
+    assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output(PathToSOnly.new('./guides\\install.me.rdoc'))
+    assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output('/guides/install.me.rdoc')
+  end
+
+  def test_normalize_input_path_for_output_strips_root_basename_prefixes
+    markdown_generator = normalize_path_probe(root: pages_root)
+
+    assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output('pages/guides/install.me.rdoc')
+  end
+
+  def test_normalize_input_path_for_output_strips_absolute_root_using_normalized_windows_style_paths
+    markdown_generator = normalize_path_probe(root: 'test\\data\\pages')
+    input = 'C:\\workspace\\test\\data\\pages\\guides\\install.me.rdoc'
+
+    File.stub(:expand_path, 'C:\\workspace\\test\\data\\pages') do
+      assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output(input)
+    end
+  end
+
+  def test_normalize_input_path_for_output_expands_root_relative_to_base_dir
+    markdown_generator = normalize_path_probe(root: 'docs-root')
+    markdown_generator.instance_variable_set(:@base_dir, Pathname.new('/custom/base'))
+    input = 'C:\\workspace\\docs-root\\guides\\install.me.rdoc'
+
+    File.stub(:expand_path, lambda { |path, base_dir = :missing|
+      if path == 'docs-root' && base_dir == Pathname.new('/custom/base')
+        'C:\\workspace\\docs-root'
+      else
+        'C:\\wrong-root'
+      end
+    }) do
+      assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output(input)
+    end
+  end
+
+  def test_normalize_input_path_for_output_uses_dot_when_root_is_nil
+    markdown_generator = normalize_path_probe(root: nil)
+    markdown_generator.instance_variable_set(:@base_dir, Pathname.new('/custom/base'))
+    input = 'C:\\workspace\\dot-root\\guides\\install.me.rdoc'
+
+    File.stub(:expand_path, lambda { |path, base_dir = :missing|
+      if path == '.' && base_dir == Pathname.new('/custom/base')
+        'C:\\workspace\\dot-root'
+      else
+        'C:\\wrong-root'
+      end
+    }) do
+      assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output(input)
+    end
+  end
+
+  def test_normalize_input_path_for_output_escapes_root_when_building_strip_pattern
+    markdown_generator = normalize_path_probe(root: 'docs+root')
+    input = 'C:\\workspace\\docs+root\\guides\\install.me.rdoc'
+
+    File.stub(:expand_path, 'C:\\workspace\\docs+root') do
+      assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output(input)
+    end
+  end
+
+  def test_normalize_input_path_for_output_escapes_root_basename_when_stripping_prefix
+    markdown_generator = normalize_path_probe(root: 'pages+root')
+
+    assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output('pages+root/guides/install.me.rdoc')
   end
 
   def test_turn_to_path_writes_nested_namespaces_to_nested_paths

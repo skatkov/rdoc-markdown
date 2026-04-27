@@ -7,21 +7,23 @@ require 'rdoc/markdown'
 require 'set'
 
 class TestMutantMarkdownHelpers < Minitest::Test
-  cover 'RDoc::Generator::Markdown#markdownify' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#describe' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#debug' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#section_description' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#finalize_markdown' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#normalize_internal_links' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#resolve_output_path' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#candidate_with_parent_reductions' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#shift_headings' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#section_description_html' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#normalize_definition_list_code_blocks' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#convert_definition_list_block' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#definition_list_line?' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#normalize_rdoc_pre_blocks' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#unindent_text' if respond_to?(:cover)
+  cover 'RDoc::Generator::Markdown#markdownify'
+  cover 'RDoc::Generator::Markdown#describe'
+  cover 'RDoc::Generator::Markdown#debug'
+  cover 'RDoc::Generator::Markdown#method_description'
+  cover 'RDoc::Generator::Markdown#method_link'
+  cover 'RDoc::Generator::Markdown#section_description'
+  cover 'RDoc::Generator::Markdown#finalize_markdown'
+  cover 'RDoc::Generator::Markdown#normalize_internal_links'
+  cover 'RDoc::Generator::Markdown#resolve_output_path'
+  cover 'RDoc::Generator::Markdown#candidate_with_parent_reductions'
+  cover 'RDoc::Generator::Markdown#shift_headings'
+  cover 'RDoc::Generator::Markdown#section_description_html'
+  cover 'RDoc::Generator::Markdown#normalize_definition_list_code_blocks'
+  cover 'RDoc::Generator::Markdown#convert_definition_list_block'
+  cover 'RDoc::Generator::Markdown#definition_list_line?'
+  cover 'RDoc::Generator::Markdown#normalize_rdoc_pre_blocks'
+  cover 'RDoc::Generator::Markdown#unindent_text'
 
   GeneratorOptions = Struct.new(:op_dir, :root)
   ToStringOnly = Struct.new(:value) do
@@ -29,8 +31,24 @@ class TestMutantMarkdownHelpers < Minitest::Test
   end
   DescriptionProbe = Struct.new(:description)
   CommentProbe = Struct.new(:text)
+  CommentToSOnly = Struct.new(:value) do
+    def to_s = value
+  end
+  EmptyCommentsProbe = Struct.new(:label) do
+    def empty? = true
+
+    def map
+      raise 'should not iterate empty comments'
+    end
+  end
   ParentProbe = Struct.new(:store)
+  ParentWithoutStoreProbe = Struct.new(:label)
   RescueSectionProbe = Struct.new(:comments) do
+    def description
+      raise NoMethodError, 'missing description'
+    end
+  end
+  MissingCommentsSectionProbe = Struct.new(:label) do
     def description
       raise NoMethodError, 'missing description'
     end
@@ -41,10 +59,43 @@ class TestMutantMarkdownHelpers < Minitest::Test
       @store = nil
     end
   end
+  ParentlessStoreSectionProbe = Struct.new(:description) do
+    def initialize(*args)
+      super
+      @store = nil
+    end
+  end
+  ExistingStoreSectionProbe = Struct.new(:description, :parent) do
+    def initialize(*args)
+      super
+      @store = :existing_store
+    end
+  end
+  NilParentStoreSectionProbe = Struct.new(:description, :parent) do
+    def initialize(*args)
+      super
+      @store = nil
+    end
+
+    def instance_variable_set(name, value)
+      raise 'should not set @store when parent store is nil' if name == :@store
+
+      super
+    end
+  end
+  NoStoreIvarSectionProbe = Struct.new(:description, :parent)
+  AliasTargetProbe = Struct.new(:name)
+  AliasMethodProbe = Struct.new(:alias_target) do
+    def is_alias_for = alias_target
+  end
+  MethodOwnerProbe = Struct.new(:label)
+  MethodLinkProbe = Struct.new(:parent, :aref)
   MarkdownProbe = Class.new(RDoc::Generator::Markdown) do
     public :markdownify
     public :describe
     public :debug
+    public :method_description
+    public :method_link
     public :section_description
     public :finalize_markdown
     public :normalize_internal_links
@@ -58,6 +109,43 @@ class TestMutantMarkdownHelpers < Minitest::Test
     public :normalize_rdoc_pre_blocks
     public :unindent_text
   end
+  MethodDescriptionProbeClass = Class.new(MarkdownProbe) do
+    attr_reader :describe_calls, :method_link_calls
+
+    def initialize(*args)
+      super
+      @describe_calls = []
+      @method_link_calls = []
+      @describe_return = ''
+    end
+
+    def describe_return=(value)
+      @describe_return = value
+    end
+
+    private
+
+    def describe(code_object, **options)
+      @describe_calls << [code_object, options]
+      @describe_return
+    end
+
+    def method_link(method, current_class:)
+      @method_link_calls << [method, current_class]
+      "##{method.name}"
+    end
+  end
+  MethodLinkProbeClass = Class.new(MarkdownProbe) do
+    def output_paths=(value)
+      @output_paths = value
+    end
+
+    private
+
+    def output_path_for(code_object)
+      @output_paths.fetch(code_object)
+    end
+  end
 
   def probe
     MarkdownProbe.new(nil, GeneratorOptions.new(stable_tmpdir('probe'), nil))
@@ -67,6 +155,18 @@ class TestMutantMarkdownHelpers < Minitest::Test
     markdown_probe = probe
     markdown_probe.instance_variable_set(:@known_output_paths, Set.new(known_output_paths))
     markdown_probe.instance_variable_set(:@root_path_segment, root_path_segment)
+    markdown_probe
+  end
+
+  def method_description_probe(describe_return: '')
+    markdown_probe = MethodDescriptionProbeClass.new(nil, GeneratorOptions.new(stable_tmpdir('method-description-probe'), nil))
+    markdown_probe.describe_return = describe_return
+    markdown_probe
+  end
+
+  def method_link_probe(output_paths: {})
+    markdown_probe = MethodLinkProbeClass.new(nil, GeneratorOptions.new(stable_tmpdir('method-link-probe'), nil))
+    markdown_probe.output_paths = output_paths
     markdown_probe
   end
 
@@ -110,6 +210,30 @@ class TestMutantMarkdownHelpers < Minitest::Test
     text = "    one\n      two\n\n    three\n"
 
     assert_eql "one\n  two\n\nthree\n", probe.unindent_text(text)
+  end
+
+  def test_unindent_text_uses_smallest_non_blank_indent_across_lines
+    text = ToStringOnly.new("    one\n  two\n      three\n")
+
+    assert_eql "  one\ntwo\n    three\n", probe.unindent_text(text)
+  end
+
+  def test_unindent_text_returns_blank_only_text_unchanged
+    text = "\n   \n"
+
+    assert_eql text, probe.unindent_text(text)
+  end
+
+  def test_unindent_text_returns_original_object_when_indent_is_zero
+    text = ToStringOnly.new("one\n  two\n")
+
+    assert_same text, probe.unindent_text(text)
+  end
+
+  def test_unindent_text_ignores_whitespace_only_lines_when_computing_indent
+    text = "   \n\t \n    one\n"
+
+    assert_eql "\n\none\n", probe.unindent_text(text)
   end
 
   def test_shift_headings_offsets_and_caps_levels
@@ -188,15 +312,55 @@ class TestMutantMarkdownHelpers < Minitest::Test
   end
 
   def test_markdownify_rewrites_navigation_headings_and_local_links
-    html = '<h1>Heading <a href="chapter.html">¶</a> <a href="#top">↑</a></h1><p><a href="guide.html">Guide</a> <a href="/docs/root.md">Root</a> <a href="../files/path/doc.md">File</a> <a href="../classes/Foo.md">Class</a> <a href="../modules/Bar.md">Module</a></p>'
+    html = '<h1>Heading <a href="chapter.html">¶</a> <a href="#top">↑</a></h1><p><a href="guide.html">Guide</a> <a href="/docs/root.md">Root</a> <a href="/docs/root.md?view=full#top">Root Suffix</a> <a href="../files/path/doc.md">File</a> <a href="../classes/Foo.md">Class</a> <a href="../modules/Bar.md">Module</a></p>'
 
-    assert_eql "# Heading\n\n[Guide](guide.md) [Root](docs/root.md) [File](../path/doc.md) [Class](../Foo.md) [Module](../Bar.md)", probe.markdownify(html)
+    assert_eql "# Heading\n\n[Guide](guide.md) [Root](docs/root.md) [Root Suffix](docs/root.md?view=full#top) [File](../path/doc.md) [Class](../Foo.md) [Module](../Bar.md)", probe.markdownify(html)
   end
 
   def test_markdownify_flattens_self_linked_headings
     html = '<h2><a href="#topic">Topic</a></h2>'
 
     assert_eql '## Topic', probe.markdownify(html)
+  end
+
+  def test_markdownify_flattens_self_linked_headings_in_multiline_markdown
+    sample = +"Intro\n## [Topic](#topic)\nAfter"
+
+    ReverseMarkdown.stub(:convert, sample) do
+      assert_eql "Intro\n## Topic\nAfter", probe.markdownify('<ignored>')
+    end
+  end
+
+  def test_markdownify_flattens_self_linked_headings_with_extra_heading_spacing
+    sample = +'##  [Topic](#topic)'
+
+    ReverseMarkdown.stub(:convert, sample) do
+      assert_eql '## Topic', probe.markdownify('<ignored>')
+    end
+  end
+
+  def test_markdownify_flattens_self_linked_headings_without_trailing_newline
+    sample = +'## [Topic](#topic)'
+
+    ReverseMarkdown.stub(:convert, sample) do
+      assert_eql '## Topic', probe.markdownify('<ignored>')
+    end
+  end
+
+  def test_markdownify_flattens_self_linked_headings_with_trailing_spaces
+    sample = +"## [Topic](#topic)   "
+
+    ReverseMarkdown.stub(:convert, sample) do
+      assert_eql '## Topic', probe.markdownify('<ignored>')
+    end
+  end
+
+  def test_markdownify_does_not_flatten_self_linked_headings_with_trailing_text
+    sample = +'## [Topic](#topic) extra'
+
+    ReverseMarkdown.stub(:convert, sample) do
+      assert_eql sample, probe.markdownify('<ignored>')
+    end
   end
 
   def test_markdownify_removes_navigation_links_from_non_top_headings_without_back_links
@@ -212,9 +376,9 @@ class TestMutantMarkdownHelpers < Minitest::Test
   end
 
   def test_markdownify_accepts_string_like_input_and_only_rewrites_local_html_links
-    html = ToStringOnly.new('<p><a href="guide.html?view=full#top">Guide</a> <a href="http://example.com/doc.html">HTTP</a> <a href="https://example.com/doc.html">HTTPS</a> <a href="mailto:test@example.com">Mail</a> <a href="#topic">Anchor</a></p>')
+    html = ToStringOnly.new('<p><a href="Guide.HTML?view=full#top">Guide</a> <a href="http://example.com/doc.html">HTTP</a> <a href="https://example.com/doc.html">HTTPS</a> <a href="mailto:test@example.com">Mail</a> <a href="mailto:report.html">Mail Html</a> <a href="#topic">Anchor</a> <a href="#topic.html">Anchor Html</a></p>')
 
-    assert_eql '[Guide](guide.md?view=full#top) [HTTP](http://example.com/doc.html) [HTTPS](https://example.com/doc.html) [Mail](mailto:test@example.com) [Anchor](#topic)',
+    assert_eql '[Guide](Guide.md?view=full#top) [HTTP](http://example.com/doc.html) [HTTPS](https://example.com/doc.html) [Mail](mailto:test@example.com) [Mail Html](mailto:report.html) [Anchor](#topic) [Anchor Html](#topic.html)',
                probe.markdownify(html)
   end
 
@@ -231,9 +395,9 @@ class TestMutantMarkdownHelpers < Minitest::Test
   end
 
   def test_markdownify_strips_structural_link_segments_with_and_without_parent_prefixes
-    html = '<p><a href="files/path/doc.md">File</a> <a href="../files/path/doc.md#part">File Up</a> <a href="classes/Foo.md">Class</a> <a href="../classes/Foo.md?view=1">Class Up</a> <a href="modules/Bar.md">Module</a> <a href="../modules/Bar.md#x">Module Up</a></p>'
+    html = '<p><a href="files/path/doc.md">File</a> <a href="../files/path/doc.md#part">File Up</a> <a href="classes/Foo.md">Class</a> <a href="../classes/Foo.md?view=1">Class Up</a> <a href="modules/Bar.md">Module</a> <a href="../modules/Bar.md#section-two">Module Up</a></p>'
 
-    assert_eql '[File](path/doc.md) [File Up](../path/doc.md#part) [Class](Foo.md) [Class Up](../Foo.md?view=1) [Module](Bar.md) [Module Up](../Bar.md#x)',
+    assert_eql '[File](path/doc.md) [File Up](../path/doc.md#part) [Class](Foo.md) [Class Up](../Foo.md?view=1) [Module](Bar.md) [Module Up](../Bar.md#section-two)',
                probe.markdownify(html)
   end
 
@@ -250,6 +414,22 @@ class TestMutantMarkdownHelpers < Minitest::Test
     marker_probe = marker_probe_class.new(nil, GeneratorOptions.new(stable_tmpdir('marker-probe'), nil))
 
     assert_eql "Text\n\n\nMARKER", marker_probe.markdownify('<p>Text</p>')
+  end
+
+  def test_markdownify_rewrites_all_rdoc_style_heading_prefixes
+    sample = +"=== One\n== Two\n=== Three\n== Four"
+
+    ReverseMarkdown.stub(:convert, sample) do
+      assert_eql "### One\n## Two\n### Three\n## Four", probe.markdownify('<ignored>')
+    end
+  end
+
+  def test_markdownify_strips_leading_whitespace_from_final_output
+    sample = +"\nText"
+
+    ReverseMarkdown.stub(:convert, sample) do
+      assert_eql 'Text', probe.markdownify('<ignored>')
+    end
   end
 
   def test_debug_is_noop_when_debug_flag_is_disabled
@@ -314,6 +494,46 @@ class TestMutantMarkdownHelpers < Minitest::Test
     $DEBUG_RDOC = previous
   end
 
+  def test_method_description_returns_described_text_with_method_heading_offset
+    method = Object.new
+    markdown_probe = method_description_probe(describe_return: 'Described body')
+
+    assert_eql 'Described body', markdown_probe.method_description(method, current_class: :current_class)
+    assert_eql [[method, {fallback: nil, heading_level_offset: 4}]], markdown_probe.describe_calls
+    assert_eql [], markdown_probe.method_link_calls
+  end
+
+  def test_method_description_returns_not_documented_when_blank_and_not_alias
+    markdown_probe = method_description_probe(describe_return: '')
+
+    assert_eql 'Not documented.', markdown_probe.method_description(Object.new, current_class: :current_class)
+  end
+
+  def test_method_description_links_alias_target_when_description_is_blank
+    alias_target = AliasTargetProbe.new('key?')
+    method = AliasMethodProbe.new(alias_target)
+    markdown_probe = method_description_probe(describe_return: '')
+
+    assert_eql 'Alias for: [`key?`](#key?)', markdown_probe.method_description(method, current_class: :current_class)
+    assert_eql [[alias_target, :current_class]], markdown_probe.method_link_calls
+  end
+
+  def test_method_link_returns_local_anchor_for_methods_on_current_class
+    current_class = MethodOwnerProbe.new(:current)
+    method = MethodLinkProbe.new(current_class, 'method-i-run')
+
+    assert_eql '#method-i-run', method_link_probe.method_link(method, current_class: current_class)
+  end
+
+  def test_method_link_uses_relative_path_for_methods_on_other_classes
+    current_class = MethodOwnerProbe.new(:current)
+    target_class = MethodOwnerProbe.new(:target)
+    method = MethodLinkProbe.new(target_class, 'method-i-run')
+    markdown_probe = method_link_probe(output_paths: {current_class => 'docs/Current.md', target_class => 'guides/Target.md'})
+
+    assert_eql '../guides/Target.md#method-i-run', markdown_probe.method_link(method, current_class: current_class)
+  end
+
   def test_candidate_with_parent_reductions_strips_dot_prefix_and_walks_parent_levels
     assert_eql ['guide.md'], probe.candidate_with_parent_reductions('./guide.md')
     assert_eql ['../../guide.md', '../guide.md', 'guide.md'], probe.candidate_with_parent_reductions('../../guide.md')
@@ -373,6 +593,54 @@ class TestMutantMarkdownHelpers < Minitest::Test
                markdown_probe.normalize_internal_links(content, current_output_path: 'docs/readme.md')
   end
 
+  def test_normalize_internal_links_skips_external_and_anchor_links
+    probe_class = Class.new(MarkdownProbe) do
+      def resolve_output_path(*)
+        raise 'should not resolve external or anchor links'
+      end
+    end
+    markdown_probe = probe_class.new(nil, GeneratorOptions.new(stable_tmpdir('external-link-probe'), nil))
+    markdown_probe.instance_variable_set(:@known_output_paths, Set['docs/guide.md'])
+    content = '[HTTP](http://example.com/doc.md) [HTTPS](https://example.com/doc.md) [Mail](mailto:test@example.com) [Anchor](#topic)'
+
+    assert_eql content, markdown_probe.normalize_internal_links(content, current_output_path: 'docs/readme.md')
+  end
+
+  def test_normalize_internal_links_returns_original_markdown_when_known_paths_are_nil
+    markdown_probe = probe
+    markdown_probe.instance_variable_set(:@known_output_paths, nil)
+    content = '[Guide](/docs/guide.md)'
+
+    assert_eql content, markdown_probe.normalize_internal_links(content, current_output_path: 'docs/readme.md')
+  end
+
+  def test_normalize_internal_links_returns_original_markdown_when_known_paths_are_empty
+    probe_class = Class.new(MarkdownProbe) do
+      def resolve_output_path(*)
+        raise 'should not resolve paths when known paths are empty'
+      end
+    end
+    markdown_probe = probe_class.new(nil, GeneratorOptions.new(stable_tmpdir('empty-known-paths-probe'), nil))
+    markdown_probe.instance_variable_set(:@known_output_paths, Set.new)
+    content = '[Guide](/docs/guide.md)'
+
+    assert_eql content, markdown_probe.normalize_internal_links(content, current_output_path: 'docs/readme.md')
+  end
+
+  def test_normalize_internal_links_preserves_bare_query_suffixes
+    markdown_probe = link_probe(known_output_paths: ['guides/intro.md'])
+    content = '[Intro](docs-root/guides/intro.md?)'
+
+    assert_eql '[Intro](../guides/intro.md?)', markdown_probe.normalize_internal_links(content, current_output_path: 'docs/readme.md')
+  end
+
+  def test_normalize_internal_links_keeps_unresolved_targets_unchanged
+    markdown_probe = link_probe(known_output_paths: ['docs/guide.md'])
+    content = '[Missing](unknown/path.md#part)'
+
+    assert_eql content, markdown_probe.normalize_internal_links(content, current_output_path: 'docs/readme.md')
+  end
+
   def test_describe_uses_fallback_only_for_blank_descriptions
     described = DescriptionProbe.new('<h1>Topic</h1>')
     blank = DescriptionProbe.new('   ')
@@ -399,12 +667,68 @@ class TestMutantMarkdownHelpers < Minitest::Test
     assert_eql '', probe.section_description(blank)
   end
 
+  def test_section_description_uses_zero_heading_offset_by_default
+    described = StoreAwareSectionProbe.new('<h2>Section</h2>', ParentProbe.new(:store))
+
+    assert_eql '## Section', probe.section_description(described)
+  end
+
+  def test_section_description_does_not_markdownify_whitespace_only_descriptions
+    probe_class = Class.new(MarkdownProbe) do
+      def markdownify(*)
+        raise 'should not markdownify blank section descriptions'
+      end
+    end
+    markdown_probe = probe_class.new(nil, GeneratorOptions.new(stable_tmpdir('blank-section-probe'), nil))
+    blank = StoreAwareSectionProbe.new(" \n", ParentProbe.new(:store))
+
+    assert_eql '', markdown_probe.section_description(blank)
+  end
+
   def test_section_description_html_populates_missing_store_and_uses_comment_fallback
     store_backed = StoreAwareSectionProbe.new('Body', ParentProbe.new(:parent_store))
     fallback = RescueSectionProbe.new([CommentProbe.new('First'), CommentProbe.new('Second')])
 
     assert_eql 'Body', probe.section_description_html(store_backed)
     assert_eql :parent_store, store_backed.instance_variable_get(:@store)
+    assert_eql "First\nSecond", probe.section_description_html(fallback)
+  end
+
+  def test_section_description_html_preserves_existing_store_and_stringifies_descriptions
+    section = ExistingStoreSectionProbe.new(ToStringOnly.new('Body'), ParentProbe.new(:parent_store))
+
+    assert_eql 'Body', probe.section_description_html(section)
+    assert_eql :existing_store, section.instance_variable_get(:@store)
+  end
+
+  def test_section_description_html_does_not_add_store_to_objects_without_store_ivar
+    section = NoStoreIvarSectionProbe.new('Body', ParentProbe.new(:parent_store))
+
+    assert_eql 'Body', probe.section_description_html(section)
+    assert_false section.instance_variable_defined?(:@store)
+  end
+
+  def test_section_description_html_handles_parentless_or_storeless_sections_without_setting_store
+    parentless = ParentlessStoreSectionProbe.new('Body')
+    storeless_parent = StoreAwareSectionProbe.new('Body', ParentWithoutStoreProbe.new(:parent))
+    nil_parent_store = NilParentStoreSectionProbe.new('Body', ParentProbe.new(nil))
+
+    assert_eql 'Body', probe.section_description_html(parentless)
+    assert_nil parentless.instance_variable_get(:@store)
+    assert_eql 'Body', probe.section_description_html(storeless_parent)
+    assert_nil storeless_parent.instance_variable_get(:@store)
+    assert_eql 'Body', probe.section_description_html(nil_parent_store)
+  end
+
+  def test_section_description_html_returns_empty_for_missing_or_empty_comments
+    assert_eql '', probe.section_description_html(RescueSectionProbe.new(EmptyCommentsProbe.new(:empty_comments)))
+    assert_eql '', probe.section_description_html(RescueSectionProbe.new(nil))
+    assert_eql '', probe.section_description_html(MissingCommentsSectionProbe.new(:missing_comments))
+  end
+
+  def test_section_description_html_uses_comment_text_or_to_s_fallback
+    fallback = RescueSectionProbe.new([CommentProbe.new('First'), CommentToSOnly.new('Second')])
+
     assert_eql "First\nSecond", probe.section_description_html(fallback)
   end
 

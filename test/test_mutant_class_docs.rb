@@ -7,18 +7,18 @@ require 'rdoc/rdoc'
 require 'rdoc/markdown'
 
 class TestMutantClassDocs < Minitest::Test
-  cover 'RDoc::Generator::Markdown#build_class_docs' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#class_content_score' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#class_doc_for' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#display_name' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#emit_classfiles' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#emit_csv_index' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#generate' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#legacy_paths_for' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#normalized_full_name' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#output_path_for' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#setup' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#synthetic_full_name?' if respond_to?(:cover)
+  cover 'RDoc::Generator::Markdown#build_class_docs'
+  cover 'RDoc::Generator::Markdown#class_content_score'
+  cover 'RDoc::Generator::Markdown#class_doc_for'
+  cover 'RDoc::Generator::Markdown#display_name'
+  cover 'RDoc::Generator::Markdown#emit_classfiles'
+  cover 'RDoc::Generator::Markdown#emit_csv_index'
+  cover 'RDoc::Generator::Markdown#generate'
+  cover 'RDoc::Generator::Markdown#legacy_paths_for'
+  cover 'RDoc::Generator::Markdown#normalized_full_name'
+  cover 'RDoc::Generator::Markdown#output_path_for'
+  cover 'RDoc::Generator::Markdown#setup'
+  cover 'RDoc::Generator::Markdown#synthetic_full_name?'
 
   GeneratorOptions = Struct.new(:op_dir, :root)
   ScoreProbe = Class.new(RDoc::Generator::Markdown) do

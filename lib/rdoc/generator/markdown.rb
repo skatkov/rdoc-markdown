@@ -226,7 +226,7 @@ class RDoc::Generator::Markdown
     md.gsub!(/\s\[↑\]\(#top\)$/, '')
 
     # Flatten headings whose visible text is wrapped in a self-link.
-    md.gsub!(/^(#+)\s+\[([^\]]+)\]\((#[^)]+)\)\s*$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
+    md.gsub!(/^(#+)\s+\[([^\]]+)\]\((?:#[^)]+)\)\s*$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
 
     # Replace .html to .md extension in all local markdown links.
     md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
@@ -268,7 +268,7 @@ class RDoc::Generator::Markdown
 
   def section_description(section, heading_level_offset: 0)
     description = section_description_html(section)
-    return '' if description.strip.empty?
+    return '' unless description.match?(/\S/)
 
     shift_headings(markdownify(description), heading_level_offset)
   end
@@ -378,7 +378,7 @@ class RDoc::Generator::Markdown
     text = describe(method, fallback: nil, heading_level_offset: 4)
     return text unless text.empty?
 
-    aliased_method = method.respond_to?(:is_alias_for) ? method.is_alias_for : nil
+    aliased_method = method.is_alias_for if method.respond_to?(:is_alias_for)
     return 'Not documented.' unless aliased_method
 
     "Alias for: [`#{aliased_method.name}`](#{method_link(aliased_method, current_class: current_class)})"
@@ -392,9 +392,7 @@ class RDoc::Generator::Markdown
   end
 
   def shift_headings(markdown, heading_level_offset)
-    return markdown if heading_level_offset.zero?
-
-    markdown.gsub(/^(#+)(\s+)/) do
+    markdown.gsub(/^(#+)(\s)/) do
       hashes = Regexp.last_match(1)
       spaces = Regexp.last_match(2)
       level = [hashes.length + heading_level_offset, 6].min
@@ -405,16 +403,16 @@ class RDoc::Generator::Markdown
   def section_description_html(section)
     if section.instance_variable_defined?(:@store)
       section_store = section.instance_variable_get(:@store)
-      parent_store = section.respond_to?(:parent) && section.parent.respond_to?(:store) ? section.parent.store : nil
+      parent_store = section.parent.store if section.respond_to?(:parent) && section.parent.respond_to?(:store)
       section.instance_variable_set(:@store, parent_store) if section_store.nil? && !parent_store.nil?
     end
 
     section.description.to_s
   rescue NoMethodError
-    comments = section.respond_to?(:comments) ? section.comments : nil
+    comments = section.comments if section.respond_to?(:comments)
     return '' if comments.nil? || comments.empty?
 
-    comments.map { |comment| comment.respond_to?(:text) ? comment.text : comment.to_s }.join("\n")
+    comments.map { |comment| comment.respond_to?(:text) ? comment.text : comment }.join("\n")
   end
 
   def normalize_definition_list_code_blocks(markdown)
@@ -455,7 +453,7 @@ class RDoc::Generator::Markdown
 
   def relative_output_path(from_path, to_path)
     from_dir = Pathname.new(from_path).dirname
-    Pathname.new(to_path).relative_path_from(from_dir).to_s
+    Pathname.new(to_path).relative_path_from(from_dir)
   end
 
   def normalize_rdoc_pre_blocks(html)
@@ -470,10 +468,10 @@ class RDoc::Generator::Markdown
 
   def unindent_text(text)
     lines = text.to_s.lines
-    indent = lines.reject { |line| line.strip.empty? }.map { |line| line[/^[ \t]*/].size }.min || 0
-    return text if indent.zero?
+    indent = lines.filter_map { |line| line[/\A[ \t]*/].size unless line.rstrip.empty? }.min
+    return text unless indent&.positive?
 
-    lines.map { |line| line.sub(/^[ \t]{0,#{indent}}/, '') }.join
+    lines.map { |line| line.sub(/\A[ \t]{0,#{indent}}/, '') }.join
   end
 
   def normalize_internal_links(markdown, current_output_path:)
@@ -484,10 +482,10 @@ class RDoc::Generator::Markdown
     markdown.gsub(%r{\]\((?!https?://|mailto:|#)([^)]+)\)}) do
       target = Regexp.last_match(1)
       path = target.sub(/[?#].*\z/, '')
-      suffix = target[path.length..] || ''
+      suffix = target[path.length..]
 
       resolved = resolve_output_path(path, current_dir)
-      rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir).to_s : path
+      rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
       "](#{rewritten}#{suffix})"
     end
   end

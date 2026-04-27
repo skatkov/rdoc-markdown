@@ -6,13 +6,13 @@ require 'rdoc/rdoc'
 require 'rdoc/markdown'
 
 class TestMutantSignatureHelpers < Minitest::Test
-  cover 'RDoc::Generator::Markdown#method_signature' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#merge_method_signature_arguments' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#normalized_method_params' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#split_signature_arguments_and_suffix' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#split_signature_list' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#extract_parameter_name' if respond_to?(:cover)
-  cover 'RDoc::Generator::Markdown#signature_part_mentions_name?' if respond_to?(:cover)
+  cover 'RDoc::Generator::Markdown#method_signature'
+  cover 'RDoc::Generator::Markdown#merge_method_signature_arguments'
+  cover 'RDoc::Generator::Markdown#normalized_method_params'
+  cover 'RDoc::Generator::Markdown#split_signature_arguments_and_suffix'
+  cover 'RDoc::Generator::Markdown#split_signature_list'
+  cover 'RDoc::Generator::Markdown#extract_parameter_name'
+  cover 'RDoc::Generator::Markdown#signature_part_mentions_name?'
 
   GeneratorOptions = Struct.new(:op_dir, :root)
   SignatureProbe = Class.new(RDoc::Generator::Markdown) do
