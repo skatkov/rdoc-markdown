@@ -104,9 +104,6 @@ def minitest_docs_files(root)
   files = Dir[File.join(root, "lib/**/*.rb")]
   files.concat(Dir[File.join(root, "*.rdoc")])
 
-  manifest = File.join(root, "Manifest.txt")
-  files << manifest if File.file?(manifest)
-
   files.uniq
 end
 
