@@ -112,7 +112,7 @@ class RDoc::Generator::Markdown
         klass
           .constants
           .select(&:display?)
-          .sort_by { |x| x.name }
+          .sort
           .each do |const|
             csv << [
               "#{display_name(klass)}.#{const.name}",
@@ -124,7 +124,7 @@ class RDoc::Generator::Markdown
         klass
           .attributes
           .select(&:display?)
-          .sort_by { |x| x.name }
+          .sort
           .each do |attr|
             csv << [
               "#{display_name(klass)}.#{attr.name}",
@@ -168,7 +168,7 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{page_output_path(page)}")
       out_file.dirname.mkpath
 
-      content = markdownify(page.description.to_s)
+      content = markdownify(page.description)
       File.write(out_file, finalize_markdown(content, current_output_path: page_output_path(page)))
     end
   end
@@ -260,21 +260,21 @@ class RDoc::Generator::Markdown
   end
 
   def describe(code_object, fallback: nil, heading_level_offset: 0)
-    description = code_object.description.to_s
-    return fallback.to_s unless description.match?(/\S/)
+    description = code_object.description
+    return fallback.to_s if description.empty?
 
     shift_headings(markdownify(description), heading_level_offset)
   end
 
   def section_description(section, heading_level_offset: 0)
     description = section_description_html(section)
-    return '' unless description.match?(/\S/)
+    return '' if description.empty?
 
     shift_headings(markdownify(description), heading_level_offset)
   end
 
   def method_signature(method)
-    signature = method.param_seq.to_s
+    signature = method.param_seq
     return '()' unless signature.match?(/\S/)
 
     signature = signature.gsub('->', ' -> ')
@@ -378,7 +378,7 @@ class RDoc::Generator::Markdown
     text = describe(method, fallback: nil, heading_level_offset: 4)
     return text unless text.empty?
 
-    aliased_method = method.is_alias_for if method.respond_to?(:is_alias_for)
+    aliased_method = method.is_alias_for
     return 'Not documented.' unless aliased_method
 
     "Alias for: [`#{aliased_method.name}`](#{method_link(aliased_method, current_class: current_class)})"
@@ -401,18 +401,11 @@ class RDoc::Generator::Markdown
   end
 
   def section_description_html(section)
-    if section.instance_variable_defined?(:@store)
-      section_store = section.instance_variable_get(:@store)
-      parent_store = section.parent.store if section.respond_to?(:parent) && section.parent.respond_to?(:store)
-      section.instance_variable_set(:@store, parent_store) if section_store.nil? && !parent_store.nil?
-    end
+    section.instance_variable_set(:@store, section.parent.store) if section.instance_variable_get(:@store).nil?
 
-    section.description.to_s
+    section.description
   rescue NoMethodError
-    comments = section.comments if section.respond_to?(:comments)
-    return '' if comments.nil? || comments.empty?
-
-    comments.map { |comment| comment.respond_to?(:text) ? comment.text : comment }.join("\n")
+    section.comments.join("\n")
   end
 
   def normalize_definition_list_code_blocks(markdown)
@@ -595,7 +588,7 @@ class RDoc::Generator::Markdown
 
   def class_content_score(klass)
     score = klass.method_list.size + klass.constants.size + klass.attributes.size
-    score += 1 if klass.description.to_s.match?(/\S/)
+    score += 1 unless klass.description.empty?
     score
   end
 

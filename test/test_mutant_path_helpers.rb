@@ -15,57 +15,12 @@ class TestMutantPathHelpers < Minitest::Test
   cover 'RDoc::Generator::Markdown#page_output_path'
   cover 'RDoc::Generator::Markdown#anchor'
 
-  GeneratorOptions = Struct.new(:op_dir, :root)
-  FakePage = Struct.new(:relative_name, :base_name, :page_name, :description) do
-    def text? = true
-
-    def display? = true
-  end
-  DescriptionToSOnly = Struct.new(:value) do
-    def to_s = value
-  end
-  PathToSOnly = Struct.new(:value) do
-    def to_s = value
-  end
-  FakeStore = Struct.new(:pages) do
-    def all_classes_and_modules = []
-
-    def all_files = pages
-  end
-  EmitPageProbe = Class.new(RDoc::Generator::Markdown) do
-    public :emit_pagefiles
-    public :setup
-
-    attr_reader :finalize_calls, :markdown_inputs
-
-    def initialize(*args)
-      super
-      @finalize_calls = []
-      @markdown_inputs = []
-    end
-
-    private
-
-    def markdownify(input)
-      @markdown_inputs << input
-      "markdown: #{input}"
-    end
-
-    def finalize_markdown(content, current_output_path: nil)
-      @finalize_calls << [content, current_output_path]
-      "final: #{current_output_path}: #{content}"
-    end
-  end
-  NormalizePathProbe = Class.new(RDoc::Generator::Markdown) do
-    public :normalize_input_path_for_output
-  end
-
   def generator(root: nil)
-    RDoc::Generator::Markdown.new(nil, GeneratorOptions.new(stable_tmpdir('generator'), root))
+    RDoc::Generator::Markdown.new(nil, generator_options(op_dir: stable_tmpdir('generator'), root: root))
   end
 
   def normalize_path_probe(root: nil)
-    NormalizePathProbe.new(nil, GeneratorOptions.new(stable_tmpdir('normalize-path-probe'), root))
+    RDocMarkdownGeneratorProbes::NormalizePathProbe.new(nil, generator_options(op_dir: stable_tmpdir('normalize-path-probe'), root: root))
   end
 
   def source_file
@@ -95,7 +50,7 @@ class TestMutantPathHelpers < Minitest::Test
 
   def generate_from_store(store:, root: nil)
     dir = stable_tmpdir('generate-from-store')
-    generator = RDoc::Generator::Markdown.new(store, GeneratorOptions.new(dir, root))
+    generator = RDoc::Generator::Markdown.new(store, generator_options(op_dir: dir, root: root))
     generator.generate
     dir
   end
@@ -115,7 +70,7 @@ class TestMutantPathHelpers < Minitest::Test
   def test_normalize_input_path_for_output_normalizes_dot_prefix_leading_slash_and_backslashes
     markdown_generator = normalize_path_probe
 
-    assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output(PathToSOnly.new('./guides\\install.me.rdoc'))
+    assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output(Pathname.new('./guides\\install.me.rdoc'))
     assert_eql 'guides/install.me.rdoc', markdown_generator.normalize_input_path_for_output('/guides/install.me.rdoc')
   end
 
@@ -204,14 +159,10 @@ class TestMutantPathHelpers < Minitest::Test
   end
 
   def test_page_output_path_strips_root_basename_prefix_from_page_paths
-    page = FakePage.new(
-      'pages/guides/install.me.rdoc',
-      'install.me',
-      'install.me',
-      'Install me'
-    )
+    store = rdoc_store
+    rdoc_page(store, relative_name: 'pages/guides/install.me.rdoc', comment: 'Install me')
 
-    dir = generate_from_store(store: FakeStore.new([page]), root: pages_root)
+    dir = generate_from_store(store: store, root: pages_root)
 
     assert File.exist?(File.join(dir, 'guides/install_me_rdoc.md'))
 
@@ -233,15 +184,16 @@ class TestMutantPathHelpers < Minitest::Test
   end
 
   def test_emit_pagefiles_stringifies_page_descriptions_and_passes_page_path_to_finalize
-    page = FakePage.new('docs/getting_started.rdoc', 'getting_started', 'Getting Started', DescriptionToSOnly.new('<h1>Intro</h1>'))
-    probe = EmitPageProbe.new(FakeStore.new([page]), GeneratorOptions.new(stable_tmpdir('emit-page-probe'), nil))
+    store = rdoc_store
+    rdoc_page(store, relative_name: 'docs/getting_started.rdoc', comment: '= Intro')
+    probe = RDocMarkdownGeneratorProbes::EmitPageProbe.new(store, generator_options(op_dir: stable_tmpdir('emit-page-probe')))
 
     probe.setup
     probe.emit_pagefiles
 
-    assert_eql ['<h1>Intro</h1>'], probe.markdown_inputs
-    assert_eql [['markdown: <h1>Intro</h1>', 'docs/getting_started_rdoc.md']], probe.finalize_calls
-    assert_eql 'final: docs/getting_started_rdoc.md: markdown: <h1>Intro</h1>',
+    assert_eql ["\n<span id=\"label-Intro\" class=\"legacy-anchor\"></span>\n<h1 id=\"intro\"><a href=\"#intro\">Intro</a></h1>\n"], probe.markdown_inputs
+    assert_eql [["markdown: \n<span id=\"label-Intro\" class=\"legacy-anchor\"></span>\n<h1 id=\"intro\"><a href=\"#intro\">Intro</a></h1>\n", 'docs/getting_started_rdoc.md']], probe.finalize_calls
+    assert_eql "final: docs/getting_started_rdoc.md: markdown: \n<span id=\"label-Intro\" class=\"legacy-anchor\"></span>\n<h1 id=\"intro\"><a href=\"#intro\">Intro</a></h1>\n",
                File.read(File.join(probe.instance_variable_get(:@output_dir), 'docs/getting_started_rdoc.md'))
   end
 end

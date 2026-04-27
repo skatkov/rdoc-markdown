@@ -14,54 +14,42 @@ class TestMutantSignatureHelpers < Minitest::Test
   cover 'RDoc::Generator::Markdown#extract_parameter_name'
   cover 'RDoc::Generator::Markdown#signature_part_mentions_name?'
 
-  GeneratorOptions = Struct.new(:op_dir, :root)
-  SignatureProbe = Class.new(RDoc::Generator::Markdown) do
-    public :method_signature
-    public :merge_method_signature_arguments
-    public :normalized_method_params
-    public :split_signature_arguments_and_suffix
-    public :split_signature_list
-    public :extract_parameter_name
-    public :signature_part_mentions_name?
-  end
-  FakeMethod = Struct.new(:param_seq, :params)
-
   def probe
-    SignatureProbe.new(nil, GeneratorOptions.new(stable_tmpdir('signature-probe'), nil))
+    RDocMarkdownGeneratorProbes::SignatureProbe.new(nil, generator_options(op_dir: stable_tmpdir('signature-probe')))
   end
 
   def test_method_signature_returns_empty_parens_for_blank_signature
-    assert_eql '()', probe.method_signature(FakeMethod.new('  ', '(name)'))
+    assert_eql '()', probe.method_signature(rdoc_method(signature: '  ', params: '(name)'))
   end
 
   def test_method_signature_returns_empty_parens_for_nil_signature
-    assert_eql '()', probe.method_signature(FakeMethod.new(nil, '(name)'))
+    assert_eql '()', probe.method_signature(rdoc_method)
   end
 
   def test_method_signature_formats_return_only_signatures
-    assert_eql ' -> bool', probe.method_signature(FakeMethod.new('->bool', ''))
+    assert_eql ' -> bool', probe.method_signature(rdoc_method(signature: ' -> bool', params: ''))
   end
 
   def test_method_signature_normalizes_all_arrow_occurrences
-    signature = probe.method_signature(FakeMethod.new('(Proc->bool)->bool', ''))
+    signature = probe.method_signature(rdoc_method(signature: '(Proc->bool)->bool', params: ''))
 
     assert_eql '(Proc -> bool) -> bool', signature
   end
 
   def test_method_signature_strips_outer_whitespace_after_normalizing_spaces
-    signature = probe.method_signature(FakeMethod.new('  ( String , Integer )  ', ''))
+    signature = probe.method_signature(rdoc_method(signature: '  ( String , Integer )  ', params: ''))
 
     assert_eql '( String , Integer )', signature
   end
 
   def test_method_signature_merges_parameter_names_and_types
-    signature = probe.method_signature(FakeMethod.new('(String, Integer) -> bool', '(name, count)'))
+    signature = probe.method_signature(rdoc_method(signature: '(String, Integer) -> bool', params: '(name, count)'))
 
     assert_eql '(name: String, count: Integer) -> bool', signature
   end
 
   def test_method_signature_leaves_named_signatures_unchanged
-    signature = probe.method_signature(FakeMethod.new('(name: String, count: Integer) -> bool', '(name, count)'))
+    signature = probe.method_signature(rdoc_method(signature: '(name: String, count: Integer) -> bool', params: '(name, count)'))
 
     assert_eql '(name: String, count: Integer) -> bool', signature
   end

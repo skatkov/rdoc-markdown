@@ -14,8 +14,12 @@ rescue LoadError
 end
 
 require_relative "support/mutant_setup"
+require_relative "support/rdoc"
+require_relative "support/markdown_generator_probes"
 
 class Minitest::Test
+  include RDocTestHelpers
+
   private
 
   def stable_tmpdir(*parts)

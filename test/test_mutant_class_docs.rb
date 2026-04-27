@@ -20,112 +20,20 @@ class TestMutantClassDocs < Minitest::Test
   cover 'RDoc::Generator::Markdown#setup'
   cover 'RDoc::Generator::Markdown#synthetic_full_name?'
 
-  GeneratorOptions = Struct.new(:op_dir, :root)
-  ScoreProbe = Class.new(RDoc::Generator::Markdown) do
-    public :class_content_score
-    public :emit_classfiles
-    public :emit_csv_index
-    public :normalized_full_name
-    public :setup
-    public :synthetic_full_name?
-  end
-  EmitProbe = Class.new(ScoreProbe) do
-    attr_reader :finalize_calls
-
-    def initialize(*args)
-      super
-      @finalize_calls = []
-    end
-
-    private
-
-    def finalize_markdown(content, current_output_path: nil)
-      @finalize_calls << [content, current_output_path]
-      "finalized #{current_output_path}"
-    end
-  end
-  GenerateProbe = Class.new(RDoc::Generator::Markdown) do
-    attr_reader :calls
-
-    def initialize(*args)
-      super
-      @calls = []
-    end
-
-    private
-
-    def debug(str = nil)
-      @calls << [:debug, str]
-    end
-
-    def setup
-      @output_dir = Pathname.new('tmp/generated-docs')
-      @calls << :setup
-    end
-
-    def emit_classfiles
-      @calls << :emit_classfiles
-    end
-
-    def emit_pagefiles
-      @calls << :emit_pagefiles
-    end
-
-    def emit_csv_index
-      @calls << :emit_csv_index
-    end
-  end
-  HiddenMember = Struct.new(:name) do
-    def display? = false
-  end
-  VisibleMember = Struct.new(:name, :aref) do
-    def display? = true
-  end
-  FakeStore = Struct.new(:classes, :pages) do
-    def all_classes_and_modules = classes
-
-    def all_files = pages || []
-  end
-  FakePage = Struct.new(:relative_name, :base_name, :page_name, :description, :visible) do
-    def text? = true
-
-    def display? = visible
-  end
-  FakeBinaryPage = Struct.new(:relative_name, :base_name, :page_name, :description, :visible) do
-    def text? = false
-
-    def display? = visible
-  end
-  FakeClass = Struct.new(:full_name, :type, :description, :method_list, :constants, :attributes, :aref) do
-    include Comparable
-
-    def <=>(other)
-      full_name <=> other.full_name
-    end
-
-    def each_section
-      nil
-    end
-
-    def methods_by_type(_section)
-      {}
-    end
-  end
-
   def generate_from_store(classes, pages: nil)
     dir = stable_tmpdir('generate-from-store')
-    generator = RDoc::Generator::Markdown.new(FakeStore.new(classes, pages), GeneratorOptions.new(dir, nil))
+    generator = RDoc::Generator::Markdown.new(rdoc_store(classes: classes, pages: pages), generator_options(op_dir: dir))
     generator.generate
     dir
   end
 
   def score_probe
-    ScoreProbe.new(nil, GeneratorOptions.new(stable_tmpdir('score-probe'), nil))
+    RDocMarkdownGeneratorProbes::ScoreProbe.new(nil, generator_options(op_dir: stable_tmpdir('score-probe')))
   end
 
   def test_setup_without_store_only_prepares_output_directory
     output_dir = File.join(stable_tmpdir('score-probe-output'), 'out')
-    probe = ScoreProbe.new(nil, GeneratorOptions.new(output_dir, nil))
+    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(nil, generator_options(op_dir: output_dir))
 
     probe.setup
 
@@ -133,7 +41,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def assert_positive_score_beats_zero_score_duplicate(primary)
-    duplicate = build_fake_class(full_name: "#{primary.full_name}::#{primary.full_name}")
+    duplicate = build_rdoc_class(full_name: "#{primary.full_name}::#{primary.full_name}")
 
     dir = generate_from_store([primary, duplicate])
     canonical_path = File.join(dir, "#{primary.full_name.tr(':', '/').gsub('//', '/')}.md")
@@ -148,20 +56,8 @@ class TestMutantClassDocs < Minitest::Test
     end
   end
 
-  def build_fake_class(full_name:, description: '', methods: 0, constants: 0, attributes: 0, aref: nil)
-    FakeClass.new(
-      full_name,
-      'class',
-      description,
-      Array.new(methods) { |index| HiddenMember.new("hidden_#{index}") },
-      Array.new(constants) { |index| HiddenMember.new("CONST_#{index}") },
-      Array.new(attributes) { |index| HiddenMember.new("attribute_#{index}") },
-      aref || "class-#{full_name.tr(':', '-')}"
-    )
-  end
-
   def test_class_content_score_counts_each_signal_once
-    klass = build_fake_class(
+    klass = build_rdoc_class(
       full_name: 'ScoreSignals',
       description: 'docs',
       methods: 1,
@@ -173,8 +69,8 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_class_content_score_ignores_blank_descriptions
-    whitespace = build_fake_class(full_name: 'WhitespaceScore', description: " \n\t")
-    nil_description = build_fake_class(full_name: 'NilScore', description: nil, methods: 1)
+    whitespace = build_rdoc_class(full_name: 'WhitespaceScore', description: " \n\t")
+    nil_description = build_rdoc_class(full_name: 'NilScore', description: nil, methods: 1)
 
     assert_eql 0, score_probe.class_content_score(whitespace)
     assert_eql 1, score_probe.class_content_score(nil_description)
@@ -210,12 +106,12 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_prefers_best_normalized_class_doc_and_writes_legacy_path
-    synthetic = build_fake_class(
+    synthetic = build_rdoc_class(
       full_name: 'VendoredPathExpander::Minitest::VendoredPathExpander::PathExpander',
       description: 'Synthetic doc',
       methods: 1
     )
-    real = build_fake_class(
+    real = build_rdoc_class(
       full_name: 'VendoredPathExpander::PathExpander',
       description: 'Real doc',
       methods: 2
@@ -240,12 +136,12 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_preserves_legacy_path_when_lower_score_duplicate_arrives_later
-    real = build_fake_class(
+    real = build_rdoc_class(
       full_name: 'Alpha::Thing',
       description: 'Real doc',
       methods: 2
     )
-    synthetic = build_fake_class(
+    synthetic = build_rdoc_class(
       full_name: 'Alpha::Z::Alpha::Thing',
       description: 'Synthetic doc',
       methods: 1
@@ -263,8 +159,8 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_does_not_preserve_legacy_path_from_zero_score_replaced_candidate
-    empty = build_fake_class(full_name: 'Ghost::Ghost::Thing')
-    real = build_fake_class(
+    empty = build_rdoc_class(full_name: 'Ghost::Ghost::Thing')
+    real = build_rdoc_class(
       full_name: 'Ghost::Thing',
       description: 'Real doc',
       methods: 1
@@ -277,12 +173,12 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_does_not_preserve_legacy_path_from_zero_score_later_duplicate
-    real = build_fake_class(
+    real = build_rdoc_class(
       full_name: 'Later::Thing',
       description: 'Real doc',
       methods: 1
     )
-    empty = build_fake_class(full_name: 'Later::Z::Later::Thing')
+    empty = build_rdoc_class(full_name: 'Later::Z::Later::Thing')
 
     dir = generate_from_store([real, empty])
 
@@ -292,7 +188,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_writes_legacy_path_for_positive_score_synthetic_class
-    synthetic = build_fake_class(
+    synthetic = build_rdoc_class(
       full_name: 'Solo::Inner::Solo::Thing',
       description: 'Synthetic doc',
       methods: 1
@@ -310,7 +206,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_skips_zero_score_synthetic_classes
-    synthetic = build_fake_class(full_name: 'Root::Inner::Root::Thing')
+    synthetic = build_rdoc_class(full_name: 'Root::Inner::Root::Thing')
 
     dir = generate_from_store([synthetic])
 
@@ -319,7 +215,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_skips_zero_score_classes_that_only_collapse_by_normalization
-    collapsed = build_fake_class(full_name: 'Alpha::Alpha')
+    collapsed = build_rdoc_class(full_name: 'Alpha::Alpha')
 
     dir = generate_from_store([collapsed])
 
@@ -328,7 +224,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_skips_zero_score_classes_with_synthetic_full_names
-    synthetic = build_fake_class(full_name: 'Root::Thing::Root')
+    synthetic = build_rdoc_class(full_name: 'Root::Thing::Root')
 
     dir = generate_from_store([synthetic])
 
@@ -337,7 +233,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_keeps_zero_score_real_classes
-    real = build_fake_class(full_name: 'Shell')
+    real = build_rdoc_class(full_name: 'Shell')
 
     dir = generate_from_store([real])
 
@@ -346,7 +242,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_keeps_classes_with_attribute_only_content
-    attributed = build_fake_class(full_name: 'AttributeOnly', attributes: 1)
+    attributed = build_rdoc_class(full_name: 'AttributeOnly', attributes: 1)
 
     dir = generate_from_store([attributed])
 
@@ -355,12 +251,12 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_attribute_only_score_beats_zero_score_duplicate
-    assert_positive_score_beats_zero_score_duplicate(build_fake_class(full_name: 'AttributeWinner', attributes: 1))
+    assert_positive_score_beats_zero_score_duplicate(build_rdoc_class(full_name: 'AttributeWinner', attributes: 1))
   end
 
   def test_attribute_only_score_replaces_earlier_zero_score_duplicate
-    duplicate = build_fake_class(full_name: 'Attr::A::Attr::Winner')
-    primary = build_fake_class(full_name: 'Attr::Winner', attributes: 1)
+    duplicate = build_rdoc_class(full_name: 'Attr::A::Attr::Winner')
+    primary = build_rdoc_class(full_name: 'Attr::Winner', attributes: 1)
 
     dir = generate_from_store([duplicate, primary])
 
@@ -370,7 +266,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_keeps_classes_with_constant_only_content
-    constant_only = build_fake_class(full_name: 'ConstantOnly', constants: 1)
+    constant_only = build_rdoc_class(full_name: 'ConstantOnly', constants: 1)
 
     dir = generate_from_store([constant_only])
 
@@ -379,12 +275,12 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_constant_only_score_beats_zero_score_duplicate
-    assert_positive_score_beats_zero_score_duplicate(build_fake_class(full_name: 'ConstantWinner', constants: 1))
+    assert_positive_score_beats_zero_score_duplicate(build_rdoc_class(full_name: 'ConstantWinner', constants: 1))
   end
 
   def test_constant_only_score_replaces_earlier_zero_score_duplicate
-    duplicate = build_fake_class(full_name: 'Const::A::Const::Winner')
-    primary = build_fake_class(full_name: 'Const::Winner', constants: 1)
+    duplicate = build_rdoc_class(full_name: 'Const::A::Const::Winner')
+    primary = build_rdoc_class(full_name: 'Const::Winner', constants: 1)
 
     dir = generate_from_store([duplicate, primary])
 
@@ -394,7 +290,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_keeps_classes_with_description_only_content
-    described = build_fake_class(full_name: 'DescriptionOnly', description: 'Only docs')
+    described = build_rdoc_class(full_name: 'DescriptionOnly', description: 'Only docs')
 
     dir = generate_from_store([described])
 
@@ -403,7 +299,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_handles_nil_descriptions_when_other_content_is_present
-    described = build_fake_class(full_name: 'NilDescription', description: nil, methods: 1)
+    described = build_rdoc_class(full_name: 'NilDescription', description: nil, methods: 1)
 
     dir = generate_from_store([described])
 
@@ -412,12 +308,12 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_description_only_score_beats_zero_score_duplicate
-    assert_positive_score_beats_zero_score_duplicate(build_fake_class(full_name: 'DescriptionWinner', description: 'Only docs'))
+    assert_positive_score_beats_zero_score_duplicate(build_rdoc_class(full_name: 'DescriptionWinner', description: 'Only docs'))
   end
 
   def test_description_only_score_replaces_earlier_zero_score_duplicate
-    duplicate = build_fake_class(full_name: 'Desc::A::Desc::Winner')
-    primary = build_fake_class(full_name: 'Desc::Winner', description: 'Only docs')
+    duplicate = build_rdoc_class(full_name: 'Desc::A::Desc::Winner')
+    primary = build_rdoc_class(full_name: 'Desc::Winner', description: 'Only docs')
 
     dir = generate_from_store([duplicate, primary])
 
@@ -427,8 +323,8 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_description_only_score_ties_other_single_signal_scores
-    winner = build_fake_class(full_name: 'DescTie::Winner', description: 'Method winner', methods: 1)
-    challenger = build_fake_class(full_name: 'DescTie::Winner::DescTie::Winner', description: 'Description challenger')
+    winner = build_rdoc_class(full_name: 'DescTie::Winner', description: 'Method winner', methods: 1)
+    challenger = build_rdoc_class(full_name: 'DescTie::Winner::DescTie::Winner', description: 'Description challenger')
 
     dir = generate_from_store([winner, challenger])
 
@@ -437,8 +333,8 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_whitespace_only_description_does_not_create_positive_score
-    duplicate = build_fake_class(full_name: 'Blank::A::Blank::Winner')
-    whitespace = build_fake_class(full_name: 'Blank::Winner', description: " \n\t")
+    duplicate = build_rdoc_class(full_name: 'Blank::A::Blank::Winner')
+    whitespace = build_rdoc_class(full_name: 'Blank::Winner', description: " \n\t")
 
     dir = generate_from_store([duplicate, whitespace])
 
@@ -447,12 +343,12 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_sorts_class_docs_by_normalized_display_name
-    later_full_name = build_fake_class(
+    later_full_name = build_rdoc_class(
       full_name: 'Zoo::M::Zoo::Ant',
       description: 'Ant doc',
       methods: 1
     )
-    earlier_full_name = build_fake_class(
+    earlier_full_name = build_rdoc_class(
       full_name: 'Zoo::Bee',
       description: 'Bee doc',
       methods: 1
@@ -467,12 +363,12 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_setup_sorts_store_classes_before_resolving_equal_score_duplicates
-    sorted_winner = build_fake_class(
+    sorted_winner = build_rdoc_class(
       full_name: 'Order::A::Order::Thing',
       description: 'Sorted winner',
       methods: 1
     )
-    unsorted_first = build_fake_class(
+    unsorted_first = build_rdoc_class(
       full_name: 'Order::Thing',
       description: 'Unsorted loser',
       methods: 1
@@ -486,10 +382,10 @@ class TestMutantClassDocs < Minitest::Test
 
   def test_setup_keeps_only_displayed_pages_and_sorts_them_by_base_name
     pages = [
-      FakePage.new('zeta.rdoc', 'zeta', 'zeta', 'Zeta page', true),
-      FakePage.new('alpha.rdoc', 'alpha', 'alpha', 'Alpha page', true),
-      FakePage.new('hidden.rdoc', 'hidden', 'hidden', 'Hidden page', false),
-      FakeBinaryPage.new('binary.rdoc', 'binary', 'binary', 'Binary page', true)
+      rdoc_page(relative_name: 'zeta.rdoc', comment: 'Zeta page'),
+      rdoc_page(relative_name: 'alpha.rdoc', comment: 'Alpha page'),
+      rdoc_page(relative_name: 'hidden.rdoc', comment: 'Hidden page', display: false),
+      rdoc_page(relative_name: 'binary.rdoc', comment: 'Binary page', parser: nil)
     ]
 
     dir = generate_from_store([], pages: pages)
@@ -506,17 +402,20 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_setup_populates_known_output_paths_and_class_indexes
-    klass = build_fake_class(
+    klass = build_rdoc_class(
       full_name: 'Solo::Inner::Solo::Thing',
       description: 'Synthetic doc',
       methods: 1
     )
     pages = [
-      FakePage.new('alpha.rdoc', 'alpha', 'alpha', 'Alpha page', true),
-      FakePage.new('hidden.rdoc', 'hidden', 'hidden', 'Hidden page', false),
-      FakeBinaryPage.new('binary.rdoc', 'binary', 'binary', 'Binary page', true)
+      rdoc_page(relative_name: 'alpha.rdoc', comment: 'Alpha page'),
+      rdoc_page(relative_name: 'hidden.rdoc', comment: 'Hidden page', display: false),
+      rdoc_page(relative_name: 'binary.rdoc', comment: 'Binary page', parser: nil)
     ]
-    probe = ScoreProbe.new(FakeStore.new([klass], pages), GeneratorOptions.new(stable_tmpdir('known-output-paths'), 'nested/docs-root'))
+    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(
+      rdoc_store(classes: [klass], pages: pages),
+      generator_options(op_dir: stable_tmpdir('known-output-paths'), root: 'nested/docs-root')
+    )
 
     probe.setup
 
@@ -536,8 +435,8 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_emit_classfiles_passes_output_path_to_finalize_markdown
-    klass = build_fake_class(full_name: 'Emit::Thing', description: 'Emit doc', methods: 1)
-    probe = EmitProbe.new(FakeStore.new([klass], []), GeneratorOptions.new(stable_tmpdir('emit-probe'), nil))
+    klass = build_rdoc_class(full_name: 'Emit::Thing', description: 'Emit doc', methods: 1)
+    probe = RDocMarkdownGeneratorProbes::EmitClassProbe.new(rdoc_store(classes: [klass], pages: []), generator_options(op_dir: stable_tmpdir('emit-probe')))
 
     probe.setup
     probe.emit_classfiles
@@ -547,8 +446,8 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_emit_csv_index_respects_custom_output_name
-    klass = build_fake_class(full_name: 'Csv::Thing', description: 'CSV doc', methods: 1)
-    probe = ScoreProbe.new(FakeStore.new([klass], []), GeneratorOptions.new(stable_tmpdir('emit-csv-name'), nil))
+    klass = build_rdoc_class(full_name: 'Csv::Thing', description: 'CSV doc', methods: 1)
+    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(rdoc_store(classes: [klass], pages: []), generator_options(op_dir: stable_tmpdir('emit-csv-name')))
 
     probe.setup
     probe.emit_csv_index('custom.csv')
@@ -559,17 +458,20 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_emit_csv_index_writes_rows_for_visible_members_and_pages
-    klass = FakeClass.new(
-      'Csv::Thing',
-      'class',
-      'CSV doc',
-      [VisibleMember.new('run', 'method-i-run')],
-      [VisibleMember.new('BETA', 'BETA'), HiddenMember.new('HIDDEN'), VisibleMember.new('ALPHA', 'ALPHA')],
-      [VisibleMember.new('beta', 'attribute-i-beta'), HiddenMember.new('hidden'), VisibleMember.new('alpha', 'attribute-i-alpha')],
-      'class-Csv-Thing'
+    klass = build_rdoc_class(full_name: 'Csv::Thing', description: 'CSV doc')
+    klass.add_method(rdoc_method('run', visible: true))
+    klass.add_method(rdoc_method('hidden', visible: false))
+    klass.add_constant(rdoc_constant('BETA', visible: true))
+    klass.add_constant(rdoc_constant('HIDDEN', visible: false))
+    klass.add_constant(rdoc_constant('ALPHA', visible: true))
+    klass.add_attribute(rdoc_attribute('beta', visible: true))
+    klass.add_attribute(rdoc_attribute('hidden', visible: false))
+    klass.add_attribute(rdoc_attribute('alpha', visible: true))
+    page = rdoc_page(relative_name: 'guide.rdoc', comment: 'Guide page')
+    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(
+      rdoc_store(classes: [klass], pages: [page]),
+      generator_options(op_dir: stable_tmpdir('emit-csv-rows'))
     )
-    page = FakePage.new('guide.rdoc', 'guide', 'guide', 'Guide page', true)
-    probe = ScoreProbe.new(FakeStore.new([klass], [page]), GeneratorOptions.new(stable_tmpdir('emit-csv-rows'), nil))
 
     probe.setup
     probe.emit_csv_index('custom.csv')
@@ -579,6 +481,7 @@ class TestMutantClassDocs < Minitest::Test
 
     assert_includes entries, ['Csv::Thing', 'Class', 'Csv/Thing.md']
     assert_includes entries, ['Csv::Thing.run', 'Method', 'Csv/Thing.md#method-i-run']
+    refute_includes entries, ['Csv::Thing.hidden', 'Method', 'Csv/Thing.md#method-i-hidden']
     assert_includes entries, ['guide', 'Page', 'guide_rdoc.md']
 
     assert_eql [
@@ -593,7 +496,7 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_generate_runs_setup_then_emits_files_and_index_with_debug_messages
-    probe = GenerateProbe.new(nil, GeneratorOptions.new(stable_tmpdir('generate-probe'), nil))
+    probe = RDocMarkdownGeneratorProbes::GenerateProbe.new(nil, generator_options(op_dir: stable_tmpdir('generate-probe')))
 
     probe.generate
 
@@ -610,8 +513,8 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def test_setup_uses_dot_root_segment_when_root_is_nil
-    klass = build_fake_class(full_name: 'NilRoot::Thing', description: 'Doc', methods: 1)
-    probe = ScoreProbe.new(FakeStore.new([klass], []), GeneratorOptions.new(stable_tmpdir('nil-root-probe'), nil))
+    klass = build_rdoc_class(full_name: 'NilRoot::Thing', description: 'Doc', methods: 1)
+    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(rdoc_store(classes: [klass], pages: []), generator_options(op_dir: stable_tmpdir('nil-root-probe')))
 
     probe.setup
 
