@@ -214,7 +214,7 @@ class RDoc::Generator::Markdown
     # - bypass - Ignore the unknown tag but try to convert its content
     # - raise - Raise an error to let you know
 
-    html = normalize_rdoc_pre_blocks(input.to_s)
+    html = normalize_rdoc_pre_blocks(input)
 
     md = ReverseMarkdown.convert(html, unknown_tags: :bypass, github_flavored: true)
 
@@ -460,7 +460,7 @@ class RDoc::Generator::Markdown
   end
 
   def unindent_text(text)
-    lines = text.to_s.lines
+    lines = text.lines
     indent = lines.filter_map { |line| line[/\A[ \t]*/].size unless line.rstrip.empty? }.min
     return text unless indent&.positive?
 

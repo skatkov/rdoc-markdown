@@ -25,15 +25,6 @@ class TestMutantMarkdownHelpers < Minitest::Test
   cover 'RDoc::Generator::Markdown#normalize_rdoc_pre_blocks'
   cover 'RDoc::Generator::Markdown#unindent_text'
 
-  ToStringOnly = Class.new do
-    def initialize(value)
-      @value = value
-    end
-
-    attr_reader :value
-
-    def to_s = value
-  end
   def probe
     RDocMarkdownGeneratorProbes::MarkdownProbe.new(nil, generator_options(op_dir: stable_tmpdir('probe')))
   end
@@ -100,7 +91,7 @@ class TestMutantMarkdownHelpers < Minitest::Test
   end
 
   def test_unindent_text_uses_smallest_non_blank_indent_across_lines
-    text = ToStringOnly.new("    one\n  two\n      three\n")
+    text = "    one\n  two\n      three\n"
 
     assert_eql "  one\ntwo\n    three\n", probe.unindent_text(text)
   end
@@ -112,7 +103,7 @@ class TestMutantMarkdownHelpers < Minitest::Test
   end
 
   def test_unindent_text_returns_original_object_when_indent_is_zero
-    text = ToStringOnly.new("one\n  two\n")
+    text = "one\n  two\n"
 
     assert_same text, probe.unindent_text(text)
   end
@@ -262,8 +253,8 @@ class TestMutantMarkdownHelpers < Minitest::Test
     assert_eql '## Topic', probe.markdownify(html)
   end
 
-  def test_markdownify_accepts_string_like_input_and_only_rewrites_local_html_links
-    html = ToStringOnly.new('<p><a href="Guide.HTML?view=full#top">Guide</a> <a href="http://example.com/doc.html">HTTP</a> <a href="https://example.com/doc.html">HTTPS</a> <a href="mailto:test@example.com">Mail</a> <a href="mailto:report.html">Mail Html</a> <a href="#topic">Anchor</a> <a href="#topic.html">Anchor Html</a></p>')
+  def test_markdownify_only_rewrites_local_html_links
+    html = '<p><a href="Guide.HTML?view=full#top">Guide</a> <a href="http://example.com/doc.html">HTTP</a> <a href="https://example.com/doc.html">HTTPS</a> <a href="mailto:test@example.com">Mail</a> <a href="mailto:report.html">Mail Html</a> <a href="#topic">Anchor</a> <a href="#topic.html">Anchor Html</a></p>'
 
     assert_eql '[Guide](Guide.md?view=full#top) [HTTP](http://example.com/doc.html) [HTTPS](https://example.com/doc.html) [Mail](mailto:test@example.com) [Mail Html](mailto:report.html) [Anchor](#topic) [Anchor Html](#topic.html)',
                probe.markdownify(html)
