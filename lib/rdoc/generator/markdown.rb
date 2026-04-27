@@ -226,7 +226,7 @@ class RDoc::Generator::Markdown
     md.gsub!(/\s\[↑\]\(#top\)$/, '')
 
     # Flatten headings whose visible text is wrapped in a self-link.
-    md.gsub!(/\A(#+)\s\[([^\]]+)\]\((#[^)]+)\)\s*$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
+    md.gsub!(/^(#+)\s+\[([^\]]+)\]\((#[^)]+)\)\s*$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
 
     # Replace .html to .md extension in all local markdown links.
     md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
