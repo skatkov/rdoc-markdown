@@ -46,16 +46,14 @@ class RDoc::Generator::Markdown
     @store = store
     @options = options
 
-    @base_dir = Pathname.pwd.expand_path
-
-    @classes = nil
+    @base_dir = Pathname.pwd
   end
 
   ##
   # Generates markdown files and search index file
 
   def generate
-    debug("Setting things up #{@output_dir}")
+    debug('Setting things up ')
 
     setup
 
@@ -96,7 +94,7 @@ class RDoc::Generator::Markdown
     CSV.open(filepath, 'wb') do |csv|
       csv << %w[name type path]
 
-      @classes.map do |klass|
+      @classes.each do |klass|
         csv << [
           display_name(klass),
           klass.type.capitalize,
@@ -218,17 +216,17 @@ class RDoc::Generator::Markdown
 
     html = normalize_rdoc_pre_blocks(input.to_s)
 
-    md = String.new(ReverseMarkdown.convert(html, unknown_tags: :bypass, github_flavored: true))
+    md = ReverseMarkdown.convert(html, unknown_tags: :bypass, github_flavored: true)
 
     # unindent multiline strings
     md = unindent_text(md)
 
     # Remove RDoc navigation links from generated headings.
-    md.gsub!(/(#+\s+[^\n]+?)\s*\[¶\]\([^)]+\)(?:\s*\[↑\]\(#top\))?/) { Regexp.last_match(1) }
-    md.gsub!(/\s+\[↑\]\(#top\)$/, '')
+    md.gsub!(/(#\s[^\n]+?) \[¶\]\([^)]+\)(?: \[↑\]\(#top\))?/) { Regexp.last_match(1) }
+    md.gsub!(/\s\[↑\]\(#top\)$/, '')
 
     # Flatten headings whose visible text is wrapped in a self-link.
-    md.gsub!(/^(#+)\s+\[([^\]]+)\]\((#[^)]+)\)\s*$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
+    md.gsub!(/\A(#+)\s\[([^\]]+)\]\((#[^)]+)\)\s*$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
 
     # Replace .html to .md extension in all local markdown links.
     md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
@@ -428,23 +426,22 @@ class RDoc::Generator::Markdown
   end
 
   def convert_definition_list_block(body)
-    lines = body.lines.map(&:rstrip)
-    return nil if lines.empty?
-    return nil unless lines.any? { |line| line.strip.end_with?('::') }
+    lines = body.lines
+    return nil unless lines.any? { |line| line.rstrip.end_with?('::') }
     return nil unless lines.all? { |line| definition_list_line?(line) }
 
-    lines.filter_map do |line|
+    lines.map do |line|
       stripped = line.strip
-      next '' if stripped.empty?
+      next if stripped.empty?
       next "#{stripped.sub(/::\z/, '')}:" if stripped.end_with?('::')
 
-      "- #{stripped.sub(/^\*\s+/, '')}"
+      "- #{stripped.sub(/\A\*\s+/, '')}"
     end.join("\n")
   end
 
   def definition_list_line?(line)
     stripped = line.strip
-    stripped.empty? || stripped.end_with?('::') || stripped.match?(/^\*\s+/)
+    stripped.empty? || stripped.end_with?('::') || stripped.match?(/\A\*\s/)
   end
 
   def method_link(method, current_class:)
@@ -496,17 +493,11 @@ class RDoc::Generator::Markdown
   end
 
   def resolve_output_path(path, current_dir)
-    normalized_path = path.to_s.sub(%r{\A/}, '')
-    candidates = [normalized_path]
-
+    normalized_path = path.sub(%r{\A/}, '')
     stripped = normalized_path.sub(%r{\A(?:files|classes|modules)/}, '')
-    candidates << stripped unless stripped == normalized_path
+    candidates = [normalized_path, stripped.delete_prefix("#{@root_path_segment}/")]
 
-    if @root_path_segment && stripped.start_with?("#{@root_path_segment}/")
-      candidates << stripped.delete_prefix("#{@root_path_segment}/")
-    end
-
-    candidates = candidates.flat_map { |candidate| candidate_with_parent_reductions(candidate) }.uniq
+    candidates = candidates.flat_map { |candidate| candidate_with_parent_reductions(candidate) }
 
     candidates.each do |candidate|
       return candidate if @known_output_paths.include?(candidate)
@@ -529,7 +520,7 @@ class RDoc::Generator::Markdown
       reductions << reduced
     end
 
-    reductions.uniq.reject(&:empty?)
+    reductions.reject(&:empty?)
   end
 
   def normalize_input_path_for_output(path)

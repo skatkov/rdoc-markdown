@@ -27,7 +27,7 @@ class TestMutantSignatureHelpers < Minitest::Test
   FakeMethod = Struct.new(:param_seq, :params)
 
   def probe
-    SignatureProbe.new(nil, GeneratorOptions.new(Dir.mktmpdir, nil))
+    SignatureProbe.new(nil, GeneratorOptions.new(stable_tmpdir('signature-probe'), nil))
   end
 
   def test_method_signature_returns_empty_parens_for_blank_signature

@@ -27,7 +27,7 @@ class TestActionpackRailtiesHarness < Minitest::Test
     files << File.join(rails_root, 'railties/README.rdoc')
     files << railties_main
 
-    out_dir = File.join(Dir.mktmpdir, 'actionpack-railties-markdown')
+    out_dir = File.join(stable_tmpdir('actionpack-railties-markdown'), 'out')
 
     options = RDoc::Options.new
     options.setup_generator('markdown')

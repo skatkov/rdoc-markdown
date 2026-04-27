@@ -12,7 +12,7 @@ class TestGenerator < Minitest::Test
   end
 
   def run_generator(file, title)
-    dir = File.join(Dir.mktmpdir, 'out')
+    dir = File.join(stable_tmpdir('generator-output'), 'out')
 
     options = RDoc::Options.new
     options.setup_generator 'markdown'

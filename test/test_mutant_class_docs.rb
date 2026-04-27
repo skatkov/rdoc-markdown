@@ -11,6 +11,9 @@ class TestMutantClassDocs < Minitest::Test
   cover 'RDoc::Generator::Markdown#class_content_score' if respond_to?(:cover)
   cover 'RDoc::Generator::Markdown#class_doc_for' if respond_to?(:cover)
   cover 'RDoc::Generator::Markdown#display_name' if respond_to?(:cover)
+  cover 'RDoc::Generator::Markdown#emit_classfiles' if respond_to?(:cover)
+  cover 'RDoc::Generator::Markdown#emit_csv_index' if respond_to?(:cover)
+  cover 'RDoc::Generator::Markdown#generate' if respond_to?(:cover)
   cover 'RDoc::Generator::Markdown#legacy_paths_for' if respond_to?(:cover)
   cover 'RDoc::Generator::Markdown#normalized_full_name' if respond_to?(:cover)
   cover 'RDoc::Generator::Markdown#output_path_for' if respond_to?(:cover)
@@ -20,12 +23,63 @@ class TestMutantClassDocs < Minitest::Test
   GeneratorOptions = Struct.new(:op_dir, :root)
   ScoreProbe = Class.new(RDoc::Generator::Markdown) do
     public :class_content_score
+    public :emit_classfiles
+    public :emit_csv_index
     public :normalized_full_name
     public :setup
     public :synthetic_full_name?
   end
+  EmitProbe = Class.new(ScoreProbe) do
+    attr_reader :finalize_calls
+
+    def initialize(*args)
+      super
+      @finalize_calls = []
+    end
+
+    private
+
+    def finalize_markdown(content, current_output_path: nil)
+      @finalize_calls << [content, current_output_path]
+      "finalized #{current_output_path}"
+    end
+  end
+  GenerateProbe = Class.new(RDoc::Generator::Markdown) do
+    attr_reader :calls
+
+    def initialize(*args)
+      super
+      @calls = []
+    end
+
+    private
+
+    def debug(str = nil)
+      @calls << [:debug, str]
+    end
+
+    def setup
+      @output_dir = Pathname.new('tmp/generated-docs')
+      @calls << :setup
+    end
+
+    def emit_classfiles
+      @calls << :emit_classfiles
+    end
+
+    def emit_pagefiles
+      @calls << :emit_pagefiles
+    end
+
+    def emit_csv_index
+      @calls << :emit_csv_index
+    end
+  end
   HiddenMember = Struct.new(:name) do
     def display? = false
+  end
+  VisibleMember = Struct.new(:name, :aref) do
+    def display? = true
   end
   FakeStore = Struct.new(:classes, :pages) do
     def all_classes_and_modules = classes
@@ -59,18 +113,18 @@ class TestMutantClassDocs < Minitest::Test
   end
 
   def generate_from_store(classes, pages: nil)
-    dir = Dir.mktmpdir
+    dir = stable_tmpdir('generate-from-store')
     generator = RDoc::Generator::Markdown.new(FakeStore.new(classes, pages), GeneratorOptions.new(dir, nil))
     generator.generate
     dir
   end
 
   def score_probe
-    ScoreProbe.new(nil, GeneratorOptions.new(Dir.mktmpdir, nil))
+    ScoreProbe.new(nil, GeneratorOptions.new(stable_tmpdir('score-probe'), nil))
   end
 
   def test_setup_without_store_only_prepares_output_directory
-    output_dir = File.join(Dir.mktmpdir, 'score-probe-output')
+    output_dir = File.join(stable_tmpdir('score-probe-output'), 'out')
     probe = ScoreProbe.new(nil, GeneratorOptions.new(output_dir, nil))
 
     probe.setup
@@ -462,7 +516,7 @@ class TestMutantClassDocs < Minitest::Test
       FakePage.new('hidden.rdoc', 'hidden', 'hidden', 'Hidden page', false),
       FakeBinaryPage.new('binary.rdoc', 'binary', 'binary', 'Binary page', true)
     ]
-    probe = ScoreProbe.new(FakeStore.new([klass], pages), GeneratorOptions.new(Dir.mktmpdir, 'nested/docs-root'))
+    probe = ScoreProbe.new(FakeStore.new([klass], pages), GeneratorOptions.new(stable_tmpdir('known-output-paths'), 'nested/docs-root'))
 
     probe.setup
 
@@ -481,9 +535,83 @@ class TestMutantClassDocs < Minitest::Test
     assert_eql 'docs-root', root_path_segment
   end
 
+  def test_emit_classfiles_passes_output_path_to_finalize_markdown
+    klass = build_fake_class(full_name: 'Emit::Thing', description: 'Emit doc', methods: 1)
+    probe = EmitProbe.new(FakeStore.new([klass], []), GeneratorOptions.new(stable_tmpdir('emit-probe'), nil))
+
+    probe.setup
+    probe.emit_classfiles
+
+    assert_eql ['Emit/Thing.md'], probe.finalize_calls.map { |_content, current_output_path| current_output_path }
+    assert_eql 'finalized Emit/Thing.md', File.read(File.join(probe.instance_variable_get(:@output_dir), 'Emit/Thing.md'))
+  end
+
+  def test_emit_csv_index_respects_custom_output_name
+    klass = build_fake_class(full_name: 'Csv::Thing', description: 'CSV doc', methods: 1)
+    probe = ScoreProbe.new(FakeStore.new([klass], []), GeneratorOptions.new(stable_tmpdir('emit-csv-name'), nil))
+
+    probe.setup
+    probe.emit_csv_index('custom.csv')
+
+    output_dir = probe.instance_variable_get(:@output_dir)
+    assert_true File.exist?(File.join(output_dir, 'custom.csv'))
+    assert_false File.exist?(File.join(output_dir, 'index.csv'))
+  end
+
+  def test_emit_csv_index_writes_rows_for_visible_members_and_pages
+    klass = FakeClass.new(
+      'Csv::Thing',
+      'class',
+      'CSV doc',
+      [VisibleMember.new('run', 'method-i-run')],
+      [VisibleMember.new('BETA', 'BETA'), HiddenMember.new('HIDDEN'), VisibleMember.new('ALPHA', 'ALPHA')],
+      [VisibleMember.new('beta', 'attribute-i-beta'), HiddenMember.new('hidden'), VisibleMember.new('alpha', 'attribute-i-alpha')],
+      'class-Csv-Thing'
+    )
+    page = FakePage.new('guide.rdoc', 'guide', 'guide', 'Guide page', true)
+    probe = ScoreProbe.new(FakeStore.new([klass], [page]), GeneratorOptions.new(stable_tmpdir('emit-csv-rows'), nil))
+
+    probe.setup
+    probe.emit_csv_index('custom.csv')
+
+    rows = CSV.parse(File.read(File.join(probe.instance_variable_get(:@output_dir), 'custom.csv')), headers: true)
+    entries = rows.map { |row| [row['name'], row['type'], row['path']] }
+
+    assert_includes entries, ['Csv::Thing', 'Class', 'Csv/Thing.md']
+    assert_includes entries, ['Csv::Thing.run', 'Method', 'Csv/Thing.md#method-i-run']
+    assert_includes entries, ['guide', 'Page', 'guide_rdoc.md']
+
+    assert_eql [
+      ['Csv::Thing.ALPHA', 'Constant', 'Csv/Thing.md#ALPHA'],
+      ['Csv::Thing.BETA', 'Constant', 'Csv/Thing.md#BETA']
+    ], entries.select { |_name, type, _path| type == 'Constant' }
+
+    assert_eql [
+      ['Csv::Thing.alpha', 'Attribute', 'Csv/Thing.md#attribute-i-alpha'],
+      ['Csv::Thing.beta', 'Attribute', 'Csv/Thing.md#attribute-i-beta']
+    ], entries.select { |_name, type, _path| type == 'Attribute' }
+  end
+
+  def test_generate_runs_setup_then_emits_files_and_index_with_debug_messages
+    probe = GenerateProbe.new(nil, GeneratorOptions.new(stable_tmpdir('generate-probe'), nil))
+
+    probe.generate
+
+    assert_eql [
+      [:debug, 'Setting things up '],
+      :setup,
+      [:debug, 'Generate documentation in tmp/generated-docs'],
+      :emit_classfiles,
+      [:debug, 'Generate pages in tmp/generated-docs'],
+      :emit_pagefiles,
+      [:debug, 'Generate index file in tmp/generated-docs'],
+      :emit_csv_index
+    ], probe.calls
+  end
+
   def test_setup_uses_dot_root_segment_when_root_is_nil
     klass = build_fake_class(full_name: 'NilRoot::Thing', description: 'Doc', methods: 1)
-    probe = ScoreProbe.new(FakeStore.new([klass], []), GeneratorOptions.new(Dir.mktmpdir, nil))
+    probe = ScoreProbe.new(FakeStore.new([klass], []), GeneratorOptions.new(stable_tmpdir('nil-root-probe'), nil))
 
     probe.setup
 

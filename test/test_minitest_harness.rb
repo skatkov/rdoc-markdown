@@ -24,7 +24,7 @@ class TestMinitestHarness < Minitest::Test
     manifest = File.join(minitest_root, 'Manifest.txt')
     files << manifest if File.file?(manifest)
 
-    out_dir = File.join(Dir.mktmpdir, 'minitest-markdown')
+    out_dir = File.join(stable_tmpdir('minitest-markdown'), 'out')
 
     options = RDoc::Options.new
     options.setup_generator('markdown')

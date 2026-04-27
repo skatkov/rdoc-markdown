@@ -24,7 +24,7 @@ class TestRailsHarness < Minitest::Test
     active_record_readme = File.join(rails_root, 'activerecord/README.rdoc')
     files << active_record_readme if File.file?(active_record_readme)
 
-    out_dir = File.join(Dir.mktmpdir, 'rails-markdown')
+    out_dir = File.join(stable_tmpdir('rails-markdown'), 'out')
 
     options = RDoc::Options.new
     options.setup_generator('markdown')
