@@ -13,9 +13,8 @@ rescue LoadError
   nil
 end
 
-require_relative "support/mutant_setup"
+require_relative "support/mutant"
 require_relative "support/rdoc"
-require_relative "support/markdown_generator_probes"
 
 class Minitest::Test
   include RDocTestHelpers

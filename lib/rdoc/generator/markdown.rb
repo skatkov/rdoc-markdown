@@ -77,19 +77,18 @@ class RDoc::Generator::Markdown
   ##
   # This method is used to output debugging information in case rdoc is run with --debug parameter
 
-  def debug(str = nil)
+  def debug(str)
     return unless $DEBUG_RDOC
 
-    puts "[rdoc-markdown] #{str}" if str
-    yield if block_given?
+    puts "[rdoc-markdown] #{str}"
   end
 
   ##
   # This class emits a search index for generated documentation as sqlite database
   #
 
-  def emit_csv_index(name = 'index.csv')
-    filepath = "#{output_dir}/#{name}"
+  def emit_csv_index
+    filepath = "#{output_dir}/index.csv"
 
     CSV.open(filepath, 'wb') do |csv|
       csv << %w[name type path]
@@ -366,7 +365,7 @@ class RDoc::Generator::Markdown
   end
 
   def extract_parameter_name(parameter)
-    match = parameter.strip.match(/\A(?:\*\*|\*|&)?([a-z_]\w*):?\z/)
+    match = parameter.match(/\A(?:\*\*|\*|&)?([a-z_]\w*):?\z/)
     match && match[1]
   end
 
@@ -384,7 +383,7 @@ class RDoc::Generator::Markdown
     "Alias for: [`#{aliased_method.name}`](#{method_link(aliased_method, current_class: current_class)})"
   end
 
-  def finalize_markdown(content, current_output_path: nil)
+  def finalize_markdown(content, current_output_path:)
     output = content.lines.map(&:rstrip).join("\n")
     output = normalize_internal_links(output, current_output_path: current_output_path) if current_output_path
     output.gsub!(/\n{3,}/, "\n\n")
@@ -418,7 +417,6 @@ class RDoc::Generator::Markdown
 
   def convert_definition_list_block(body)
     lines = body.lines
-    return nil unless lines.any? { |line| line.rstrip.end_with?('::') }
     return nil unless lines.all? { |line| definition_list_line?(line) }
 
     lines.map do |line|
@@ -426,7 +424,7 @@ class RDoc::Generator::Markdown
       next if stripped.empty?
       next "#{stripped.sub(/::\z/, '')}:" if stripped.end_with?('::')
 
-      "- #{stripped.sub(/\A\*\s+/, '')}"
+      "- #{stripped.sub(/\A\*\s/, '')}"
     end.join("\n")
   end
 
@@ -488,8 +486,6 @@ class RDoc::Generator::Markdown
     stripped = normalized_path.sub(%r{\A(?:files|classes|modules)/}, '')
     candidates = [normalized_path, stripped.delete_prefix("#{@root_path_segment}/")]
 
-    candidates = candidates.flat_map { |candidate| candidate_with_parent_reductions(candidate) }
-
     candidates.each do |candidate|
       return candidate if @known_output_paths.include?(candidate)
     end
@@ -501,19 +497,6 @@ class RDoc::Generator::Markdown
 
     nil
   end
-
-  def candidate_with_parent_reductions(candidate)
-    reductions = [candidate.sub(%r{\A\./}, '')]
-    reduced = reductions.first
-
-    while reduced.start_with?('../')
-      reduced = reduced.delete_prefix('../')
-      reductions << reduced
-    end
-
-    reductions.reject(&:empty?)
-  end
-
   def normalize_input_path_for_output(path)
     normalized = path.to_s.tr('\\', '/').sub(%r{\A\./}, '')
     normalized = normalized.sub(%r{\A/}, '')

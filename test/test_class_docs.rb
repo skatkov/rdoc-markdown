@@ -6,7 +6,7 @@ require 'csv'
 require 'rdoc/rdoc'
 require 'rdoc/markdown'
 
-class TestMutantClassDocs < Minitest::Test
+class TestClassDocs < Minitest::Test
   cover 'RDoc::Generator::Markdown#build_class_docs'
   cover 'RDoc::Generator::Markdown#class_content_score'
   cover 'RDoc::Generator::Markdown#class_doc_for'
@@ -27,19 +27,6 @@ class TestMutantClassDocs < Minitest::Test
     dir
   end
 
-  def score_probe
-    RDocMarkdownGeneratorProbes::ScoreProbe.new(nil, generator_options(op_dir: stable_tmpdir('score-probe')))
-  end
-
-  def test_setup_without_store_only_prepares_output_directory
-    output_dir = File.join(stable_tmpdir('score-probe-output'), 'out')
-    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(nil, generator_options(op_dir: output_dir))
-
-    probe.setup
-
-    assert_true Dir.exist?(output_dir)
-  end
-
   def assert_positive_score_beats_zero_score_duplicate(primary)
     duplicate = build_rdoc_class(full_name: "#{primary.full_name}::#{primary.full_name}")
 
@@ -54,55 +41,6 @@ class TestMutantClassDocs < Minitest::Test
     CSV.parse(File.read(File.join(dir, 'index.csv')), headers: true).map do |row|
       [row['name'], row['type'], row['path']]
     end
-  end
-
-  def test_class_content_score_counts_each_signal_once
-    klass = build_rdoc_class(
-      full_name: 'ScoreSignals',
-      description: 'docs',
-      methods: 1,
-      constants: 1,
-      attributes: 1
-    )
-
-    assert_eql 4, score_probe.class_content_score(klass)
-  end
-
-  def test_class_content_score_ignores_blank_descriptions
-    whitespace = build_rdoc_class(full_name: 'WhitespaceScore', description: " \n\t")
-    nil_description = build_rdoc_class(full_name: 'NilScore', description: nil, methods: 1)
-
-    assert_eql 0, score_probe.class_content_score(whitespace)
-    assert_eql 1, score_probe.class_content_score(nil_description)
-  end
-
-  def test_normalized_full_name_keeps_non_synthetic_names
-    assert_eql 'Shell', score_probe.normalized_full_name('Shell')
-    assert_eql 'Ocean::Salmon', score_probe.normalized_full_name('Ocean::Salmon')
-  end
-
-  def test_normalized_full_name_collapses_exact_repetition_suffixes
-    assert_eql 'Alpha', score_probe.normalized_full_name('Alpha::Alpha')
-    assert_eql 'Ocean::Salmon', score_probe.normalized_full_name('Ocean::Salmon::Ocean::Salmon')
-  end
-
-  def test_normalized_full_name_collapses_root_repetition_inside_namespaces
-    assert_eql 'Ocean::Salmon', score_probe.normalized_full_name('Ocean::Deep::Ocean::Salmon')
-    assert_eql 'Ocean::Salmon', score_probe.normalized_full_name('Ocean::Deep::Cold::Ocean::Salmon')
-    assert_eql 'VendoredPathExpander::PathExpander',
-               score_probe.normalized_full_name('VendoredPathExpander::Minitest::VendoredPathExpander::PathExpander')
-  end
-
-  def test_normalized_full_name_collapses_repeated_prefix_segments
-    assert_eql 'A::B::C', score_probe.normalized_full_name('A::B::A::B::C')
-  end
-
-  def test_synthetic_full_name_detects_repeated_root_segments
-    assert_true score_probe.synthetic_full_name?('Root::Thing::Root')
-    assert_true score_probe.synthetic_full_name?('Root::Inner::Root::Thing')
-    assert_false score_probe.synthetic_full_name?('Root::Thing')
-    assert_false score_probe.synthetic_full_name?('Root::Thing::Else')
-    assert_false score_probe.synthetic_full_name?('Alpha::Alpha')
   end
 
   def test_generate_prefers_best_normalized_class_doc_and_writes_legacy_path
@@ -332,6 +270,16 @@ class TestMutantClassDocs < Minitest::Test
     refute_includes File.read(File.join(dir, 'DescTie/Winner.md')), 'Description challenger'
   end
 
+  def test_description_only_score_ties_method_only_score
+    winner = build_rdoc_class(full_name: 'MethodTie::Winner', description: nil, methods: 1)
+    challenger = build_rdoc_class(full_name: 'MethodTie::Winner::MethodTie::Winner', description: 'Description challenger')
+
+    dir = generate_from_store([winner, challenger])
+
+    assert_includes index_entries(dir), ['MethodTie::Winner', 'Class', 'MethodTie/Winner.md']
+    refute_includes File.read(File.join(dir, 'MethodTie/Winner.md')), 'Description challenger'
+  end
+
   def test_whitespace_only_description_does_not_create_positive_score
     duplicate = build_rdoc_class(full_name: 'Blank::A::Blank::Winner')
     whitespace = build_rdoc_class(full_name: 'Blank::Winner', description: " \n\t")
@@ -401,10 +349,10 @@ class TestMutantClassDocs < Minitest::Test
     assert_eql ['zeta', 'Page', 'zeta_rdoc.md'], page_entries.fetch(1)
   end
 
-  def test_setup_populates_known_output_paths_and_class_indexes
+  def test_generate_populates_known_output_paths_for_link_normalization
     klass = build_rdoc_class(
       full_name: 'Solo::Inner::Solo::Thing',
-      description: 'Synthetic doc',
+      description: 'See {alpha}[alpha_rdoc.html] and {legacy}[Solo/Inner/Solo/Thing.html].',
       methods: 1
     )
     pages = [
@@ -412,49 +360,12 @@ class TestMutantClassDocs < Minitest::Test
       rdoc_page(relative_name: 'hidden.rdoc', comment: 'Hidden page', display: false),
       rdoc_page(relative_name: 'binary.rdoc', comment: 'Binary page', parser: nil)
     ]
-    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(
-      rdoc_store(classes: [klass], pages: pages),
-      generator_options(op_dir: stable_tmpdir('known-output-paths'), root: 'nested/docs-root')
-    )
 
-    probe.setup
+    dir = generate_from_store([klass], pages: pages)
 
-    class_docs_by_object_id = probe.instance_variable_get(:@class_docs_by_object_id)
-    classes = probe.instance_variable_get(:@classes)
-    known_output_paths = probe.instance_variable_get(:@known_output_paths)
-    root_path_segment = probe.instance_variable_get(:@root_path_segment)
-
-    assert_eql klass, class_docs_by_object_id.fetch(klass.object_id).fetch(:klass)
-    assert_eql [klass], classes
-    assert_true known_output_paths.include?('Solo/Thing.md')
-    assert_true known_output_paths.include?('Solo/Inner/Solo/Thing.md')
-    assert_true known_output_paths.include?('alpha_rdoc.md')
-    assert_false known_output_paths.include?('hidden_rdoc.md')
-    assert_false known_output_paths.include?('binary_rdoc.md')
-    assert_eql 'docs-root', root_path_segment
-  end
-
-  def test_emit_classfiles_passes_output_path_to_finalize_markdown
-    klass = build_rdoc_class(full_name: 'Emit::Thing', description: 'Emit doc', methods: 1)
-    probe = RDocMarkdownGeneratorProbes::EmitClassProbe.new(rdoc_store(classes: [klass], pages: []), generator_options(op_dir: stable_tmpdir('emit-probe')))
-
-    probe.setup
-    probe.emit_classfiles
-
-    assert_eql ['Emit/Thing.md'], probe.finalize_calls.map { |_content, current_output_path| current_output_path }
-    assert_eql 'finalized Emit/Thing.md', File.read(File.join(probe.instance_variable_get(:@output_dir), 'Emit/Thing.md'))
-  end
-
-  def test_emit_csv_index_respects_custom_output_name
-    klass = build_rdoc_class(full_name: 'Csv::Thing', description: 'CSV doc', methods: 1)
-    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(rdoc_store(classes: [klass], pages: []), generator_options(op_dir: stable_tmpdir('emit-csv-name')))
-
-    probe.setup
-    probe.emit_csv_index('custom.csv')
-
-    output_dir = probe.instance_variable_get(:@output_dir)
-    assert_true File.exist?(File.join(output_dir, 'custom.csv'))
-    assert_false File.exist?(File.join(output_dir, 'index.csv'))
+    assert_includes File.read(File.join(dir, 'Solo/Thing.md')), '[alpha](../alpha_rdoc.md)'
+    assert_false File.exist?(File.join(dir, 'hidden_rdoc.md'))
+    assert_false File.exist?(File.join(dir, 'binary_rdoc.md'))
   end
 
   def test_emit_csv_index_writes_rows_for_visible_members_and_pages
@@ -468,15 +379,9 @@ class TestMutantClassDocs < Minitest::Test
     klass.add_attribute(rdoc_attribute('hidden', visible: false))
     klass.add_attribute(rdoc_attribute('alpha', visible: true))
     page = rdoc_page(relative_name: 'guide.rdoc', comment: 'Guide page')
-    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(
-      rdoc_store(classes: [klass], pages: [page]),
-      generator_options(op_dir: stable_tmpdir('emit-csv-rows'))
-    )
+    dir = generate_from_store([klass], pages: [page])
 
-    probe.setup
-    probe.emit_csv_index('custom.csv')
-
-    rows = CSV.parse(File.read(File.join(probe.instance_variable_get(:@output_dir), 'custom.csv')), headers: true)
+    rows = CSV.parse(File.read(File.join(dir, 'index.csv')), headers: true)
     entries = rows.map { |row| [row['name'], row['type'], row['path']] }
 
     assert_includes entries, ['Csv::Thing', 'Class', 'Csv/Thing.md']
@@ -495,29 +400,20 @@ class TestMutantClassDocs < Minitest::Test
     ], entries.select { |_name, type, _path| type == 'Attribute' }
   end
 
-  def test_generate_runs_setup_then_emits_files_and_index_with_debug_messages
-    probe = RDocMarkdownGeneratorProbes::GenerateProbe.new(nil, generator_options(op_dir: stable_tmpdir('generate-probe')))
+  def test_generate_prints_debug_messages_when_debug_is_enabled
+    klass = build_rdoc_class(full_name: 'Debug::Thing', description: 'Doc')
+    previous = $DEBUG_RDOC
+    $DEBUG_RDOC = true
 
-    probe.generate
+    stdout, = capture_io do
+      generate_from_store([klass])
+    end
 
-    assert_eql [
-      [:debug, 'Setting things up '],
-      :setup,
-      [:debug, 'Generate documentation in tmp/generated-docs'],
-      :emit_classfiles,
-      [:debug, 'Generate pages in tmp/generated-docs'],
-      :emit_pagefiles,
-      [:debug, 'Generate index file in tmp/generated-docs'],
-      :emit_csv_index
-    ], probe.calls
-  end
-
-  def test_setup_uses_dot_root_segment_when_root_is_nil
-    klass = build_rdoc_class(full_name: 'NilRoot::Thing', description: 'Doc', methods: 1)
-    probe = RDocMarkdownGeneratorProbes::ScoreProbe.new(rdoc_store(classes: [klass], pages: []), generator_options(op_dir: stable_tmpdir('nil-root-probe')))
-
-    probe.setup
-
-    assert_eql '.', probe.instance_variable_get(:@root_path_segment)
+    assert_includes stdout, '[rdoc-markdown] Setting things up '
+    assert_includes stdout, '[rdoc-markdown] Generate documentation in '
+    assert_includes stdout, '[rdoc-markdown] Generate pages in '
+    assert_includes stdout, '[rdoc-markdown] Generate index file in '
+  ensure
+    $DEBUG_RDOC = previous
   end
 end

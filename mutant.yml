@@ -8,7 +8,7 @@ includes:
   - test
 
 requires:
-  - ./test/support/mutant_setup.rb
+  - ./test/support/mutant.rb
 
 matcher:
   subjects:
