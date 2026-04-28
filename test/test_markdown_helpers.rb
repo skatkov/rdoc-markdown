@@ -15,7 +15,10 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#section_description"
   cover "RDoc::Generator::Markdown#finalize_markdown"
   cover "RDoc::Generator::Markdown#normalize_internal_links"
+  cover "RDoc::Generator::Markdown#normalize_rdof_reference_link"
+  cover "RDoc::Generator::Markdown#resolve_rdof_reference"
   cover "RDoc::Generator::Markdown#resolve_output_path"
+  cover "RDoc::Generator::Markdown#setup"
   cover "RDoc::Generator::Markdown#shift_headings"
   cover "RDoc::Generator::Markdown#normalize_definition_list_code_blocks"
   cover "RDoc::Generator::Markdown#convert_definition_list_block"
@@ -142,8 +145,8 @@ class TestMarkdownHelpers < Minitest::Test
       relative_name: "docs/readme.rdoc",
       comment: "{Intro}[guides/intro_rdoc.html#top] {API}[guides/api_rdoc.html] " \
                 "{Missing}[missing/path.html#part] {Secure}[https://example.com/page.md] " \
-               "{Mail}[mailto:test@example.com] {Anchor}[#topic.md] " \
-               "[Sibling](nested/../sibling.md)"
+                "{Mail}[mailto:test@example.com] {Anchor}[#topic.md] " \
+               "[Sibling](nested/../sibling.md) ![Diagram](nested/../sibling.md)"
     )
 
     dir = generate_markdown(pages: [guide, api, sibling, simple_intro, single, empty_anchor, readme])
@@ -156,6 +159,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[Mail](mailto:test@example.com)"
     assert_includes markdown, "[Anchor](#topic.md)"
     assert_includes markdown, "[Sibling](sibling.md)"
+    assert_includes markdown, "![Diagram](sibling.md)"
     assert_eql "[Intro](../guides/intro_rdoc.md#top)\n", File.read(File.join(dir, "docs/single_rdoc.md"))
     assert_eql "[EmptyAnchor](../guides/intro.md#) [RootIntro](../guides/intro.md)\n",
       File.read(File.join(dir, "docs/empty-anchor_rdoc.md"))
@@ -176,6 +180,64 @@ class TestMarkdownHelpers < Minitest::Test
     assert_eql "[Direct](../guides/direct.md) [Rooted](../guides/rooted.md) " \
                "[Nested](../pages/guides/nested.md)\n",
       File.read(File.join(dir, "docs/readme_rdoc.md"))
+  end
+
+  def test_rdof_ref_links_resolve_to_generated_class_and_method_links
+    form_helper = build_rdoc_class(full_name: "ActionView::Helpers::FormHelper", description: "Form helper")
+    form_helper.add_method(rdoc_method("build", visible: true, comment: "Other target"))
+    form_helper.add_method(rdoc_method("form_with", visible: true, comment: "Target"))
+    form_helper.add_method(rdoc_method("finish", visible: true, comment: "Other target"))
+    page = rdoc_page(
+      relative_name: "ActionView/Helpers/FormBuilder.rdoc",
+      comment: "See {FormHelper}[rdof-ref:ActionView::Helpers::FormHelper] and " \
+               "{form_with}[rdof-ref:ActionView::Helpers::FormHelper#form_with]."
+    )
+
+    dir = nil
+    _stdout, stderr = capture_io do
+      dir = generate_markdown(classes: [form_helper], pages: [page])
+    end
+    markdown = File.read(File.join(dir, "ActionView/Helpers/FormBuilder_rdoc.md"))
+
+    assert_includes markdown, "[FormHelper](FormHelper.md)"
+    assert_includes markdown, "[form\\_with](FormHelper.md#method-i-form_with)"
+    refute_includes markdown, "rdof-ref:"
+    assert_includes stderr,
+      '[rdoc-markdown] resolved rdof-ref link "rdof-ref:ActionView::Helpers::FormHelper" to FormHelper.md'
+    assert_includes stderr,
+      '[rdoc-markdown] resolved rdof-ref link "rdof-ref:ActionView::Helpers::FormHelper#form_with" '
+  end
+
+  def test_unresolved_rdof_ref_links_render_plain_text_with_warning
+    form_helper = build_rdoc_class(full_name: "ActionView::Helpers::FormHelper", description: "Form helper")
+    form_helper.add_method(rdoc_method("other", visible: true, comment: "Other target"))
+    page = rdoc_page(
+      relative_name: "ActionView/Helpers/FormBuilder.rdoc",
+      comment: "See {missing class}[rdof-ref:ActionView::Helpers::Missing#form_with] and " \
+               "{missing method}[rdof-ref:ActionView::Helpers::FormHelper#form_with] and " \
+               "{missing target}[rdof-ref:ActionView::Helpers::Unknown]."
+    )
+
+    dir = nil
+    _stdout, stderr = capture_io do
+      dir = generate_markdown(classes: [form_helper], pages: [page])
+    end
+    markdown = File.read(File.join(dir, "ActionView/Helpers/FormBuilder_rdoc.md"))
+
+    assert_includes markdown, "See missing class and missing method and missing target."
+    refute_includes markdown, "rdof-ref:"
+    refute_includes markdown, "[missing class]"
+    refute_includes markdown, "[missing method]"
+    refute_includes markdown, "[missing target]"
+    assert_includes stderr,
+      '[rdoc-markdown] removed unresolved rdof-ref link "rdof-ref:ActionView::Helpers::Missing#form_with" ' \
+      'with label "missing class"'
+    assert_includes stderr,
+      '[rdoc-markdown] removed unresolved rdof-ref link "rdof-ref:ActionView::Helpers::FormHelper#form_with" ' \
+      'with label "missing method"'
+    assert_includes stderr,
+      '[rdoc-markdown] removed unresolved rdof-ref link "rdof-ref:ActionView::Helpers::Unknown" ' \
+      'with label "missing target"'
   end
 
   def test_class_and_method_descriptions_are_markdownified

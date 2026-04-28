@@ -571,15 +571,60 @@ class RDoc::Generator::Markdown
   def normalize_internal_links(markdown, current_output_path:)
     current_dir = Pathname.new(current_output_path).dirname
 
-    markdown.gsub(%r{\]\(([^)]+)\)}) do
-      target = Regexp.last_match(1)
+    markdown.gsub(%r{(!?)\[([^\]]+)\]\(([^)]+)\)}) do
+      image_marker = Regexp.last_match(1)
+      label = Regexp.last_match(2)
+      target = Regexp.last_match(3)
+      if target.start_with?("rdof-ref:")
+        next normalize_rdof_reference_link(label, target, current_dir)
+      end
+
       path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
 
       resolved = resolve_output_path(path, current_dir)
       rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
-      "](#{rewritten}#{suffix})"
+      "#{image_marker}[#{label}](#{rewritten}#{suffix})"
     end
+  end
+
+  # Converts a leaked rdof-ref Markdown link to a generated link or plain text.
+  #
+  # @param label [String] Link text.
+  # @param target [String] Link target beginning with rdof-ref:.
+  # @param current_dir [Pathname] Directory of the current output file.
+  #
+  # @return [String] Markdown link or plain text label.
+  def normalize_rdof_reference_link(label, target, current_dir)
+    resolved = resolve_rdof_reference(target.delete_prefix("rdof-ref:"))
+    unless resolved
+      warn %([rdoc-markdown] removed unresolved rdof-ref link #{target.inspect} with label #{label.inspect})
+      return label
+    end
+
+    relative = Pathname.new(resolved).relative_path_from(current_dir)
+    warn %([rdoc-markdown] resolved rdof-ref link #{target.inspect} to #{relative})
+    "[#{label}](#{relative})"
+  end
+
+  # Resolves a typoed rdof-ref target against generated class and method docs.
+  #
+  # @param reference [String] Reference without the rdof-ref: scheme.
+  #
+  # @return [String, nil] Output path with optional anchor, or nil when unknown.
+  def resolve_rdof_reference(reference)
+    if (match = reference.match(/\A(.+)#([^#]+)\z/))
+      doc = @class_docs_by_reference_name[match[1]]
+      return unless doc
+
+      method = doc.fetch(:klass).method_list.find { |candidate| candidate.name == match[2] }
+      return unless method
+
+      return "#{doc.fetch(:output_path)}##{method.aref}"
+    end
+
+    doc = @class_docs_by_reference_name[reference]
+    doc&.fetch(:output_path)
   end
 
   # Resolves an internal link path against known generated outputs.
@@ -725,6 +770,7 @@ class RDoc::Generator::Markdown
 
     @class_docs = build_class_docs(@store.all_classes_and_modules.sort)
     @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
+    @class_docs_by_reference_name = @class_docs.to_h { |doc| [doc.fetch(:display_name), doc] }
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
 
