@@ -15,6 +15,7 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#section_description"
   cover "RDoc::Generator::Markdown#finalize_markdown"
   cover "RDoc::Generator::Markdown#normalize_internal_links"
+  cover "RDoc::Generator::Markdown#literal_bracket_link_text"
   cover "RDoc::Generator::Markdown#resolve_output_path"
   cover "RDoc::Generator::Markdown#shift_headings"
   cover "RDoc::Generator::Markdown#normalize_definition_list_code_blocks"
@@ -143,7 +144,7 @@ class TestMarkdownHelpers < Minitest::Test
       comment: "{Intro}[guides/intro_rdoc.html#top] {API}[guides/api_rdoc.html] " \
                 "{Missing}[missing/path.html#part] {Secure}[https://example.com/page.md] " \
                "{Mail}[mailto:test@example.com] {Anchor}[#topic.md] " \
-               "[Sibling](nested/../sibling.md)"
+               "[Sibling](nested/../sibling.md) ![Diagram](nested/../sibling.md)"
     )
 
     dir = generate_markdown(pages: [guide, api, sibling, simple_intro, single, empty_anchor, readme])
@@ -156,6 +157,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[Mail](mailto:test@example.com)"
     assert_includes markdown, "[Anchor](#topic.md)"
     assert_includes markdown, "[Sibling](sibling.md)"
+    assert_includes markdown, "![Diagram](sibling.md)"
     assert_eql "[Intro](../guides/intro_rdoc.md#top)\n", File.read(File.join(dir, "docs/single_rdoc.md"))
     assert_eql "[EmptyAnchor](../guides/intro.md#) [RootIntro](../guides/intro.md)\n",
       File.read(File.join(dir, "docs/empty-anchor_rdoc.md"))
@@ -176,6 +178,46 @@ class TestMarkdownHelpers < Minitest::Test
     assert_eql "[Direct](../guides/direct.md) [Rooted](../guides/rooted.md) " \
                "[Nested](../pages/guides/nested.md)\n",
       File.read(File.join(dir, "docs/readme_rdoc.md"))
+  end
+
+  def test_bracket_like_prose_and_examples_remain_literal_text
+    page = rdoc_page(
+      relative_name: "literal-links.rdoc",
+      comment: "www.example.com\n\n" \
+               "Mime[:csv]\n\n" \
+               "options[:include] options[:exclude] option[:x]\n\n" \
+               "birthday[month] date[month] x[y]\n\n" \
+               "plain[plain]\n\n" \
+               "![Icon](month)\n\n" \
+               "{Example}[www.example.com]\n"
+    )
+
+    dir = nil
+    _stdout, stderr = capture_io do
+      dir = generate_markdown(pages: [page])
+    end
+    markdown = File.read(File.join(dir, "literal-links_rdoc.md"))
+
+    assert_includes markdown, "www.example.com"
+    assert_includes markdown, "Mime[:csv]"
+    assert_includes markdown, "options[:include] options[:exclude] option[:x]"
+    assert_includes markdown, "birthday[month] date[month] x[y]"
+    assert_includes markdown, "plain[plain]"
+    assert_includes markdown, "![Icon](month)"
+    assert_includes markdown, "[Example](www.example.com)"
+    refute_includes markdown, "[www.example.com](www.example.com)"
+    refute_includes markdown, "[Mime](:csv)"
+    refute_includes markdown, "[options](:include)"
+    refute_includes markdown, "[birthday](month)"
+    refute_includes markdown, "[option](:x)"
+    refute_includes markdown, "[x](y)"
+    refute_includes markdown, "[plain](plain)"
+    assert_includes stderr, '[rdoc-markdown] restored literal text from link "[www.example.com](www.example.com)"'
+    assert_includes stderr, '[rdoc-markdown] restored literal text from link "[Mime](:csv)"'
+    assert_includes stderr, '[rdoc-markdown] restored literal text from link "[birthday](month)"'
+    assert_includes stderr, '[rdoc-markdown] restored literal text from link "[plain](plain)"'
+    refute_includes stderr, '[rdoc-markdown] restored literal text from link "[Icon](month)"'
+    refute_includes stderr, '[rdoc-markdown] restored literal text from link "[Example](www.example.com)"'
   end
 
   def test_class_and_method_descriptions_are_markdownified

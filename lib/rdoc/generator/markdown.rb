@@ -571,15 +571,37 @@ class RDoc::Generator::Markdown
   def normalize_internal_links(markdown, current_output_path:)
     current_dir = Pathname.new(current_output_path).dirname
 
-    markdown.gsub(%r{\]\(([^)]+)\)}) do
-      target = Regexp.last_match(1)
+    markdown.gsub(%r{(!?)\[([^\]]+)\]\(([^)]+)\)}) do
+      image_marker = Regexp.last_match(1)
+      label = Regexp.last_match(2)
+      target = Regexp.last_match(3)
+      if image_marker.empty? && (literal = literal_bracket_link_text(label, target))
+        next literal
+      end
+
       path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
 
       resolved = resolve_output_path(path, current_dir)
       rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
-      "](#{rewritten}#{suffix})"
+      "#{image_marker}[#{label}](#{rewritten}#{suffix})"
     end
+  end
+
+  # Restores RDoc's accidental links for bracket-like prose and examples.
+  #
+  # @param label [String] Link text.
+  # @param target [String] Link target.
+  #
+  # @return [String, nil] Literal text, or nil when the link should remain.
+  def literal_bracket_link_text(label, target)
+    literal = if label == target && target.match?(/\Awww\.[A-Za-z0-9.-]+\.[A-Za-z]{2,}\z/)
+      label
+    elsif target.match?(/\A:[A-Za-z_]\w*\z/) || target.match?(/\A[A-Za-z][A-Za-z0-9_-]*\z/)
+      "#{label}[#{target}]"
+    end
+    warn %([rdoc-markdown] restored literal text from link "[#{label}](#{target})") if literal
+    literal
   end
 
   # Resolves an internal link path against known generated outputs.
