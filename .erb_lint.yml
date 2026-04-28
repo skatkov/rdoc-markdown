@@ -1,0 +1,40 @@
+---
+glob: "**/*.{md,markdown}.erb"
+EnableDefaultLinters: false
+linters:
+  ClosingErbTagIndent:
+    enabled: true
+  CommentSyntax:
+    enabled: true
+  ExtraNewline:
+    enabled: true
+  FinalNewline:
+    enabled: true
+  NoEmbeddedAssets:
+    enabled: true
+  NonRawHtml:
+    enabled: true
+  NoUnusedDisable:
+    enabled: true
+  ParserErrors:
+    enabled: true
+  RightTrim:
+    enabled: true
+    enforced_style: "-"
+  Rubocop:
+    enabled: true
+    only:
+      - Lint/Debugger
+      - Lint/DuplicateBranch
+      - Lint/DuplicateHashKey
+      - Lint/EmptyExpression
+      - Lint/SelfAssignment
+      - Security/Eval
+    rubocop_config:
+      AllCops:
+        TargetRubyVersion: 3.2
+        NewCops: enable
+  SpaceAroundErbTag:
+    enabled: true
+  TrailingWhitespace:
+    enabled: true
