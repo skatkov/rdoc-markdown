@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-require 'cgi'
-require 'commonmarker'
-require 'pathname'
+require "cgi"
+require "commonmarker"
 
 class MarkdownValidator
   ValidationError = Class.new(StandardError)
@@ -20,7 +19,7 @@ class MarkdownValidator
   end
 
   def validate!
-    files = Dir[File.join(@root_dir, '**/*.md')].sort
+    files = Dir[File.join(@root_dir, "**/*.md")].sort
     raise ValidationError, "No markdown files found in #{@root_dir}" if files.empty?
 
     files.each { |file| validate_file(file) }
@@ -36,7 +35,7 @@ class MarkdownValidator
 
     raise ValidationError, "local .html link found in #{relative_path(file)}" if content.match?(LOCAL_HTML_LINK_REGEX)
 
-    raise ValidationError, "empty anchor link found in #{relative_path(file)}" if content.include?('[](#')
+    raise ValidationError, "empty anchor link found in #{relative_path(file)}" if content.include?("[](#")
 
     content.scan(LOCAL_LINK_REGEX).flatten.each do |target|
       validate_local_link!(file, target)
@@ -44,14 +43,14 @@ class MarkdownValidator
   end
 
   def validate_local_link!(source_file, target)
-    base_target = target.sub(/[?#].*\z/, '')
+    base_target = target.sub(/[?#].*\z/, "")
     fragment = target[/#(.+)\z/, 1]
 
     target_file = if base_target.empty?
-                    source_file
-                  else
-                    File.expand_path(CGI.unescape(base_target), File.dirname(source_file))
-                  end
+      source_file
+    else
+      File.expand_path(CGI.unescape(base_target), File.dirname(source_file))
+    end
 
     unless within_root?(target_file) && File.file?(target_file)
       unless @strict_links
@@ -60,7 +59,7 @@ class MarkdownValidator
       end
 
       raise ValidationError,
-            "broken local link in #{relative_path(source_file)} -> #{target.inspect}"
+        "broken local link in #{relative_path(source_file)} -> #{target.inspect}"
     end
 
     return if fragment.nil? || fragment.empty?
@@ -75,7 +74,7 @@ class MarkdownValidator
     end
 
     raise ValidationError,
-          "missing anchor ##{anchor} in #{relative_path(target_file)} (from #{relative_path(source_file)})"
+      "missing anchor ##{anchor} in #{relative_path(target_file)} (from #{relative_path(source_file)})"
   end
 
   def anchors_for(file)
@@ -88,7 +87,7 @@ class MarkdownValidator
         match = line.match(/^\s{0,3}#+\s+(.+?)\s*$/)
         next unless match
 
-        heading = match[1].sub(/\s+#+\s*\z/, '')
+        heading = match[1].sub(/\s+#+\s*\z/, "")
         slug = github_slug(heading)
         next if slug.empty?
 
@@ -106,19 +105,19 @@ class MarkdownValidator
     text = heading.dup
     text.gsub!(/`([^`]*)`/, '\\1')
     text.gsub!(/\[([^\]]+)\]\([^)]+\)/, '\\1')
-    text.gsub!(/<[^>]+>/, '')
+    text.gsub!(/<[^>]+>/, "")
     text = CGI.unescapeHTML(text)
     text.downcase!
-    text.gsub!(/[^\p{Alnum}\- _]/u, '')
-    text.tr!(' ', '-')
-    text.squeeze!('-')
-    text.gsub!(/\A-+|-+\z/, '')
+    text.gsub!(/[^\p{Alnum}\- _]/u, "")
+    text.tr!(" ", "-")
+    text.squeeze!("-")
+    text.gsub!(/\A-+|-+\z/, "")
     text
   end
 
   def render_gfm!(content, file)
     Commonmarker.to_html(content)
-  rescue StandardError => e
+  rescue => e
     raise ValidationError, "GFM render failed for #{relative_path(file)}: #{e.message}"
   end
 
@@ -129,7 +128,7 @@ class MarkdownValidator
 
   def relative_path(path)
     Pathname.new(path).relative_path_from(Pathname.new(@root_dir)).to_s
-  rescue StandardError
+  rescue
     path
   end
 end

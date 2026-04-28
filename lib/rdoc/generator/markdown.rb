@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
-gem 'rdoc'
+gem "rdoc"
 
-require 'pathname'
-require 'erb'
-require 'reverse_markdown'
-require 'csv'
-require 'cgi'
+require "erb"
+require "reverse_markdown"
+require "csv"
+require "cgi"
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -14,7 +13,7 @@ class RDoc::Generator::Markdown
   ##
   # Defines a constant for directory where templates could be found
 
-  TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'templates'))
+  TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
 
   ##
   # The RDoc::Store that is the source of the generated content
@@ -34,11 +33,10 @@ class RDoc::Generator::Markdown
   # dir.
 
   def class_dir
-    nil
   end
 
   # this alias is required for rdoc to work
-  alias file_dir class_dir
+  alias_method :file_dir, :class_dir
 
   ##
   # Initializer method for Rdoc::Generator::Markdown
@@ -47,16 +45,14 @@ class RDoc::Generator::Markdown
     @store = store
     @options = options
 
-    @base_dir = Pathname.pwd.expand_path
-
-    @classes = nil
+    @base_dir = Pathname.pwd
   end
 
   ##
   # Generates markdown files and search index file
 
   def generate
-    debug("Setting things up #{@output_dir}")
+    debug("Setting things up ")
 
     setup
 
@@ -80,24 +76,26 @@ class RDoc::Generator::Markdown
   ##
   # This method is used to output debugging information in case rdoc is run with --debug parameter
 
-  def debug(str = nil)
+  def debug(str)
+    # RDoc exposes --debug through this global and does not mirror it on options.
+    # standard:disable Style/GlobalVars
     return unless $DEBUG_RDOC
+    # standard:enable Style/GlobalVars
 
-    puts "[rdoc-markdown] #{str}" if str
-    yield if block_given?
+    puts "[rdoc-markdown] #{str}"
   end
 
   ##
   # This class emits a search index for generated documentation as sqlite database
   #
 
-  def emit_csv_index(name = 'index.csv')
-    filepath = "#{output_dir}/#{name}"
+  def emit_csv_index
+    filepath = "#{output_dir}/index.csv"
 
-    CSV.open(filepath, 'wb') do |csv|
+    CSV.open(filepath, "wb") do |csv|
       csv << %w[name type path]
 
-      @classes.map do |klass|
+      @classes.each do |klass|
         csv << [
           display_name(klass),
           klass.type.capitalize,
@@ -107,7 +105,7 @@ class RDoc::Generator::Markdown
         klass.method_list.select(&:display?).each do |method|
           csv << [
             "#{display_name(klass)}.#{method.name}",
-            'Method',
+            "Method",
             "#{output_path_for(klass)}##{method.aref}"
           ]
         end
@@ -115,11 +113,11 @@ class RDoc::Generator::Markdown
         klass
           .constants
           .select(&:display?)
-          .sort_by { |x| x.name }
+          .sort
           .each do |const|
             csv << [
               "#{display_name(klass)}.#{const.name}",
-              'Constant',
+              "Constant",
               "#{output_path_for(klass)}##{const.name}"
             ]
           end
@@ -127,11 +125,11 @@ class RDoc::Generator::Markdown
         klass
           .attributes
           .select(&:display?)
-          .sort_by { |x| x.name }
+          .sort
           .each do |attr|
             csv << [
               "#{display_name(klass)}.#{attr.name}",
-              'Attribute',
+              "Attribute",
               "#{output_path_for(klass)}##{attr.aref}"
             ]
           end
@@ -140,7 +138,7 @@ class RDoc::Generator::Markdown
       @pages.each do |page|
         csv << [
           page.page_name,
-          'Page',
+          "Page",
           page_output_path(page)
         ]
       end
@@ -148,8 +146,8 @@ class RDoc::Generator::Markdown
   end
 
   def emit_classfiles
-    template_content = File.read(File.join(TEMPLATE_DIR, 'classfile.md.erb'))
-    template = ERB.new(template_content, trim_mode: '-')
+    template_content = File.read(File.join(TEMPLATE_DIR, "classfile.md.erb"))
+    template = ERB.new(template_content, trim_mode: "-")
 
     @classes.each do |klass|
       result = finalize_markdown(template.result(binding), current_output_path: output_path_for(klass))
@@ -171,7 +169,7 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{page_output_path(page)}")
       out_file.dirname.mkpath
 
-      content = markdownify(page.description.to_s)
+      content = markdownify(page.description)
       File.write(out_file, finalize_markdown(content, current_output_path: page_output_path(page)))
     end
   end
@@ -180,32 +178,29 @@ class RDoc::Generator::Markdown
   # Takes a class name and converts it into a Pathname
 
   def turn_to_path(class_name)
-    "#{class_name.gsub('::', '/')}.md"
+    "#{class_name.gsub("::", "/")}.md"
   end
 
   def page_output_path(page)
-    source_path = normalize_input_path_for_output(page.relative_name.to_s)
+    source_path = normalize_input_path_for_output(page.relative_name)
     dirname = File.dirname(source_path)
-    basename = "#{File.basename(source_path).tr('.', '_')}.md"
+    basename = "#{File.basename(source_path).tr(".", "_")}.md"
 
-    return basename if dirname == '.'
+    return basename if dirname == "."
 
     "#{dirname}/#{basename}"
   end
 
   def display_name(code_object)
-    class_doc = class_doc_for(code_object)
-    class_doc ? class_doc[:display_name] : code_object.full_name
+    class_doc_for(code_object).fetch(:display_name)
   end
 
   def output_path_for(code_object)
-    class_doc = class_doc_for(code_object)
-    class_doc ? class_doc[:output_path] : turn_to_path(code_object.full_name)
+    class_doc_for(code_object).fetch(:output_path)
   end
 
   def legacy_paths_for(code_object)
-    class_doc = class_doc_for(code_object)
-    class_doc ? class_doc[:legacy_paths] : []
+    class_doc_for(code_object).fetch(:legacy_paths)
   end
 
   ##
@@ -220,19 +215,12 @@ class RDoc::Generator::Markdown
     # - bypass - Ignore the unknown tag but try to convert its content
     # - raise - Raise an error to let you know
 
-    html = normalize_rdoc_pre_blocks(input.to_s)
+    html = normalize_rdoc_pre_blocks(input)
 
-    md = String.new(ReverseMarkdown.convert(html, unknown_tags: :bypass, github_flavored: true))
-
-    # unindent multiline strings
-    md = unindent_text(md)
-
-    # Remove RDoc navigation links from generated headings.
-    md.gsub!(/(#+\s+[^\n]+?)\s*\[¶\]\([^)]+\)(?:\s*\[↑\]\(#top\))?/) { Regexp.last_match(1) }
-    md.gsub!(/\s+\[↑\]\(#top\)$/, '')
+    md = ReverseMarkdown.convert(html, github_flavored: true)
 
     # Flatten headings whose visible text is wrapped in a self-link.
-    md.gsub!(/^(#+)\s+\[([^\]]+)\]\((#[^)]+)\)\s*$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
+    md.gsub!(/^(#+)\s\[([^\]]+)\]\((?:#[^)]+)\)$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
 
     # Replace .html to .md extension in all local markdown links.
     md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
@@ -253,115 +241,106 @@ class RDoc::Generator::Markdown
       "](#{Regexp.last_match(1)}#{Regexp.last_match(2)})"
     end
 
-    md = md.gsub('=== ', '### ').gsub('== ', '## ')
-    md = normalize_definition_list_code_blocks(md)
-    md.lines.map(&:rstrip).join("\n").strip
+    normalize_definition_list_code_blocks(md).rstrip
   end
 
   # Aliasing a shorter method name for use in templates
-  alias h markdownify
+  alias_method :h, :markdownify
 
   def anchor(id)
     %(<a id="#{id}"></a>)
   end
 
   def describe(code_object, fallback: nil, heading_level_offset: 0)
-    description = code_object.description.to_s
-    return fallback.to_s if description.strip.empty? && !fallback.nil?
+    description = code_object.description
+    return fallback.to_s if description.empty?
 
     shift_headings(markdownify(description), heading_level_offset)
   end
 
-  def section_description(section, heading_level_offset: 0)
-    description = section_description_html(section)
-    return '' if description.strip.empty?
-
-    shift_headings(markdownify(description), heading_level_offset)
+  def section_description(section, heading_level_offset:)
+    shift_headings(markdownify(section.description), heading_level_offset)
   end
 
   def method_signature(method)
-    signature = method.param_seq.to_s
-    return '()' if signature.strip.empty?
+    signature = method.param_seq
+    return "()" unless signature.match?(/\S/)
 
-    signature = signature.gsub('->', ' -> ')
-    signature = signature.gsub(/\s+/, ' ').strip
-    signature = " #{signature}" if signature.start_with?('->')
+    signature = signature.gsub("->", " -> ")
+    signature = signature.gsub(/\s+/, " ").strip
+    signature = " #{signature}" if signature.start_with?("->")
     merge_method_signature_arguments(signature, method.params)
   end
 
   def merge_method_signature_arguments(signature, raw_params)
     params = normalized_method_params(raw_params)
-    return signature if params.empty?
 
     signature_args, signature_suffix = split_signature_arguments_and_suffix(signature)
-    return signature if signature_args.nil? || signature_args.empty?
+    return signature if signature_args.nil?
 
     param_parts = split_signature_list(params)
     signature_parts = split_signature_list(signature_args)
-    return signature if param_parts.empty? || param_parts.length != signature_parts.length
+    return signature unless param_parts.length.eql?(signature_parts.length)
 
     param_names = param_parts.map { |part| extract_parameter_name(part) }
     return signature if param_names.any?(&:nil?)
     return signature if signature_parts.zip(param_names).all? { |part, name| signature_part_mentions_name?(part, name) }
 
     merged_args = param_parts.zip(signature_parts).map do |param, type|
-      separator = param.end_with?(':') ? ' ' : ': '
+      separator = param.end_with?(":") ? " " : ": "
       "#{param}#{separator}#{type}"
     end
 
-    "(#{merged_args.join(', ')})#{signature_suffix}"
+    "(#{merged_args.join(", ")})#{signature_suffix}"
   end
 
   def normalized_method_params(raw_params)
-    params = raw_params.to_s.gsub(/\s+/, ' ').strip
-    params = params[1...-1].strip if params.start_with?('(') && params.end_with?(')')
-    return '' if params.empty? || params == '()'
+    params = raw_params.to_s.strip
+    params = params[1...-1] if params.start_with?("(") && params.end_with?(")")
 
     params
   end
 
   def split_signature_arguments_and_suffix(signature)
-    return [nil, nil] unless signature.start_with?('(')
+    return unless signature.start_with?("(")
 
     depth = 0
 
     signature.each_char.with_index do |char, index|
-      depth += 1 if char == '('
+      depth += 1 if char == "("
 
-      next unless char == ')'
+      next unless char == ")"
 
       depth -= 1
       return [signature[1...index], signature[(index + 1)..]] if depth.zero?
     end
-
-    [nil, nil]
   end
 
   def split_signature_list(list)
     parts = []
-    current = +''
+    current = +""
     paren_depth = 0
     bracket_depth = 0
     brace_depth = 0
 
     list.each_char do |char|
       case char
-      when '('
+      when "("
         paren_depth += 1
-      when ')'
-        paren_depth -= 1 if paren_depth.positive?
-      when '['
+      when ")"
+        paren_depth -= 1
+      when "["
         bracket_depth += 1
-      when ']'
-        bracket_depth -= 1 if bracket_depth.positive?
-      when '{'
+      when "]"
+        bracket_depth -= 1
+      when "{"
         brace_depth += 1
-      when '}'
-        brace_depth -= 1 if brace_depth.positive?
-      when ','
+      when "}"
+        brace_depth -= 1
+      when ","
         if paren_depth.zero? && bracket_depth.zero? && brace_depth.zero?
           parts << current.strip
-          current = +''
+          current = +""
           next
         end
       end
@@ -374,145 +353,97 @@ class RDoc::Generator::Markdown
   end
 
   def extract_parameter_name(parameter)
-    match = parameter.strip.match(/\A(?:\*\*|\*|&)?([a-z_]\w*):?\z/)
+    match = parameter.match(/\A(?:\*\*|\*|&)?([a-z_]\w*):?\z/)
     match && match[1]
   end
 
   def signature_part_mentions_name?(text, name)
-    text.match?(/(?<!\w)#{Regexp.escape(name)}(?!\w)/)
+    text.match?(/(?<!\w)#{name}(?!\w)/)
   end
 
   def method_description(method, current_class:)
-    text = describe(method, fallback: nil, heading_level_offset: 4)
+    text = describe(method, heading_level_offset: 4)
     return text unless text.empty?
 
-    aliased_method = method.respond_to?(:is_alias_for) ? method.is_alias_for : nil
-    return 'Not documented.' unless aliased_method
+    aliased_method = method.is_alias_for
+    return "Not documented." unless aliased_method
 
     "Alias for: [`#{aliased_method.name}`](#{method_link(aliased_method, current_class: current_class)})"
   end
 
-  def finalize_markdown(content, current_output_path: nil)
+  def finalize_markdown(content, current_output_path:)
     output = content.lines.map(&:rstrip).join("\n")
-    output = normalize_internal_links(output, current_output_path: current_output_path) if current_output_path
-    output.gsub!(/\n{3,}/, "\n\n")
-    "#{output.strip}\n"
+    output = normalize_internal_links(output, current_output_path: current_output_path)
+    output = output.sub(/\n{3,}/, "\n\n")
+    "#{output}\n"
   end
 
   def shift_headings(markdown, heading_level_offset)
-    return markdown if heading_level_offset.zero?
-
-    markdown.gsub(/^(#+)(\s+)/) do
+    markdown.gsub(/^(#+)(\s)/) do
       hashes = Regexp.last_match(1)
       spaces = Regexp.last_match(2)
       level = [hashes.length + heading_level_offset, 6].min
-      "#{'#' * level}#{spaces}"
+      "#{"#" * level}#{spaces}"
     end
-  end
-
-  def section_description_html(section)
-    if section.instance_variable_defined?(:@store)
-      section_store = section.instance_variable_get(:@store)
-      parent_store = section.respond_to?(:parent) && section.parent.respond_to?(:store) ? section.parent.store : nil
-      section.instance_variable_set(:@store, parent_store) if section_store.nil? && !parent_store.nil?
-    end
-
-    section.description.to_s
-  rescue NoMethodError
-    comments = section.respond_to?(:comments) ? section.comments : nil
-    return '' if comments.nil? || comments.empty?
-
-    comments.map { |comment| comment.respond_to?(:text) ? comment.text : comment.to_s }.join("\n")
   end
 
   def normalize_definition_list_code_blocks(markdown)
-    markdown.gsub(/```\n(.*?)\n```/m) do
+    markdown.gsub(/```\n(.+?)\n```/m) do
       body = Regexp.last_match(1)
       converted = convert_definition_list_block(body)
-      converted.nil? ? Regexp.last_match(0) : converted
+      converted.nil? ? Regexp.last_match : converted
     end
   end
 
   def convert_definition_list_block(body)
-    lines = body.lines.map(&:rstrip)
-    return nil if lines.empty?
-    return nil unless lines.any? { |line| line.strip.end_with?('::') }
+    lines = body.lines
     return nil unless lines.all? { |line| definition_list_line?(line) }
 
-    lines.filter_map do |line|
+    lines.map do |line|
       stripped = line.strip
-      next '' if stripped.empty?
-      next "#{stripped.sub(/::\z/, '')}:" if stripped.end_with?('::')
+      next if stripped.empty?
+      next "#{stripped.sub(/::\z/, "")}:" if stripped.end_with?("::")
 
-      "- #{stripped.sub(/^\*\s+/, '')}"
+      "- #{stripped.sub(/\A\*\s/, "")}"
     end.join("\n")
   end
 
   def definition_list_line?(line)
     stripped = line.strip
-    stripped.empty? || stripped.end_with?('::') || stripped.match?(/^\*\s+/)
+    stripped.empty? || stripped.end_with?("::") || stripped.match?(/\A\*\s/)
   end
 
   def method_link(method, current_class:)
     target_parent = method.parent
     return "##{method.aref}" if target_parent == current_class
 
-    target_path = output_path_for(target_parent)
-    current_path = output_path_for(current_class)
-    "#{relative_output_path(current_path, target_path)}##{method.aref}"
-  end
-
-  def relative_output_path(from_path, to_path)
-    from_dir = Pathname.new(from_path).dirname
-    Pathname.new(to_path).relative_path_from(from_dir).to_s
+    "#{output_path_for(target_parent)}##{method.aref}"
   end
 
   def normalize_rdoc_pre_blocks(html)
-    html.gsub(%r{<pre\b[^>]*>(.*?)</pre>}m) do
-      raw = Regexp.last_match(1)
-      text = raw
-             .gsub(%r{<br\s*/?>}i, "\n")
-             .gsub(/<[^>]+>/, '')
+    html.gsub(%r{<pre\b[^>]*>(?:.+?)</pre>}m) do
+      raw = Regexp.last_match(0)
+      text = raw.gsub(/<[^>]+>/, "")
       "<pre>#{CGI.unescapeHTML(text)}</pre>"
     end
   end
 
-  def unindent_text(text)
-    lines = text.to_s.lines
-    indent = lines.reject { |line| line.strip.empty? }.map { |line| line[/^[ \t]*/].size }.min || 0
-    return text if indent.zero?
-
-    lines.map { |line| line.sub(/^[ \t]{0,#{indent}}/, '') }.join
-  end
-
   def normalize_internal_links(markdown, current_output_path:)
-    return markdown if @known_output_paths.nil? || @known_output_paths.empty?
-
     current_dir = Pathname.new(current_output_path).dirname
 
-    markdown.gsub(%r{\]\((?!https?://|mailto:|#)([^)]+)\)}) do
+    markdown.gsub(%r{\]\(([^)]+)\)}) do
       target = Regexp.last_match(1)
-      path = target.sub(/[?#].*\z/, '')
-      suffix = target[path.length..] || ''
+      path = target.sub(/[?#].*\z/, "")
+      suffix = target[path.length..]
 
       resolved = resolve_output_path(path, current_dir)
-      rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir).to_s : path
+      rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
       "](#{rewritten}#{suffix})"
     end
   end
 
   def resolve_output_path(path, current_dir)
-    normalized_path = path.to_s.sub(%r{\A/}, '')
-    candidates = [normalized_path]
-
-    stripped = normalized_path.sub(%r{\A(?:files|classes|modules)/}, '')
-    candidates << stripped unless stripped == normalized_path
-
-    if @root_path_segment && stripped.start_with?("#{@root_path_segment}/")
-      candidates << stripped.delete_prefix("#{@root_path_segment}/")
-    end
-
-    candidates = candidates.flat_map { |candidate| candidate_with_parent_reductions(candidate) }.uniq
+    candidates = [path, path.delete_prefix("#{@root_path_segment}/")]
 
     candidates.each do |candidate|
       return candidate if @known_output_paths.include?(candidate)
@@ -526,31 +457,19 @@ class RDoc::Generator::Markdown
     nil
   end
 
-  def candidate_with_parent_reductions(candidate)
-    reductions = [candidate.sub(%r{\A\./}, '')]
-    reduced = reductions.first
-
-    while reduced.start_with?('../')
-      reduced = reduced.delete_prefix('../')
-      reductions << reduced
-    end
-
-    reductions.uniq.reject(&:empty?)
-  end
-
   def normalize_input_path_for_output(path)
-    normalized = path.to_s.tr('\\', '/').sub(%r{\A\./}, '')
-    normalized = normalized.sub(%r{\A/}, '')
+    normalized = path.tr("\\", "/").sub(%r{\A\./}, "")
 
-    root = File.expand_path(@options.root || '.', @base_dir).tr('\\', '/')
-    normalized = normalized.sub(%r{\A#{Regexp.escape(root)}/}, '')
+    root = File.expand_path(@options.root.to_s)
+    normalized = normalized.sub(%r{\A#{Regexp.escape(root)}/}, "")
+    normalized = normalized.sub(%r{\A/}, "")
 
     root_basename = File.basename(root)
-    normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, '')
+    normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, "")
   end
 
   def class_doc_for(code_object)
-    @class_docs_by_object_id[code_object.object_id]
+    @class_docs_by_object_id.fetch(code_object.object_id)
   end
 
   def build_class_docs(classes)
@@ -566,7 +485,7 @@ class RDoc::Generator::Markdown
         klass: klass,
         display_name: display_name,
         output_path: output_path,
-        legacy_paths: legacy_path == output_path ? [] : [legacy_path],
+        legacy_paths: [legacy_path],
         score: score
       }
 
@@ -574,44 +493,34 @@ class RDoc::Generator::Markdown
 
       if existing.nil?
         docs_by_name[display_name] = candidate
-      elsif candidate[:score] > existing[:score]
-        if existing[:score].positive?
-          candidate[:legacy_paths] |= existing[:legacy_paths] + [turn_to_path(existing[:klass].full_name)]
+      elsif candidate.fetch(:score) > existing.fetch(:score)
+        if existing.fetch(:score).positive?
+          candidate[:legacy_paths] |= existing.fetch(:legacy_paths)
         end
         docs_by_name[display_name] = candidate
-      elsif candidate[:score].positive?
-        existing[:legacy_paths] |= candidate[:legacy_paths] + [legacy_path]
+      elsif candidate.fetch(:score).positive?
+        existing[:legacy_paths] |= candidate.fetch(:legacy_paths)
       end
     end
 
     docs_by_name.values
-                .select do |doc|
-                  doc[:score].positive? ||
-                    (doc[:klass].full_name == doc[:display_name] && !synthetic_full_name?(doc[:klass].full_name))
+      .select do |doc|
+        doc.fetch(:score).positive? ||
+          !synthetic_full_name?(doc.fetch(:klass).full_name)
     end
-                .sort_by { |doc| doc[:display_name] }
-                .map { |doc| doc.tap { |d| d[:legacy_paths].uniq! } }
+      .sort_by { |doc| doc.fetch(:display_name) }
   end
 
   def normalized_full_name(full_name)
-    normalized = full_name.dup
+    normalized = full_name
 
     loop do
-      break unless normalized
-
-      if normalized =~ /\A(.+?)::\1::(.+)\z/
-        normalized = "#{::Regexp.last_match(1)}::#{::Regexp.last_match(2)}"
-        next
-      end
-
       if normalized =~ /\A([^:]+)(?:::[^:]+)+::\1::(.+)\z/
-        normalized = "#{::Regexp.last_match(1)}::#{::Regexp.last_match(2)}"
-        next
+        normalized = "#{Regexp.last_match(1)}::#{Regexp.last_match(2)}"
       end
 
       if normalized =~ /\A(.+?)::\1\z/
         normalized = Regexp.last_match(1)
-        next
       end
 
       break
@@ -622,14 +531,12 @@ class RDoc::Generator::Markdown
 
   def class_content_score(klass)
     score = klass.method_list.size + klass.constants.size + klass.attributes.size
-    score += 1 unless klass.description.to_s.strip.empty?
+    score += 1 unless klass.description.empty?
     score
   end
 
   def synthetic_full_name?(full_name)
-    parts = full_name.split('::')
-    return false if parts.size < 3
-
+    parts = full_name.split("::")
     root = parts.first
     parts.count(root) > 1
   end
@@ -639,25 +546,20 @@ class RDoc::Generator::Markdown
   # Could be called multiple times.
 
   def setup
-    return if instance_variable_defined?(:@output_dir)
-
-    @output_dir = Pathname.new(@options.op_dir).expand_path(@base_dir)
-    @output_dir.mkpath
-
-    return unless @store
+    @output_dir = @options.op_dir
 
     @class_docs = build_class_docs(@store.all_classes_and_modules.sort)
-    @class_docs_by_object_id = @class_docs.to_h { |doc| [doc[:klass].object_id, doc] }
-    @classes = @class_docs.map { |doc| doc[:klass] }
+    @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
+    @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
 
     @known_output_paths = Set.new
     @class_docs.each do |doc|
-      @known_output_paths << doc[:output_path]
-      doc[:legacy_paths].each { |path| @known_output_paths << path }
+      @known_output_paths << doc.fetch(:output_path)
+      doc.fetch(:legacy_paths).each { |path| @known_output_paths << path }
     end
     @pages.each { |page| @known_output_paths << page_output_path(page) }
 
-    @root_path_segment = Pathname.new(@options.root || '.').basename.to_s
+    @root_path_segment = Pathname.new(@options.root || ".").basename
   end
 end

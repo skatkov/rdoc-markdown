@@ -1,0 +1,25 @@
+name: Mutant
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+
+jobs:
+  mutant:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+      - run: bundle config unset deployment
+      - name: Run mutant
+        run: |
+          git fetch origin main
+          bundle exec mutant run --fail-fast --since origin/main

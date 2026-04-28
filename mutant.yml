@@ -1,0 +1,15 @@
+usage: opensource
+
+integration:
+  name: minitest
+
+includes:
+  - lib
+  - test
+
+requires:
+  - ./test/support/mutant.rb
+
+matcher:
+  subjects:
+    - RDoc::Generator::Markdown*

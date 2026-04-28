@@ -33,5 +33,8 @@ jobs:
       - run: bundle config unset deployment
       - name: Run tests
         run: bundle exec rake test
+      - name: Standard Ruby
+        if: matrix.ruby == '4.0'
+        uses: standardrb/standard-ruby-action@v1
       - name: Validate markdown output (GFM)
         run: bundle exec rake markdown:validate
