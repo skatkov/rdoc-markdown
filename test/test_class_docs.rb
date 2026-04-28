@@ -59,8 +59,6 @@ class TestClassDocs < Minitest::Test
     canonical_path = File.join(dir, "VendoredPathExpander/PathExpander.md")
     legacy_path = File.join(dir, "VendoredPathExpander/Minitest/VendoredPathExpander/PathExpander.md")
 
-    assert_true File.exist?(canonical_path)
-    assert_true File.exist?(legacy_path)
     assert_eql File.read(canonical_path), File.read(legacy_path)
     assert_includes File.read(canonical_path), "# Class VendoredPathExpander::PathExpander"
     assert_includes File.read(canonical_path), "Real doc"
@@ -89,8 +87,6 @@ class TestClassDocs < Minitest::Test
     canonical_path = File.join(dir, "Root/Thing.md")
     legacy_path = File.join(dir, "Root/One/Two/Root/Thing.md")
 
-    assert_true File.exist?(canonical_path)
-    assert_true File.exist?(legacy_path)
     assert_includes File.read(canonical_path), "Real doc"
     assert_eql File.read(canonical_path), File.read(legacy_path)
 
@@ -107,8 +103,6 @@ class TestClassDocs < Minitest::Test
     canonical_path = File.join(dir, "Pair.md")
     legacy_path = File.join(dir, "Pair/Pair.md")
 
-    assert_true File.exist?(canonical_path)
-    assert_true File.exist?(legacy_path)
     assert_includes File.read(canonical_path), "# Class Pair"
     assert_includes File.read(canonical_path), "Collapsed pair"
     assert_eql File.read(canonical_path), File.read(legacy_path)
@@ -132,8 +126,6 @@ class TestClassDocs < Minitest::Test
     canonical_path = File.join(dir, "Alpha/Thing.md")
     legacy_path = File.join(dir, "Alpha/Z/Alpha/Thing.md")
 
-    assert_true File.exist?(canonical_path)
-    assert_true File.exist?(legacy_path)
     assert_includes File.read(canonical_path), "Real doc"
     assert_eql File.read(canonical_path), File.read(legacy_path)
   end
@@ -179,8 +171,6 @@ class TestClassDocs < Minitest::Test
     canonical_path = File.join(dir, "Solo/Thing.md")
     legacy_path = File.join(dir, "Solo/Inner/Solo/Thing.md")
 
-    assert_true File.exist?(canonical_path)
-    assert_true File.exist?(legacy_path)
     assert_eql File.read(canonical_path), File.read(legacy_path)
     assert_includes index_entries(dir), ["Solo::Thing", "Class", "Solo/Thing.md"]
   end
@@ -243,7 +233,6 @@ class TestClassDocs < Minitest::Test
 
     dir = generate_from_store([duplicate, primary])
 
-    assert_true File.exist?(File.join(dir, "Attr/Winner.md"))
     assert_false File.exist?(File.join(dir, "Attr/A/Attr/Winner.md"))
     assert_includes File.read(File.join(dir, "Attr/Winner.md")), "# Class Attr::Winner"
   end
@@ -267,7 +256,6 @@ class TestClassDocs < Minitest::Test
 
     dir = generate_from_store([duplicate, primary])
 
-    assert_true File.exist?(File.join(dir, "Const/Winner.md"))
     assert_false File.exist?(File.join(dir, "Const/A/Const/Winner.md"))
     assert_includes File.read(File.join(dir, "Const/Winner.md")), "# Class Const::Winner"
   end
@@ -300,7 +288,6 @@ class TestClassDocs < Minitest::Test
 
     dir = generate_from_store([duplicate, primary])
 
-    assert_true File.exist?(File.join(dir, "Desc/Winner.md"))
     assert_false File.exist?(File.join(dir, "Desc/A/Desc/Winner.md"))
     assert_includes File.read(File.join(dir, "Desc/Winner.md")), "Only docs"
   end
