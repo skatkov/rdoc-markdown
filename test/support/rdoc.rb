@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rdoc/rdoc'
+require "rdoc/rdoc"
 
 module RDocTestHelpers
   def generator_options(op_dir:, root: nil)
@@ -24,7 +24,7 @@ module RDocTestHelpers
     end
   end
 
-  def rdoc_file(store = rdoc_store, name: 'source.rb')
+  def rdoc_file(store = rdoc_store, name: "source.rb")
     store.add_file(name)
   end
 
@@ -46,9 +46,9 @@ module RDocTestHelpers
     end
   end
 
-  def build_rdoc_class(full_name:, description: '', methods: 0, constants: 0, attributes: 0)
+  def build_rdoc_class(full_name:, description: "", methods: 0, constants: 0, attributes: 0)
     store = rdoc_store
-    location = RDoc::TopLevel.new("#{full_name.tr(':', '_')}.rb")
+    location = RDoc::TopLevel.new("#{full_name.tr(":", "_")}.rb")
     location.store = store
 
     RDoc::NormalClass.new(full_name).tap do |klass|
@@ -64,27 +64,27 @@ module RDocTestHelpers
 
   def rdoc_section(comment:, store: rdoc_store, parent: :default_parent, section_store: store)
     parent = rdoc_file(store) if parent == :default_parent
-    RDoc::Context::Section.new(parent, 'section', RDoc::Comment.new(comment), section_store)
+    RDoc::Context::Section.new(parent, "section", RDoc::Comment.new(comment), section_store)
   end
 
-  def rdoc_method(name = 'run', parent: nil, comment: nil, visible: true, signature: nil, params: nil)
-    RDoc::AnyMethod.new('', name).tap do |method|
+  def rdoc_method(name = "run", parent: nil, comment: nil, visible: true, signature: nil, params: nil)
+    RDoc::AnyMethod.new("", name).tap do |method|
       method.parent = parent if parent
       method.comment = RDoc::Comment.new(comment) unless comment.nil?
       method.done_documenting = true unless visible
-      method.call_seq = signature && signature.match?(/\S/) ? "#{name}#{signature}" : signature unless signature.nil?
+      method.call_seq = (signature && signature.match?(/\S/)) ? "#{name}#{signature}" : signature unless signature.nil?
       method.params = params unless params.nil?
     end
   end
 
   def rdoc_constant(name, visible: true)
-    RDoc::Constant.new(name, '1', '').tap do |constant|
+    RDoc::Constant.new(name, "1", "").tap do |constant|
       constant.done_documenting = true unless visible
     end
   end
 
   def rdoc_attribute(name, visible: true)
-    RDoc::Attr.new('', name, 'RW', '').tap do |attribute|
+    RDoc::Attr.new("", name, "RW", "").tap do |attribute|
       attribute.done_documenting = true unless visible
     end
   end

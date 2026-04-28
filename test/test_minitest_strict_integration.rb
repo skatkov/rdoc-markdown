@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'test_helper'
+require_relative "test_helper"
 
 class TestMinitestStrictIntegration < Minitest::Test
   def test_strict_assertions_are_loaded

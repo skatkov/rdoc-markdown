@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
-gem 'rdoc'
+gem "rdoc"
 
-require 'pathname'
-require 'erb'
-require 'reverse_markdown'
-require 'csv'
-require 'cgi'
+require "erb"
+require "reverse_markdown"
+require "csv"
+require "cgi"
 
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -14,7 +13,7 @@ class RDoc::Generator::Markdown
   ##
   # Defines a constant for directory where templates could be found
 
-  TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'templates'))
+  TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
 
   ##
   # The RDoc::Store that is the source of the generated content
@@ -37,7 +36,7 @@ class RDoc::Generator::Markdown
   end
 
   # this alias is required for rdoc to work
-  alias file_dir class_dir
+  alias_method :file_dir, :class_dir
 
   ##
   # Initializer method for Rdoc::Generator::Markdown
@@ -53,7 +52,7 @@ class RDoc::Generator::Markdown
   # Generates markdown files and search index file
 
   def generate
-    debug('Setting things up ')
+    debug("Setting things up ")
 
     setup
 
@@ -78,7 +77,10 @@ class RDoc::Generator::Markdown
   # This method is used to output debugging information in case rdoc is run with --debug parameter
 
   def debug(str)
+    # RDoc exposes --debug through this global and does not mirror it on options.
+    # standard:disable Style/GlobalVars
     return unless $DEBUG_RDOC
+    # standard:enable Style/GlobalVars
 
     puts "[rdoc-markdown] #{str}"
   end
@@ -90,7 +92,7 @@ class RDoc::Generator::Markdown
   def emit_csv_index
     filepath = "#{output_dir}/index.csv"
 
-    CSV.open(filepath, 'wb') do |csv|
+    CSV.open(filepath, "wb") do |csv|
       csv << %w[name type path]
 
       @classes.each do |klass|
@@ -103,7 +105,7 @@ class RDoc::Generator::Markdown
         klass.method_list.select(&:display?).each do |method|
           csv << [
             "#{display_name(klass)}.#{method.name}",
-            'Method',
+            "Method",
             "#{output_path_for(klass)}##{method.aref}"
           ]
         end
@@ -115,7 +117,7 @@ class RDoc::Generator::Markdown
           .each do |const|
             csv << [
               "#{display_name(klass)}.#{const.name}",
-              'Constant',
+              "Constant",
               "#{output_path_for(klass)}##{const.name}"
             ]
           end
@@ -127,7 +129,7 @@ class RDoc::Generator::Markdown
           .each do |attr|
             csv << [
               "#{display_name(klass)}.#{attr.name}",
-              'Attribute',
+              "Attribute",
               "#{output_path_for(klass)}##{attr.aref}"
             ]
           end
@@ -136,7 +138,7 @@ class RDoc::Generator::Markdown
       @pages.each do |page|
         csv << [
           page.page_name,
-          'Page',
+          "Page",
           page_output_path(page)
         ]
       end
@@ -144,8 +146,8 @@ class RDoc::Generator::Markdown
   end
 
   def emit_classfiles
-    template_content = File.read(File.join(TEMPLATE_DIR, 'classfile.md.erb'))
-    template = ERB.new(template_content, trim_mode: '-')
+    template_content = File.read(File.join(TEMPLATE_DIR, "classfile.md.erb"))
+    template = ERB.new(template_content, trim_mode: "-")
 
     @classes.each do |klass|
       result = finalize_markdown(template.result(binding), current_output_path: output_path_for(klass))
@@ -176,15 +178,15 @@ class RDoc::Generator::Markdown
   # Takes a class name and converts it into a Pathname
 
   def turn_to_path(class_name)
-    "#{class_name.gsub('::', '/')}.md"
+    "#{class_name.gsub("::", "/")}.md"
   end
 
   def page_output_path(page)
     source_path = normalize_input_path_for_output(page.relative_name)
     dirname = File.dirname(source_path)
-    basename = "#{File.basename(source_path).tr('.', '_')}.md"
+    basename = "#{File.basename(source_path).tr(".", "_")}.md"
 
-    return basename if dirname == '.'
+    return basename if dirname == "."
 
     "#{dirname}/#{basename}"
   end
@@ -243,7 +245,7 @@ class RDoc::Generator::Markdown
   end
 
   # Aliasing a shorter method name for use in templates
-  alias h markdownify
+  alias_method :h, :markdownify
 
   def anchor(id)
     %(<a id="#{id}"></a>)
@@ -262,11 +264,11 @@ class RDoc::Generator::Markdown
 
   def method_signature(method)
     signature = method.param_seq
-    return '()' unless signature.match?(/\S/)
+    return "()" unless signature.match?(/\S/)
 
-    signature = signature.gsub('->', ' -> ')
-    signature = signature.gsub(/\s+/, ' ').strip
-    signature = " #{signature}" if signature.start_with?('->')
+    signature = signature.gsub("->", " -> ")
+    signature = signature.gsub(/\s+/, " ").strip
+    signature = " #{signature}" if signature.start_with?("->")
     merge_method_signature_arguments(signature, method.params)
   end
 
@@ -285,61 +287,60 @@ class RDoc::Generator::Markdown
     return signature if signature_parts.zip(param_names).all? { |part, name| signature_part_mentions_name?(part, name) }
 
     merged_args = param_parts.zip(signature_parts).map do |param, type|
-      separator = param.end_with?(':') ? ' ' : ': '
+      separator = param.end_with?(":") ? " " : ": "
       "#{param}#{separator}#{type}"
     end
 
-    "(#{merged_args.join(', ')})#{signature_suffix}"
+    "(#{merged_args.join(", ")})#{signature_suffix}"
   end
 
   def normalized_method_params(raw_params)
     params = raw_params.to_s.strip
-    params = params[1...-1] if params.start_with?('(') && params.end_with?(')')
+    params = params[1...-1] if params.start_with?("(") && params.end_with?(")")
 
     params
   end
 
   def split_signature_arguments_and_suffix(signature)
-    return unless signature.start_with?('(')
+    return unless signature.start_with?("(")
 
     depth = 0
 
     signature.each_char.with_index do |char, index|
-      depth += 1 if char == '('
+      depth += 1 if char == "("
 
-      next unless char == ')'
+      next unless char == ")"
 
       depth -= 1
       return [signature[1...index], signature[(index + 1)..]] if depth.zero?
     end
-
   end
 
   def split_signature_list(list)
     parts = []
-    current = +''
+    current = +""
     paren_depth = 0
     bracket_depth = 0
     brace_depth = 0
 
     list.each_char do |char|
       case char
-      when '('
+      when "("
         paren_depth += 1
-      when ')'
+      when ")"
         paren_depth -= 1
-      when '['
+      when "["
         bracket_depth += 1
-      when ']'
+      when "]"
         bracket_depth -= 1
-      when '{'
+      when "{"
         brace_depth += 1
-      when '}'
+      when "}"
         brace_depth -= 1
-      when ','
+      when ","
         if paren_depth.zero? && bracket_depth.zero? && brace_depth.zero?
           parts << current.strip
-          current = +''
+          current = +""
           next
         end
       end
@@ -365,7 +366,7 @@ class RDoc::Generator::Markdown
     return text unless text.empty?
 
     aliased_method = method.is_alias_for
-    return 'Not documented.' unless aliased_method
+    return "Not documented." unless aliased_method
 
     "Alias for: [`#{aliased_method.name}`](#{method_link(aliased_method, current_class: current_class)})"
   end
@@ -382,7 +383,7 @@ class RDoc::Generator::Markdown
       hashes = Regexp.last_match(1)
       spaces = Regexp.last_match(2)
       level = [hashes.length + heading_level_offset, 6].min
-      "#{'#' * level}#{spaces}"
+      "#{"#" * level}#{spaces}"
     end
   end
 
@@ -401,15 +402,15 @@ class RDoc::Generator::Markdown
     lines.map do |line|
       stripped = line.strip
       next if stripped.empty?
-      next "#{stripped.sub(/::\z/, '')}:" if stripped.end_with?('::')
+      next "#{stripped.sub(/::\z/, "")}:" if stripped.end_with?("::")
 
-      "- #{stripped.sub(/\A\*\s/, '')}"
+      "- #{stripped.sub(/\A\*\s/, "")}"
     end.join("\n")
   end
 
   def definition_list_line?(line)
     stripped = line.strip
-    stripped.empty? || stripped.end_with?('::') || stripped.match?(/\A\*\s/)
+    stripped.empty? || stripped.end_with?("::") || stripped.match?(/\A\*\s/)
   end
 
   def method_link(method, current_class:)
@@ -422,7 +423,7 @@ class RDoc::Generator::Markdown
   def normalize_rdoc_pre_blocks(html)
     html.gsub(%r{<pre\b[^>]*>(?:.+?)</pre>}m) do
       raw = Regexp.last_match(0)
-      text = raw.gsub(/<[^>]+>/, '')
+      text = raw.gsub(/<[^>]+>/, "")
       "<pre>#{CGI.unescapeHTML(text)}</pre>"
     end
   end
@@ -432,7 +433,7 @@ class RDoc::Generator::Markdown
 
     markdown.gsub(%r{\]\(([^)]+)\)}) do
       target = Regexp.last_match(1)
-      path = target.sub(/[?#].*\z/, '')
+      path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
 
       resolved = resolve_output_path(path, current_dir)
@@ -455,15 +456,16 @@ class RDoc::Generator::Markdown
 
     nil
   end
+
   def normalize_input_path_for_output(path)
-    normalized = path.tr('\\', '/').sub(%r{\A\./}, '')
+    normalized = path.tr("\\", "/").sub(%r{\A\./}, "")
 
     root = File.expand_path(@options.root.to_s)
-    normalized = normalized.sub(%r{\A#{Regexp.escape(root)}/}, '')
-    normalized = normalized.sub(%r{\A/}, '')
+    normalized = normalized.sub(%r{\A#{Regexp.escape(root)}/}, "")
+    normalized = normalized.sub(%r{\A/}, "")
 
     root_basename = File.basename(root)
-    normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, '')
+    normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, "")
   end
 
   def class_doc_for(code_object)
@@ -502,11 +504,11 @@ class RDoc::Generator::Markdown
     end
 
     docs_by_name.values
-                .select do |doc|
-                  doc.fetch(:score).positive? ||
-                    !synthetic_full_name?(doc.fetch(:klass).full_name)
+      .select do |doc|
+        doc.fetch(:score).positive? ||
+          !synthetic_full_name?(doc.fetch(:klass).full_name)
     end
-                .sort_by { |doc| doc.fetch(:display_name) }
+      .sort_by { |doc| doc.fetch(:display_name) }
   end
 
   def normalized_full_name(full_name)
@@ -534,7 +536,7 @@ class RDoc::Generator::Markdown
   end
 
   def synthetic_full_name?(full_name)
-    parts = full_name.split('::')
+    parts = full_name.split("::")
     root = parts.first
     parts.count(root) > 1
   end
@@ -558,6 +560,6 @@ class RDoc::Generator::Markdown
     end
     @pages.each { |page| @known_output_paths << page_output_path(page) }
 
-    @root_path_segment = Pathname.new(@options.root || '.').basename
+    @root_path_segment = Pathname.new(@options.root || ".").basename
   end
 end

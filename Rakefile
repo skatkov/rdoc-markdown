@@ -128,18 +128,18 @@ end
 
 namespace :vendor do
   namespace :setup do
-    MINITEST_REF = "v6.0.1"
-    RAILS_REF = ENV.fetch("RAILS_REF", "main")
+    minitest_ref = "v6.0.1"
+    rails_ref = ENV.fetch("RAILS_REF", "main")
 
     desc "Clone/update vendor/minitest and checkout docs-aligned tag"
     task :minitest do
-      ensure_git_checkout(path: "vendor/minitest", url: "https://github.com/minitest/minitest.git", ref: MINITEST_REF)
-      Dir.chdir("vendor/minitest") { sh "git checkout #{MINITEST_REF}" }
+      ensure_git_checkout(path: "vendor/minitest", url: "https://github.com/minitest/minitest.git", ref: minitest_ref)
+      Dir.chdir("vendor/minitest") { sh "git checkout #{minitest_ref}" }
     end
 
     desc "Clone/update vendor/rails"
     task :rails do
-      ensure_git_checkout(path: "vendor/rails", url: "https://github.com/rails/rails.git", ref: RAILS_REF)
+      ensure_git_checkout(path: "vendor/rails", url: "https://github.com/rails/rails.git", ref: rails_ref)
     end
   end
 
