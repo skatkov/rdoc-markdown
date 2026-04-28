@@ -20,9 +20,8 @@ class TestClassDocs < Minitest::Test
   cover 'RDoc::Generator::Markdown#setup'
   cover 'RDoc::Generator::Markdown#synthetic_full_name?'
 
-  def generate_from_store(classes, pages: nil)
-    dir = stable_tmpdir('generate-from-store')
-    generator = RDoc::Generator::Markdown.new(rdoc_store(classes: classes, pages: pages), generator_options(op_dir: dir))
+  def generate_from_store(classes, pages: nil, dir: stable_tmpdir('generate-from-store'), root: nil)
+    generator = RDoc::Generator::Markdown.new(rdoc_store(classes: classes, pages: pages), generator_options(op_dir: dir, root: root))
     generator.generate
     dir
   end
@@ -71,6 +70,49 @@ class TestClassDocs < Minitest::Test
     assert_includes entries, ['VendoredPathExpander::PathExpander', 'Class', 'VendoredPathExpander/PathExpander.md']
     assert_eql 1, entries.count { |entry| entry == ['VendoredPathExpander::PathExpander', 'Class', 'VendoredPathExpander/PathExpander.md'] }
     refute(entries.any? { |name, _type, _path| name.include?('VendoredPathExpander::Minitest::VendoredPathExpander') })
+  end
+
+  def test_generate_normalizes_synthetic_class_with_multiple_middle_segments
+    synthetic = build_rdoc_class(
+      full_name: 'Root::One::Two::Root::Thing',
+      description: 'Synthetic doc',
+      methods: 1
+    )
+    real = build_rdoc_class(
+      full_name: 'Root::Thing',
+      description: 'Real doc',
+      methods: 2
+    )
+
+    dir = generate_from_store([synthetic, real])
+
+    canonical_path = File.join(dir, 'Root/Thing.md')
+    legacy_path = File.join(dir, 'Root/One/Two/Root/Thing.md')
+
+    assert_true File.exist?(canonical_path)
+    assert_true File.exist?(legacy_path)
+    assert_includes File.read(canonical_path), 'Real doc'
+    assert_eql File.read(canonical_path), File.read(legacy_path)
+
+    entries = index_entries(dir)
+    assert_includes entries, ['Root::Thing', 'Class', 'Root/Thing.md']
+    refute(entries.any? { |name, _type, _path| name.include?('Root::One::Two::Root') })
+  end
+
+  def test_generate_normalizes_repeated_two_part_class_with_content
+    collapsed = build_rdoc_class(full_name: 'Pair::Pair', description: 'Collapsed pair')
+
+    dir = generate_from_store([collapsed])
+
+    canonical_path = File.join(dir, 'Pair.md')
+    legacy_path = File.join(dir, 'Pair/Pair.md')
+
+    assert_true File.exist?(canonical_path)
+    assert_true File.exist?(legacy_path)
+    assert_includes File.read(canonical_path), '# Class Pair'
+    assert_includes File.read(canonical_path), 'Collapsed pair'
+    assert_eql File.read(canonical_path), File.read(legacy_path)
+    assert_includes index_entries(dir), ['Pair', 'Class', 'Pair.md']
   end
 
   def test_generate_preserves_legacy_path_when_lower_score_duplicate_arrives_later
@@ -172,11 +214,14 @@ class TestClassDocs < Minitest::Test
 
   def test_generate_keeps_zero_score_real_classes
     real = build_rdoc_class(full_name: 'Shell')
+    nested = build_rdoc_class(full_name: 'Alpha::Another')
 
-    dir = generate_from_store([real])
+    dir = generate_from_store([real, nested])
 
     assert_true File.exist?(File.join(dir, 'Shell.md'))
+    assert_true File.exist?(File.join(dir, 'Alpha/Another.md'))
     assert_includes index_entries(dir), ['Shell', 'Class', 'Shell.md']
+    assert_includes index_entries(dir), ['Alpha::Another', 'Class', 'Alpha/Another.md']
   end
 
   def test_generate_keeps_classes_with_attribute_only_content
@@ -352,7 +397,8 @@ class TestClassDocs < Minitest::Test
   def test_generate_populates_known_output_paths_for_link_normalization
     klass = build_rdoc_class(
       full_name: 'Solo::Inner::Solo::Thing',
-      description: 'See {alpha}[alpha_rdoc.html] and {legacy}[Solo/Inner/Solo/Thing.html].',
+      description: 'See {alpha}[alpha_rdoc.html], {canonical}[Solo/Thing.html], ' \
+                   'and {legacy}[Solo/Inner/Solo/Thing.html].',
       methods: 1
     )
     pages = [
@@ -363,9 +409,39 @@ class TestClassDocs < Minitest::Test
 
     dir = generate_from_store([klass], pages: pages)
 
-    assert_includes File.read(File.join(dir, 'Solo/Thing.md')), '[alpha](../alpha_rdoc.md)'
+    markdown = File.read(File.join(dir, 'Solo/Thing.md'))
+    assert_includes markdown, '[alpha](../alpha_rdoc.md)'
+    assert_includes markdown, '[canonical](Thing.md)'
+    assert_includes markdown, '[legacy](Inner/Solo/Thing.md)'
     assert_false File.exist?(File.join(dir, 'hidden_rdoc.md'))
     assert_false File.exist?(File.join(dir, 'binary_rdoc.md'))
+  end
+
+  def test_setup_uses_dot_root_segment_when_root_is_nil
+    klass = build_rdoc_class(
+      full_name: 'DotRoot::Thing',
+      description: 'See [guide](./guides/rooted.md).',
+      methods: 1
+    )
+    page = rdoc_page(relative_name: 'guides/rooted', comment: 'Rooted page')
+
+    dir = generate_from_store([klass], pages: [page])
+
+    assert_includes File.read(File.join(dir, 'DotRoot/Thing.md')), '[guide](../guides/rooted.md)'
+  end
+
+  def test_setup_uses_root_basename_for_root_segment
+    root = File.join(stable_tmpdir('root-path-segment'), 'pages')
+    klass = build_rdoc_class(
+      full_name: 'RootSegment::Thing',
+      description: 'See [guide](pages/guides/rooted.md).',
+      methods: 1
+    )
+    page = rdoc_page(relative_name: 'pages/guides/rooted', comment: 'Rooted page')
+
+    dir = generate_from_store([klass], pages: [page], root: root)
+
+    assert_includes File.read(File.join(dir, 'RootSegment/Thing.md')), '[guide](../guides/rooted.md)'
   end
 
   def test_emit_csv_index_writes_rows_for_visible_members_and_pages
@@ -402,17 +478,18 @@ class TestClassDocs < Minitest::Test
 
   def test_generate_prints_debug_messages_when_debug_is_enabled
     klass = build_rdoc_class(full_name: 'Debug::Thing', description: 'Doc')
+    dir = stable_tmpdir('debug-output')
     previous = $DEBUG_RDOC
     $DEBUG_RDOC = true
 
     stdout, = capture_io do
-      generate_from_store([klass])
+      generate_from_store([klass], dir: dir)
     end
 
     assert_includes stdout, '[rdoc-markdown] Setting things up '
-    assert_includes stdout, '[rdoc-markdown] Generate documentation in '
-    assert_includes stdout, '[rdoc-markdown] Generate pages in '
-    assert_includes stdout, '[rdoc-markdown] Generate index file in '
+    assert_includes stdout, "[rdoc-markdown] Generate documentation in #{dir}"
+    assert_includes stdout, "[rdoc-markdown] Generate pages in #{dir}"
+    assert_includes stdout, "[rdoc-markdown] Generate index file in #{dir}"
   ensure
     $DEBUG_RDOC = previous
   end
