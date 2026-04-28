@@ -93,6 +93,15 @@ class RDoc::Generator::Markdown
     puts "[rdoc-markdown] #{str}"
   end
 
+  # Emits a generator warning for surprising output normalization.
+  #
+  # @param str [String] Message to print.
+  #
+  # @return [void]
+  def warning(str)
+    warn("[rdoc-markdown] #{str}")
+  end
+
   # Writes a CSV search index for generated documentation.
   #
   # @return [void]
@@ -160,13 +169,15 @@ class RDoc::Generator::Markdown
     template = ERB.new(template_content, trim_mode: "-")
 
     @classes.each do |klass|
-      result = finalize_markdown(template.result(binding), current_output_path: output_path_for(klass))
+      content = template.result(binding)
+      result = finalize_markdown(content, current_output_path: output_path_for(klass))
 
       out_file = Pathname.new("#{output_dir}/#{output_path_for(klass)}")
       out_file.dirname.mkpath
       File.write(out_file, result)
 
       legacy_paths_for(klass).each do |legacy_path|
+        result = finalize_markdown(content, current_output_path: legacy_path)
         legacy_file = Pathname.new("#{output_dir}/#{legacy_path}")
         legacy_file.dirname.mkpath
         File.write(legacy_file, result)
@@ -252,13 +263,13 @@ class RDoc::Generator::Markdown
 
     html = normalize_rdoc_pre_blocks(input)
 
-    md = ReverseMarkdown.convert(html, github_flavored: true)
+    md = ReverseMarkdown.convert(html, github_flavored: true).dup
 
     # Flatten headings whose visible text is wrapped in a self-link.
     md.gsub!(/^(#+)\s\[([^\]]+)\]\((?:#[^)]+)\)$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
 
     # Replace .html to .md extension in all local markdown links.
-    md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
+    md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]*)?)\)}i) do
       "](#{Regexp.last_match(1)}.md#{Regexp.last_match(2)})"
     end
 
@@ -571,15 +582,70 @@ class RDoc::Generator::Markdown
   def normalize_internal_links(markdown, current_output_path:)
     current_dir = Pathname.new(current_output_path).dirname
 
-    markdown.gsub(%r{\]\(([^)]+)\)}) do
-      target = Regexp.last_match(1)
+    markdown.gsub(%r{\[([^\]]+)\]\(([^)]+)\)}) do
+      label = Regexp.last_match(1)
+      target = Regexp.last_match(2)
       path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
 
       resolved = resolve_output_path(path, current_dir)
-      rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
-      "](#{rewritten}#{suffix})"
+      if resolved.nil? && local_markdown_link_target?(target)
+        resolved = resolve_output_path_by_label(label)
+        warning(%(resolved local link "#{target}" by label "#{plain_link_label(label)}")) if resolved
+      end
+
+      if resolved
+        rewritten = Pathname.new(resolved).relative_path_from(current_dir)
+        "[#{label}](#{rewritten}#{suffix})"
+      elsif simple_local_markdown_link?(path)
+        warning(%(removed unresolved local link "#{target}" with label "#{plain_link_label(label)}"))
+        label
+      else
+        "[#{label}](#{path}#{suffix})"
+      end
     end
+  end
+
+  # Resolves an internal link by its visible label against generated class docs.
+  #
+  # @param label [String] Markdown link label.
+  #
+  # @return [String, nil] Resolved output path, or nil when ambiguous/unresolved.
+  def resolve_output_path_by_label(label)
+    text = plain_link_label(label)
+    exact_path = @output_paths_by_reference[text]
+    return exact_path if exact_path
+
+    simple_paths = @simple_output_paths_by_reference[text]
+    simple_paths.first if simple_paths.one?
+  end
+
+  # Returns plain text from a Markdown link label.
+  #
+  # @param label [String] Markdown link label.
+  #
+  # @return [String] Label text without lightweight Markdown markup.
+  def plain_link_label(label)
+    label.delete("`")
+  end
+
+  # Checks whether an unresolved link is a simple local Markdown cross-reference.
+  #
+  # @param path [String] Link path without any query or fragment suffix.
+  #
+  # @return [Boolean] True when the link should not be emitted as broken Markdown.
+  def simple_local_markdown_link?(path)
+    path.end_with?(".md") && !path.include?("/")
+  end
+
+  # Checks whether a link target is a local Markdown document.
+  #
+  # @param target [String] Link target with any query or fragment suffix.
+  #
+  # @return [Boolean] True when the link points at a local Markdown document.
+  def local_markdown_link_target?(target)
+    path = target.sub(/[?#].*\z/, "")
+    path.end_with?(".md") && !target.match?(/\A(?:https?:\/\/|mailto:)/i)
   end
 
   # Resolves an internal link path against known generated outputs.
@@ -646,7 +712,7 @@ class RDoc::Generator::Markdown
         klass: klass,
         display_name: display_name,
         output_path: output_path,
-        legacy_paths: [legacy_path],
+        legacy_paths: (legacy_path == output_path) ? [] : [legacy_path],
         score: score
       }
 
@@ -729,12 +795,31 @@ class RDoc::Generator::Markdown
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
 
     @known_output_paths = Set.new
+    @output_paths_by_reference = {}
+    @simple_output_paths_by_reference = Hash.new { [] }
     @class_docs.each do |doc|
       @known_output_paths << doc.fetch(:output_path)
       doc.fetch(:legacy_paths).each { |path| @known_output_paths << path }
+      index_output_path_references(doc)
     end
     @pages.each { |page| @known_output_paths << page_output_path(page) }
 
     @root_path_segment = Pathname.new(@options.root || ".").basename
+  end
+
+  # Indexes generated class paths by fully-qualified and simple names.
+  #
+  # @param doc [Hash{Symbol => Object}] Class documentation metadata.
+  #
+  # @return [void]
+  def index_output_path_references(doc)
+    output_path = doc.fetch(:output_path)
+    display_name = doc.fetch(:display_name)
+
+    [display_name, doc.fetch(:klass).full_name].each do |name|
+      @output_paths_by_reference[name] = output_path
+    end
+
+    @simple_output_paths_by_reference[display_name.split("::").last] |= [output_path]
   end
 end

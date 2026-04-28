@@ -13,14 +13,21 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#method_description"
   cover "RDoc::Generator::Markdown#method_link"
   cover "RDoc::Generator::Markdown#section_description"
+  cover "RDoc::Generator::Markdown#setup"
   cover "RDoc::Generator::Markdown#finalize_markdown"
   cover "RDoc::Generator::Markdown#normalize_internal_links"
   cover "RDoc::Generator::Markdown#resolve_output_path"
+  cover "RDoc::Generator::Markdown#resolve_output_path_by_label"
+  cover "RDoc::Generator::Markdown#plain_link_label"
+  cover "RDoc::Generator::Markdown#simple_local_markdown_link?"
+  cover "RDoc::Generator::Markdown#local_markdown_link_target?"
   cover "RDoc::Generator::Markdown#shift_headings"
   cover "RDoc::Generator::Markdown#normalize_definition_list_code_blocks"
   cover "RDoc::Generator::Markdown#convert_definition_list_block"
   cover "RDoc::Generator::Markdown#definition_list_line?"
   cover "RDoc::Generator::Markdown#normalize_rdoc_pre_blocks"
+  cover "RDoc::Generator::Markdown#warning"
+  cover "RDoc::Generator::Markdown#index_output_path_references"
 
   def generate_markdown(classes: [], pages: [], root: nil)
     dir = stable_tmpdir("generated-markdown")
@@ -43,19 +50,26 @@ class TestMarkdownHelpers < Minitest::Test
                "{RootGuide}[/docs/root.html?x=1] {RootPlain}[/docs/plain.html] " \
                "{Secure}[https://example.com/page.html] {PlainHttp}[http://example.com/page.html] " \
                "{MailHtml}[mailto:test.html] {AnchorHtml}[#topic.html]\n" \
-               "{FilePath}[files/README.html] {ParentFile}[../files/README.html#top] " \
+               "{FilePath}[files/README.html] {FilePathAnchor}[files/README.html#top] " \
+               "{ParentFile}[../files/README.html#top] " \
                "{ClassPath}[classes/Foo.html] {ParentClass}[../classes/Foo.html#top] " \
                "{ModulePath}[modules/Bar.html] {ParentModule}[../modules/Bar.html#top]\n\n" \
                "  bird::\n  * speak\n"
     )
 
-    markdown = read_generated("guide_rdoc.md", pages: [page])
+    target = rdoc_page(relative_name: "README", comment: "= README")
+    foo = build_rdoc_class(full_name: "Foo", description: "Foo docs")
+    bar = build_rdoc_class(full_name: "Bar", description: "Bar docs")
+    markdown = nil
+    _, stderr = capture_io do
+      markdown = read_generated("guide_rdoc.md", classes: [foo, bar], pages: [page, target])
+    end
 
     assert_includes markdown, "# Heading"
-    assert_includes markdown, "[Guide](guide.md)"
+    assert_includes markdown, "Guide Upper"
+    assert_includes stderr, '[rdoc-markdown] removed unresolved local link "guide.md" with label "Guide"'
     assert_includes markdown, "[Mail](mailto:test@example.com)"
     assert_includes markdown, "[Anchor](#topic)"
-    assert_includes markdown, "[Upper](UPPER.md)"
     assert_includes markdown, "[RootGuide](docs/root.md?x=1)"
     assert_includes markdown, "[RootPlain](docs/plain.md)"
     assert_includes markdown, "[Secure](https://example.com/page.html)"
@@ -63,6 +77,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[MailHtml](mailto:test.html)"
     assert_includes markdown, "[AnchorHtml](#topic.html)"
     assert_includes markdown, "[FilePath](README.md)"
+    assert_includes markdown, "[FilePathAnchor](README.md#top)"
     assert_includes markdown, "[ParentFile](../README.md#top)"
     assert_includes markdown, "[ClassPath](Foo.md)"
     assert_includes markdown, "[ParentClass](../Foo.md#top)"
@@ -79,6 +94,22 @@ class TestMarkdownHelpers < Minitest::Test
 
     assert_includes markdown, "Intro\n\n# Topic"
     refute_includes markdown, "[Topic](#topic)"
+  end
+
+  def test_empty_reverse_markdown_results_do_not_emit_frozen_literal_warnings
+    skip "Ruby warning categories are unavailable" unless Warning.respond_to?(:[]) && Warning.respond_to?(:[]=)
+
+    original = Warning[:deprecated]
+    Warning[:deprecated] = true
+    page = rdoc_page(relative_name: "empty.rdoc", comment: "")
+
+    _, stderr = capture_io do
+      read_generated("empty_rdoc.md", pages: [page])
+    end
+
+    refute_includes stderr, "literal string will be frozen"
+  ensure
+    Warning[:deprecated] = original if defined?(original)
   end
 
   def test_multiple_rdoc_heading_levels_are_normalized
@@ -146,7 +177,10 @@ class TestMarkdownHelpers < Minitest::Test
                "[Sibling](nested/../sibling.md)"
     )
 
-    dir = generate_markdown(pages: [guide, api, sibling, simple_intro, single, empty_anchor, readme])
+    dir = nil
+    _, stderr = capture_io do
+      dir = generate_markdown(pages: [guide, api, sibling, simple_intro, single, empty_anchor, readme])
+    end
     markdown = File.read(File.join(dir, "docs/readme_rdoc.md"))
 
     assert_includes markdown, "[Intro](../guides/intro_rdoc.md#top)"
@@ -156,6 +190,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[Mail](mailto:test@example.com)"
     assert_includes markdown, "[Anchor](#topic.md)"
     assert_includes markdown, "[Sibling](sibling.md)"
+    refute_includes stderr, 'resolved local link "missing/path.md#part"'
     assert_eql "[Intro](../guides/intro_rdoc.md#top)\n", File.read(File.join(dir, "docs/single_rdoc.md"))
     assert_eql "[EmptyAnchor](../guides/intro.md#) [RootIntro](../guides/intro.md)\n",
       File.read(File.join(dir, "docs/empty-anchor_rdoc.md"))
@@ -176,6 +211,159 @@ class TestMarkdownHelpers < Minitest::Test
     assert_eql "[Direct](../guides/direct.md) [Rooted](../guides/rooted.md) " \
                "[Nested](../pages/guides/nested.md)\n",
       File.read(File.join(dir, "docs/readme_rdoc.md"))
+  end
+
+  def test_unresolved_simple_internal_links_are_rendered_as_text_with_warning
+    klass = build_rdoc_class(
+      full_name: "Minitest::Reportable",
+      description: "Shared code for anything passed to a {+Reporter+}[Reporter.html]."
+    )
+
+    markdown = nil
+    _, stderr = capture_io do
+      markdown = read_generated("Minitest/Reportable.md", classes: [klass])
+    end
+
+    assert_includes markdown, "passed to a `Reporter`."
+    refute_includes markdown, "[Reporter](Reporter.md)"
+    warning = '[rdoc-markdown] removed unresolved local link "Reporter.md" with label "Reporter"'
+    assert_includes stderr, warning
+    assert_equal 1, stderr.scan(warning).count
+    refute_includes stderr, 'with label "`Reporter`"'
+  end
+
+  def test_legacy_class_paths_finalize_links_relative_to_their_own_output
+    root = build_rdoc_class(full_name: "Minitest", description: "Root docs")
+    path_expander = build_rdoc_class(
+      full_name: "Minitest::VendoredPathExpander::Minitest::VendoredPathExpander::Minitest::PathExpander",
+      description: "Returns a hash mapping [Minitest](../../../Minitest.md) runnable classes."
+    )
+
+    dir = nil
+    _, stderr = capture_io do
+      dir = generate_markdown(classes: [root, path_expander])
+    end
+
+    assert_includes File.read(File.join(dir, "Minitest/PathExpander.md")), "[Minitest](../Minitest.md)"
+    assert_includes File.read(File.join(
+      dir,
+      "Minitest/VendoredPathExpander/Minitest/VendoredPathExpander/Minitest/PathExpander.md"
+    )), "[Minitest](../../../../../Minitest.md)"
+    assert_includes stderr, '[rdoc-markdown] resolved local link "../../../Minitest.md" by label "Minitest"'
+  end
+
+  def test_label_resolution_prefers_exact_names_when_simple_names_are_ambiguous
+    root = build_rdoc_class(full_name: "Root", description: "Root docs")
+    other_root = build_rdoc_class(full_name: "Other::Root", description: "Other root docs")
+    synthetic = build_rdoc_class(
+      full_name: "Vendored::Inner::Vendored::Thing",
+      description: "Synthetic docs"
+    )
+    source = build_rdoc_class(
+      full_name: "Docs::Thing",
+      description: "See [Root](../../Root.md), [Vendored::Thing](../../Vendored/Thing.md), " \
+                   "and [Vendored::Inner::Vendored::Thing](../../Vendored/Inner/Vendored/Thing.md)."
+    )
+
+    dir = nil
+    capture_io do
+      dir = generate_markdown(classes: [root, other_root, synthetic, source])
+    end
+
+    markdown = File.read(File.join(dir, "Docs/Thing.md"))
+
+    assert_includes markdown, "[Root](../Root.md)"
+    assert_includes markdown, "[Vendored::Thing](../Vendored/Thing.md)"
+    assert_includes markdown, "[Vendored::Inner::Vendored::Thing](../Vendored/Thing.md)"
+  end
+
+  def test_label_resolution_leaves_ambiguous_simple_names_unresolved
+    alpha = build_rdoc_class(full_name: "Alpha::Thing", description: "Alpha docs")
+    beta = build_rdoc_class(full_name: "Beta::Thing", description: "Beta docs")
+    page = rdoc_page(relative_name: "docs/ambiguous.rdoc", comment: "See [Thing](../Thing.md).")
+
+    dir = nil
+    _, stderr = capture_io do
+      dir = generate_markdown(classes: [alpha, beta], pages: [page])
+    end
+
+    assert_includes File.read(File.join(dir, "docs/ambiguous_rdoc.md")), "[Thing](../Thing.md)"
+    refute_includes stderr, 'resolved local link "../Thing.md" by label "Thing"'
+  end
+
+  def test_label_resolution_uses_unambiguous_simple_names
+    target = build_rdoc_class(full_name: "Namespace::Thing", description: "Target docs")
+    source = build_rdoc_class(
+      full_name: "Docs::Source",
+      description: "See {+Thing+}[../Thing.html]."
+    )
+
+    dir = nil
+    _, stderr = capture_io do
+      dir = generate_markdown(classes: [target, source])
+    end
+
+    assert_includes File.read(File.join(dir, "Docs/Source.md")), "[`Thing`](../Namespace/Thing.md)"
+    assert_includes stderr, 'resolved local link "../Thing.md" by label "Thing"'
+    refute_includes stderr, 'by label "`Thing`"'
+  end
+
+  def test_label_resolution_only_uses_local_markdown_targets
+    target = build_rdoc_class(full_name: "Namespace::Thing", description: "Target docs")
+    page = rdoc_page(
+      relative_name: "docs/targets.rdoc",
+      comment: "See {Thing}[../Thing.html#], {Thing}[../Thing.html#topic], " \
+               "{Thing}[../Thing.html?version=1], {Thing}[http://example.com/Thing.md], " \
+               "{Thing}[HTTPS://example.com/Thing.md], " \
+               "{Thing}[#Thing.md], and {Thing}[Thing.txt]."
+    )
+
+    dir = nil
+    capture_io do
+      dir = generate_markdown(classes: [target], pages: [page])
+    end
+
+    markdown = File.read(File.join(dir, "docs/targets_rdoc.md"))
+
+    assert_includes markdown, "[Thing](../Namespace/Thing.md#)"
+    assert_includes markdown, "[Thing](../Namespace/Thing.md#topic)"
+    assert_includes markdown, "[Thing](../Namespace/Thing.md?version=1)"
+    assert_includes markdown, "[Thing](http://example.com/Thing.md)"
+    assert_includes markdown, "[Thing](HTTPS://example.com/Thing.md)"
+    assert_includes markdown, "[Thing](#Thing.md)"
+    assert_includes markdown, "[Thing](Thing.txt)"
+  end
+
+  def test_label_resolution_does_not_rewrite_mailto_markdown_targets
+    raw_page_class = Struct.new(:relative_name, :description, :store) do
+      def text?
+        true
+      end
+
+      def display?
+        true
+      end
+
+      def base_name
+        File.basename(relative_name)
+      end
+
+      def page_name
+        File.basename(relative_name, ".*")
+      end
+    end
+    target = build_rdoc_class(full_name: "Namespace::Thing", description: "Target docs")
+    page = raw_page_class.new(
+      "docs/mailto.raw",
+      'See <a href="mailto:test@example.com/Thing.md">Thing</a>.'
+    )
+
+    dir = nil
+    capture_io do
+      dir = generate_markdown(classes: [target], pages: [page])
+    end
+
+    assert_includes File.read(File.join(dir, "docs/mailto_raw.md")), "[Thing](mailto:test@example.com/Thing.md)"
   end
 
   def test_class_and_method_descriptions_are_markdownified

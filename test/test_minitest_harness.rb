@@ -34,7 +34,9 @@ class TestMinitestHarness < Minitest::Test
     options.root = minitest_root
     options.title = "minitest harness"
 
-    RDoc::RDoc.new.document(options)
+    _, stderr = capture_io do
+      RDoc::RDoc.new.document(options)
+    end
 
     assert File.exist?(File.join(out_dir, "README_rdoc.md"))
     assert File.exist?(File.join(out_dir, "History_rdoc.md"))
@@ -42,6 +44,11 @@ class TestMinitestHarness < Minitest::Test
     assert File.exist?(File.join(out_dir, "Minitest/PathExpander.md"))
 
     readme_md = File.read(File.join(out_dir, "README_rdoc.md"))
+    reportable_md = File.read(File.join(out_dir, "Minitest/Reportable.md"))
+    path_expander_md = File.read(File.join(
+      out_dir,
+      "Minitest/VendoredPathExpander/Minitest/VendoredPathExpander/Minitest/PathExpander.md"
+    ))
 
     assert_includes readme_md, "# minitest/{test,spec,benchmark}"
     assert_includes readme_md, "## DESCRIPTION:"
@@ -50,6 +57,11 @@ class TestMinitestHarness < Minitest::Test
     assert_includes readme_md, "class Meme\n  def i_can_has_cheezburger?"
     assert_includes readme_md, "[assertions](Minitest/Assertions.md)"
     refute_match(%r{\]\((?!https?://|mailto:|#)[^)]+\.html(?:[?#][^)]+)?\)}, readme_md)
+    assert_includes reportable_md, "passed to a `Reporter`."
+    refute_includes reportable_md, "[Reporter](Reporter.md)"
+    assert_includes path_expander_md, "[`Minitest`](../../../../../Minitest.md) runnable classes"
+    assert_includes stderr, '[rdoc-markdown] removed unresolved local link "Reporter.md" with label "Reporter"'
+    assert_includes stderr, '[rdoc-markdown] resolved local link "../../../Minitest.md" by label "Minitest"'
 
     csv_rows = CSV.parse(File.read(File.join(out_dir, "index.csv")), headers: true)
 

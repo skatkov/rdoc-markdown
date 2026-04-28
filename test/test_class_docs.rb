@@ -175,6 +175,17 @@ class TestClassDocs < Minitest::Test
     assert_includes index_entries(dir), ["Solo::Thing", "Class", "Solo/Thing.md"]
   end
 
+  def test_generate_does_not_treat_canonical_path_as_legacy_path
+    klass = build_rdoc_class(full_name: "Plain", description: "See {Missing}[Missing.html].")
+
+    _, stderr = capture_io do
+      generate_from_store([klass])
+    end
+
+    warning = '[rdoc-markdown] removed unresolved local link "Missing.md" with label "Missing"'
+    assert_equal 1, stderr.scan(warning).count
+  end
+
   def test_generate_skips_zero_score_synthetic_classes
     synthetic = build_rdoc_class(full_name: "Root::Inner::Root::Thing")
 
