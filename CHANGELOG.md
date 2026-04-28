@@ -7,5 +7,6 @@
 - Huge refactoring done to template, powered by mutant testing mostly.
 
 ### Added
+- SimpleCov test coverage reporting.
 - Mutation testing coverage
 - StandardRB was added

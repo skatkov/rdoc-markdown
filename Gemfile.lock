@@ -15,6 +15,7 @@ GEM
     csv (3.3.5)
     date (3.5.1)
     diff-lcs (2.0.0)
+    docile (1.4.1)
     erb (6.0.4)
     io-console (0.8.2)
     irb (1.18.0)
@@ -87,6 +88,12 @@ GEM
       rubocop-ast (>= 1.47.1, < 2.0)
     ruby-progressbar (1.13.0)
     securerandom (0.4.1)
+    simplecov (0.22.0)
+      docile (~> 1.1)
+      simplecov-html (~> 0.11)
+      simplecov_json_formatter (~> 0.1)
+    simplecov-html (0.13.2)
+    simplecov_json_formatter (0.1.4)
     sorbet-runtime (0.6.13163)
     standard (1.54.0)
       language_server-protocol (~> 3.17.0.2)
@@ -124,6 +131,7 @@ DEPENDENCIES
   rake (~> 13.0)
   rdiscount (~> 2.0)
   rdoc-markdown!
+  simplecov (~> 0.22)
   standard
 
 BUNDLED WITH
