@@ -82,6 +82,12 @@ MARKDOWN_VALIDATE_STRICT_VENDOR=1 rake markdown:validate
 
 This task is also executed in CI.
 
+To lint markdown ERB templates:
+
+```
+bundle exec rake erb:lint
+```
+
 ### Integration harness: minitest
 To run the integration harness against minitest (aligned with docs.seattlerb.org/minitest):
 

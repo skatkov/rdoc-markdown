@@ -1,0 +1,19 @@
+---
+glob: "**/*.{md,markdown}.erb"
+EnableDefaultLinters: false
+linters:
+  ClosingErbTagIndent:
+    enabled: true
+  CommentSyntax:
+    enabled: true
+  FinalNewline:
+    enabled: true
+  NoEmbeddedAssets:
+    enabled: true
+  RightTrim:
+    enabled: true
+    enforced_style: "-"
+  SpaceAroundErbTag:
+    enabled: true
+  TrailingWhitespace:
+    enabled: true

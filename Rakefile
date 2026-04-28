@@ -13,6 +13,13 @@ end
 
 task default: [:test]
 
+namespace :erb do
+  desc "Lint markdown ERB templates"
+  task :lint do
+    sh "bundle exec erb_lint --lint-all"
+  end
+end
+
 namespace :markdown do
   desc "Validate generated markdown as GitHub Flavored Markdown"
   task :validate do
