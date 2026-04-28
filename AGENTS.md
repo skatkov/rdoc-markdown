@@ -37,10 +37,12 @@ the user.
 
 ## Done
 
-You are done when all of these are green:
+You are done when all of these are green and not reporting any issues:
 
 ```
 bundle exec rake test
 bundle exec mutant run
 bundle exec rake markdown:validate
+bundle exec yard-lint
+bundle exec erb:lint
 ```
