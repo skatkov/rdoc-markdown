@@ -10,6 +10,7 @@ gem "rake", "~> 13.0"
 gem "erb_lint", require: false
 gem "minitest", "~> 5.0"
 gem "standard"
+gem "yard-lint"
 
 if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.3")
   gem "mutant"

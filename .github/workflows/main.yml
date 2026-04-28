@@ -38,5 +38,8 @@ jobs:
         uses: standardrb/standard-ruby-action@v1
       - name: Lint markdown ERB templates
         run: bundle exec rake erb:lint
+      - name: YARD Lint
+        if: matrix['ruby-version'] == '4.0'
+        run: bundle exec yard-lint lib/
       - name: Validate markdown output (GFM)
         run: bundle exec rake markdown:validate
