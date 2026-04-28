@@ -6,13 +6,12 @@ module ERBLint
       include LinterRegistry
 
       PATTERNS = [
-        [/<\s*script\b/i, "Avoid raw `<script>` tags in markdown ERB templates."],
-        [/<\s*style\b/i, "Avoid raw `<style>` tags in markdown ERB templates."],
-        [/<\s*link\b[^>]*\brel\s*=\s*(?:\"[^\"]*\bstylesheet\b[^\"]*\"|'[^']*\bstylesheet\b[^']*'|[^\s>]*stylesheet[^\s>]*)/i,
-          "Avoid stylesheet `<link>` tags in markdown ERB templates."],
-        [/\sstyle\s*=/i, "Avoid inline `style` attributes in markdown ERB templates."],
         [/(?:javascript_tag|javascript_include_tag|javascript_pack_tag|stylesheet_link_tag|stylesheet_pack_tag)\b/i,
-          "Avoid Rails JavaScript and stylesheet helpers in markdown ERB templates."]
+          "Avoid Rails JavaScript and stylesheet helpers in markdown ERB templates."],
+        [/\bcontent_tag\s*\(?\s*[:"'](?:script|style)\b/i,
+          "Avoid helper-generated `<script>` and `<style>` tags in markdown ERB templates."],
+        [/\btag\.(?:link|script|style)\b/i,
+          "Avoid helper-generated asset tags in markdown ERB templates."]
       ].freeze
 
       def run(processed_source)
