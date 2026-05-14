@@ -1,10 +1,15 @@
 # RDoc-Markdown
 RDoc plugin to generate markdown documentation and search index file (CSV).
 
-## Motivation
-Markdown has become the de-facto documentation standard. I heavily rely on Obsidian to render my storage of markdown notes. But markdown is used not just for scribbles, supported is far and wide. We can render markdown file on any device, probably even on thermometer with a screen. But also everyone knows enough markdown to be dangerous (or productive).
+> [!CAUTION]
+> This gem relies on multiple hacks to generate "plausible" markdown documentation. This is **NOT PRODUCTION READY**, use at your own risk.
+>
+> rdoc maintainers are actively working on markdown support, things will improve with time... 
 
-It's a pitty that rdoc and yard can't output a proper markdown file. I would like to change that.
+## Motivation
+Markdown has become the de-facto documentation standard. We can render markdown file on any device, possibly on thermometer with a screen. And everyone knows markdown...
+
+It's a pitty that rdoc can't output a proper markdown file. Somebody has to try and build it.
 
 ## Installation
 
