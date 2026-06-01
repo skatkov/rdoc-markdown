@@ -14,6 +14,9 @@ class RDoc::Generator::Markdown
   # Directory containing ERB templates.
   TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
 
+  # Markdown source extensions that can be copied without conversion.
+  MARKDOWN_PAGE_EXTENSIONS = %w[.md .markdown].freeze
+
   # Source store for generated content.
   #
   # @return [RDoc::Store]
@@ -182,8 +185,12 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{page_output_path(page)}")
       out_file.dirname.mkpath
 
-      content = markdownify(page.description)
-      File.write(out_file, finalize_markdown(content, current_output_path: page_output_path(page)))
+      if copied_markdown_page?(page) && File.file?(page.absolute_name)
+        File.binwrite(out_file, File.binread(page.absolute_name))
+      else
+        content = markdownify(page.description)
+        File.write(out_file, finalize_markdown(content, current_output_path: page_output_path(page)))
+      end
     end
   end
 
@@ -203,12 +210,43 @@ class RDoc::Generator::Markdown
   # @return [String] Relative Markdown path.
   def page_output_path(page)
     source_path = normalize_input_path_for_output(page.relative_name)
+    return source_path if copied_markdown_page?(page)
+
+    converted_page_output_path(page)
+  end
+
+  # Builds the converted Markdown output path for an RDoc page.
+  #
+  # @param page [RDoc::TopLevel] Page object to render.
+  #
+  # @return [String] Relative Markdown path.
+  def converted_page_output_path(page)
+    source_path = normalize_input_path_for_output(page.relative_name)
+
     dirname = File.dirname(source_path)
     basename = "#{File.basename(source_path).tr(".", "_")}.md"
 
     return basename if dirname == "."
 
     "#{dirname}/#{basename}"
+  end
+
+  # Checks whether an RDoc page should be copied from source instead of converted.
+  #
+  # @param page [RDoc::TopLevel] Page object to render.
+  #
+  # @return [Boolean] True when the source is a root-level Markdown file.
+  def copied_markdown_page?(page)
+    markdown_page?(page) && File.dirname(normalize_input_path_for_output(page.relative_name)) == "."
+  end
+
+  # Checks whether an RDoc page came from an existing Markdown file.
+  #
+  # @param page [RDoc::TopLevel] Page object to render.
+  #
+  # @return [Boolean] True when the source extension is Markdown.
+  def markdown_page?(page)
+    MARKDOWN_PAGE_EXTENSIONS.include?(File.extname(page.relative_name))
   end
 
   # Returns the normalized display name for a class or module.
@@ -592,11 +630,13 @@ class RDoc::Generator::Markdown
     candidates = [path, path.delete_prefix("#{@root_path_segment}/")]
 
     candidates.each do |candidate|
+      return @output_path_aliases.fetch(candidate) if @output_path_aliases.key?(candidate)
       return candidate if @known_output_paths.include?(candidate)
     end
 
     candidates.each do |candidate|
       expanded = current_dir.join(candidate).cleanpath.to_s
+      return @output_path_aliases.fetch(expanded) if @output_path_aliases.key?(expanded)
       return expanded if @known_output_paths.include?(expanded)
     end
 
@@ -759,11 +799,15 @@ class RDoc::Generator::Markdown
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
 
     @known_output_paths = Set.new
+    @output_path_aliases = {}
     @class_docs.each do |doc|
       @known_output_paths << doc.fetch(:output_path)
       doc.fetch(:legacy_paths).each { |path| @known_output_paths << path }
     end
-    @pages.each { |page| @known_output_paths << page_output_path(page) }
+    @pages.each do |page|
+      output_path = page_output_path(page)
+      @output_path_aliases[converted_page_output_path(page)] = output_path
+    end
 
     @root_path_segment = Pathname.new(@options.root || ".").basename
   end

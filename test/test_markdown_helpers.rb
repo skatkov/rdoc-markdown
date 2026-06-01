@@ -72,6 +72,14 @@ class TestMarkdownHelpers < Minitest::Test
     assert_equal "\n", markdown[-1]
   end
 
+  def test_markdown_pages_without_source_files_are_markdownified
+    page = rdoc_page(relative_name: "virtual-copy-source.md", comment: "= Virtual\n\n{Guide}[guide.html]")
+
+    markdown = read_generated("virtual-copy-source.md", pages: [page])
+
+    assert_eql "# Virtual\n\n[Guide](guide.md)\n", markdown
+  end
+
   def test_linked_headings_are_flattened_after_intro_text
     page = rdoc_page(relative_name: "linked-heading.rdoc", comment: "Intro\n\n= {Topic}[#topic]")
 
@@ -187,6 +195,24 @@ class TestMarkdownHelpers < Minitest::Test
     assert_eql "[Direct](../guides/direct.md) [Rooted](../guides/rooted.md) " \
                "[Nested](../pages/guides/nested.md)\n",
       File.read(File.join(dir, "docs/readme_rdoc.md"))
+  end
+
+  def test_internal_links_resolve_copied_markdown_page_aliases
+    readme = rdoc_page(relative_name: "README.md", comment: "# README")
+    link = rdoc_page(relative_name: "docs/link.rdoc", comment: "{README}[README_md.html]")
+
+    dir = generate_markdown(pages: [readme, link])
+
+    assert_eql "[README](../README.md)\n", File.read(File.join(dir, "docs/link_rdoc.md"))
+  end
+
+  def test_internal_links_resolve_collapsible_relative_class_paths
+    klass = build_rdoc_class(full_name: "LinkedClass", description: "Linked class")
+    page = rdoc_page(relative_name: "docs/class-link.rdoc", comment: "{Target}[nested/../../LinkedClass.html]")
+
+    dir = generate_markdown(classes: [klass], pages: [page])
+
+    assert_eql "[Target](../LinkedClass.md)\n", File.read(File.join(dir, "docs/class-link_rdoc.md"))
   end
 
   def test_class_and_method_descriptions_are_markdownified
