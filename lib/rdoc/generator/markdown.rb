@@ -252,7 +252,7 @@ class RDoc::Generator::Markdown
 
     html = normalize_rdoc_pre_blocks(input)
 
-    md = ReverseMarkdown.convert(html, github_flavored: true)
+    md = ReverseMarkdown.convert(html, github_flavored: true).dup
 
     # Flatten headings whose visible text is wrapped in a self-link.
     md.gsub!(/^(#+)\s\[([^\]]+)\]\((?:#[^)]+)\)$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
@@ -676,14 +676,12 @@ class RDoc::Generator::Markdown
   # @return [Boolean] True when the class/module has useful generated output.
   def documentable_class_doc?(doc)
     klass = doc.fetch(:klass)
-    score = doc.fetch(:score)
 
-    return false if score.zero? && synthetic_full_name?(klass.full_name)
-    return false if empty_namespace?(klass)
-    return false if placeholder_namespace?(klass)
-    return false if placeholder_namespace?(klass.parent)
+    return true if class_member_count(klass).positive?
+    return false if klass.description.empty?
+    return true if nested_classes_and_modules(klass).empty?
 
-    true
+    subtree_member_count(klass).positive?
   end
 
   # Collapses repeated namespace segments from synthetic vendored names.
@@ -729,33 +727,15 @@ class RDoc::Generator::Markdown
     klass.method_list.size + klass.constants.size + klass.attributes.size
   end
 
-  # Checks whether a class/module only exists as an empty namespace container.
+  # Counts methods, constants, and attributes owned by nested classes/modules.
   #
   # @param klass [RDoc::Context] Class or module object.
   #
-  # @return [Boolean] True when the object has children but no own content.
-  def empty_namespace?(klass)
-    class_member_count(klass).zero? &&
-      klass.description.empty? &&
-      nested_classes_and_modules(klass).any?
-  end
-
-  # Checks whether a class/module is a documented placeholder around empty children.
-  #
-  # @param klass [RDoc::Context, nil] Class or module object.
-  #
-  # @return [Boolean] True when the object is a placeholder namespace.
-  def placeholder_namespace?(klass)
-    return false unless klass
-
-    children = nested_classes_and_modules(klass)
-
-    class_member_count(klass).zero? &&
-      !klass.description.empty? &&
-      children.any? &&
-      children.all? do |child|
-        class_content_score(child).zero? && nested_classes_and_modules(child).empty?
-      end
+  # @return [Integer] Number of descendant members.
+  def subtree_member_count(klass)
+    nested_classes_and_modules(klass).sum do |child|
+      class_member_count(child) + subtree_member_count(child)
+    end
   end
 
   # Returns nested classes and modules owned by a class/module object.
@@ -765,17 +745,6 @@ class RDoc::Generator::Markdown
   # @return [Array<RDoc::Context>] Direct nested classes and modules.
   def nested_classes_and_modules(klass)
     klass.classes + klass.modules
-  end
-
-  # Checks whether a name appears to contain duplicated root namespaces.
-  #
-  # @param full_name [String] Full RDoc object name.
-  #
-  # @return [Boolean] True when the root namespace appears more than once.
-  def synthetic_full_name?(full_name)
-    parts = full_name.split("::")
-    root = parts.first
-    parts.count(root) > 1
   end
 
   # Prepares sorted objects and link lookup state for generation.
