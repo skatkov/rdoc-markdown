@@ -5,6 +5,11 @@ require "rdoc/rdoc"
 require "rdoc/markdown"
 require_relative "test/support/markdown_validator"
 
+JEKYLL_SEO_TAG_NAME = "jekyll-seo-tag"
+JEKYLL_SEO_TAG_REF = "v2.8.0"
+JEKYLL_SEO_TAG_TITLE = "#{JEKYLL_SEO_TAG_NAME} #{JEKYLL_SEO_TAG_REF.delete_prefix("v")}"
+JEKYLL_SEO_TAG_VENDOR_PATH = "vendor/#{JEKYLL_SEO_TAG_NAME}"
+
 Rake::TestTask.new do |t|
   t.verbose = true
   t.warning = false
@@ -29,12 +34,7 @@ namespace :markdown do
     FileUtils.mkdir_p(validation_root)
 
     sample_output = File.join(validation_root, "sample")
-    generate_markdown_docs(
-      title: "sample",
-      root: File.expand_path("test/data", __dir__),
-      output: sample_output,
-      files: [File.expand_path("test/data/example.rb", __dir__)]
-    )
+    generate_sample_docs(output: sample_output)
 
     sample_count = MarkdownValidator.new(sample_output).validate!
     puts "Validated #{sample_count} markdown files in #{sample_output}"
@@ -60,14 +60,8 @@ namespace :markdown do
     puts "Skipped #{minitest_validator.unresolved_links} unresolved local links in vendored minitest docs"
 
     Rake::Task["vendor:setup:jekyll_seo_tag"].invoke
-    jekyll_seo_tag_root = File.expand_path("vendor/jekyll-seo-tag", __dir__)
-    jekyll_seo_tag_output = File.join(validation_root, "jekyll-seo-tag")
-    generate_markdown_docs(
-      title: "jekyll-seo-tag 2.8.0",
-      root: jekyll_seo_tag_root,
-      output: jekyll_seo_tag_output,
-      files: jekyll_seo_tag_docs_files(jekyll_seo_tag_root)
-    )
+    jekyll_seo_tag_output = File.join(validation_root, JEKYLL_SEO_TAG_NAME)
+    generate_jekyll_seo_tag_docs(output: jekyll_seo_tag_output)
     jekyll_seo_tag_validator = MarkdownValidator.new(jekyll_seo_tag_output, strict_links: strict_vendor_links)
     jekyll_seo_tag_count = jekyll_seo_tag_validator.validate!
     puts "Validated #{jekyll_seo_tag_count} markdown files in #{jekyll_seo_tag_output}"
@@ -121,33 +115,54 @@ def generate_markdown_docs(title:, root:, output:, files:)
   RDoc::RDoc.new.document(options)
 end
 
+def generate_sample_docs(output:)
+  generate_markdown_docs(
+    title: "sample",
+    root: File.expand_path("test/data", __dir__),
+    output: output,
+    files: [File.expand_path("test/data/example.rb", __dir__)]
+  )
+end
+
+def jekyll_seo_tag_root
+  File.expand_path(JEKYLL_SEO_TAG_VENDOR_PATH, __dir__)
+end
+
+def generate_jekyll_seo_tag_docs(output:)
+  root = jekyll_seo_tag_root
+  unless Dir.exist?(root)
+    raise "Missing #{JEKYLL_SEO_TAG_VENDOR_PATH}. Run `rake vendor:setup:jekyll_seo_tag` first."
+  end
+
+  generate_markdown_docs(
+    title: JEKYLL_SEO_TAG_TITLE,
+    root: root,
+    output: output,
+    files: Dir[File.join(root, "lib/**/*.rb")].uniq
+  )
+end
+
 namespace :examples do
   desc "Generate checked-in example markdown docs"
   task :generate do
-    sample_output = File.expand_path("example", __dir__)
-    generate_markdown_docs(
-      title: "sample",
-      root: File.expand_path("test/data", __dir__),
-      output: sample_output,
-      files: [File.expand_path("test/data/example.rb", __dir__)]
-    )
-    puts "Generated sample markdown docs in #{sample_output}"
-
     Rake::Task["vendor:setup:jekyll_seo_tag"].invoke
-    jekyll_seo_tag_root = File.expand_path("vendor/jekyll-seo-tag", __dir__)
-    jekyll_seo_tag_output = File.join(sample_output, "jekyll-seo-tag")
-    generate_markdown_docs(
-      title: "jekyll-seo-tag 2.8.0",
-      root: jekyll_seo_tag_root,
-      output: jekyll_seo_tag_output,
-      files: jekyll_seo_tag_docs_files(jekyll_seo_tag_root)
-    )
-    puts "Generated jekyll-seo-tag markdown docs in #{jekyll_seo_tag_output}"
-  end
-end
 
-def jekyll_seo_tag_docs_files(root)
-  Dir[File.join(root, "lib/**/*.rb")].uniq
+    sample_output = File.expand_path("example", __dir__)
+    staging_root = File.expand_path("tmp/examples-generate", __dir__)
+    staged_sample_output = File.join(staging_root, "example")
+
+    FileUtils.rm_rf(staging_root)
+    generate_sample_docs(output: staged_sample_output)
+    generate_jekyll_seo_tag_docs(output: File.join(staged_sample_output, JEKYLL_SEO_TAG_NAME))
+
+    FileUtils.rm_rf(sample_output)
+    FileUtils.mv(staged_sample_output, sample_output)
+
+    puts "Generated sample markdown docs in #{sample_output}"
+    puts "Generated #{JEKYLL_SEO_TAG_NAME} markdown docs in #{File.join(sample_output, JEKYLL_SEO_TAG_NAME)}"
+  ensure
+    FileUtils.rm_rf(staging_root) if staging_root
+  end
 end
 
 def minitest_docs_files(root)
@@ -180,18 +195,17 @@ namespace :vendor do
   namespace :setup do
     minitest_ref = "v6.0.1"
     rails_ref = ENV.fetch("RAILS_REF", "main")
-    jekyll_seo_tag_ref = "v2.8.0"
 
     desc "Clone/update vendor/jekyll-seo-tag and checkout docs-aligned tag"
     task :jekyll_seo_tag do
       ensure_git_checkout(
-        path: "vendor/jekyll-seo-tag",
+        path: JEKYLL_SEO_TAG_VENDOR_PATH,
         url: "https://github.com/jekyll/jekyll-seo-tag.git",
-        ref: jekyll_seo_tag_ref
+        ref: JEKYLL_SEO_TAG_REF
       )
-      Dir.chdir("vendor/jekyll-seo-tag") do
+      Dir.chdir(JEKYLL_SEO_TAG_VENDOR_PATH) do
         sh "git fetch --tags --force"
-        sh "git checkout #{jekyll_seo_tag_ref}"
+        sh "git checkout #{JEKYLL_SEO_TAG_REF}"
       end
     end
 
@@ -213,19 +227,9 @@ namespace :vendor do
   namespace :docs do
     desc "Generate markdown docs for vendored jekyll-seo-tag"
     task :jekyll_seo_tag do
-      root = File.expand_path("vendor/jekyll-seo-tag", __dir__)
-      unless Dir.exist?(root)
-        raise "Missing vendor/jekyll-seo-tag. Run `rake vendor:setup:jekyll_seo_tag` first."
-      end
-
-      output = File.expand_path("vendor/docs/jekyll-seo-tag", __dir__)
-      generate_markdown_docs(
-        title: "jekyll-seo-tag 2.8.0",
-        root: root,
-        output: output,
-        files: jekyll_seo_tag_docs_files(root)
-      )
-      puts "Generated jekyll-seo-tag markdown docs in #{output}"
+      output = File.expand_path("vendor/docs/#{JEKYLL_SEO_TAG_NAME}", __dir__)
+      generate_jekyll_seo_tag_docs(output: output)
+      puts "Generated #{JEKYLL_SEO_TAG_NAME} markdown docs in #{output}"
     end
 
     desc "Generate markdown docs for vendored minitest"
