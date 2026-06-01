@@ -11,8 +11,13 @@ class TestPathHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_pagefiles"
   cover "RDoc::Generator::Markdown#initialize"
   cover "RDoc::Generator::Markdown#normalize_input_path_for_output"
+  cover "RDoc::Generator::Markdown#resolve_output_path"
+  cover "RDoc::Generator::Markdown#setup"
   cover "RDoc::Generator::Markdown#turn_to_path"
   cover "RDoc::Generator::Markdown#page_output_path"
+  cover "RDoc::Generator::Markdown#converted_page_output_path"
+  cover "RDoc::Generator::Markdown#copied_markdown_page?"
+  cover "RDoc::Generator::Markdown#markdown_page?"
   cover "RDoc::Generator::Markdown#anchor"
 
   def generator(root: nil)
@@ -83,6 +88,88 @@ class TestPathHelpers < Minitest::Test
 
     assert_includes entries, ["README", "Page", "README_rdoc.md"]
     assert_includes entries, ["getting.started", "Page", "guides/getting_started_rdoc.md"]
+  end
+
+  def test_root_markdown_input_files_are_copied_without_renaming_or_rewriting
+    root = stable_tmpdir("markdown-source")
+    docs_dir = File.join(root, "docs")
+    FileUtils.mkdir_p(docs_dir)
+
+    readme = File.join(root, "README.md")
+    history = File.join(root, "History.markdown")
+    guide = File.join(docs_dir, "guide.md")
+    root_link = File.join(docs_dir, "root_link.rdoc")
+    direct_link = File.join(docs_dir, "direct_link.rdoc")
+
+    readme_content = "# Project\n\n[Old API](classes/Foo.html)\n"
+    history_content = "# History\n\n- Initial release  \n"
+    guide_content = "# Guide\n\n{README}[../README.md]\n"
+
+    File.write(readme, readme_content)
+    File.write(history, history_content)
+    File.write(guide, guide_content)
+    File.write(root_link, "{README}[README_md.html]\n")
+    File.write(direct_link, "{README}[README.md]\n")
+
+    dir = generate_docs(files: [readme, history, guide, root_link, direct_link], title: "markdown copy test", root: root)
+
+    assert_eql readme_content, File.binread(File.join(dir, "README.md"))
+    assert_eql history_content, File.binread(File.join(dir, "History.markdown"))
+    assert_eql "# Guide\n\n[README](../README.md)\n", File.read(File.join(dir, "docs/guide_md.md"))
+    assert_eql "[README](../README.md)\n", File.read(File.join(dir, "docs/root_link_rdoc.md"))
+    assert_eql "[README](../README.md)\n", File.read(File.join(dir, "docs/direct_link_rdoc.md"))
+
+    assert_false File.exist?(File.join(dir, "README_md.md"))
+    assert_false File.exist?(File.join(dir, "History_markdown.md"))
+    assert_false File.exist?(File.join(dir, "docs/guide.md"))
+
+    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
+      [row["name"], row["type"], row["path"]]
+    end
+
+    assert_includes entries, ["README", "Page", "README.md"]
+    assert_includes entries, ["History.markdown", "Page", "History.markdown"]
+    assert_includes entries, ["guide", "Page", "docs/guide_md.md"]
+    assert_includes entries, ["root_link", "Page", "docs/root_link_rdoc.md"]
+    assert_includes entries, ["direct_link", "Page", "docs/direct_link_rdoc.md"]
+  end
+
+  def test_root_markdown_copy_strips_absolute_root_path
+    root = File.expand_path(stable_tmpdir("absolute-markdown-source"))
+    readme = File.join(root, "README.md")
+    File.write(readme, "# Copied\n")
+
+    store = rdoc_store
+    rdoc_page(store, relative_name: readme, comment: "= Rendered")
+
+    dir = generate_from_store(store: store, root: root)
+
+    assert_eql "# Copied\n", File.read(File.join(dir, "README.md"))
+    assert_false File.exist?(File.join(dir, "README_md.md"))
+  end
+
+  def test_root_markdown_without_source_file_is_markdownified
+    store = rdoc_store
+    rdoc_page(store, relative_name: "missing-root-source-for-copy.md", comment: "= Rendered")
+
+    dir = generate_from_store(store: store)
+
+    assert_eql "# Rendered\n", File.read(File.join(dir, "missing-root-source-for-copy.md"))
+  end
+
+  def test_literal_links_to_copied_markdown_use_known_output_path
+    root = stable_tmpdir("literal-markdown-link")
+    docs_dir = File.join(root, "docs")
+    FileUtils.mkdir_p(docs_dir)
+
+    readme = File.join(root, "README.md")
+    direct = File.join(docs_dir, "direct.md")
+    File.write(readme, "# README\n")
+    File.write(direct, "[README](README.md)\n")
+
+    dir = generate_docs(files: [readme, direct], title: "literal markdown link", root: root)
+
+    assert_eql "[README](../README.md)\n", File.read(File.join(dir, "docs/direct_md.md"))
   end
 
   def test_page_output_path_strips_root_basename_prefix_from_page_paths
