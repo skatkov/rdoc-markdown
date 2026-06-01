@@ -68,8 +68,10 @@ namespace :markdown do
       output: jekyll_seo_tag_output,
       files: jekyll_seo_tag_docs_files(jekyll_seo_tag_root)
     )
-    jekyll_seo_tag_count = MarkdownValidator.new(jekyll_seo_tag_output).validate!
+    jekyll_seo_tag_validator = MarkdownValidator.new(jekyll_seo_tag_output, strict_links: strict_vendor_links)
+    jekyll_seo_tag_count = jekyll_seo_tag_validator.validate!
     puts "Validated #{jekyll_seo_tag_count} markdown files in #{jekyll_seo_tag_output}"
+    puts "Skipped #{jekyll_seo_tag_validator.unresolved_links} unresolved local links in vendored jekyll-seo-tag docs"
 
     Rake::Task["vendor:setup:rails"].invoke
     rails_root = File.expand_path("vendor/rails", __dir__)
@@ -187,7 +189,10 @@ namespace :vendor do
         url: "https://github.com/jekyll/jekyll-seo-tag.git",
         ref: jekyll_seo_tag_ref
       )
-      Dir.chdir("vendor/jekyll-seo-tag") { sh "git checkout #{jekyll_seo_tag_ref}" }
+      Dir.chdir("vendor/jekyll-seo-tag") do
+        sh "git fetch --tags --force"
+        sh "git checkout #{jekyll_seo_tag_ref}"
+      end
     end
 
     desc "Clone/update vendor/minitest and checkout docs-aligned tag"
