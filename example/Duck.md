@@ -1,5 +1,5 @@
 # Class Duck
-<a id="class-Duck"></a>
+<a id="class-duck"></a>
 
 A duck is a [`Waterfowl`](Waterfowl.md) [`Bird`](Bird.md).
 

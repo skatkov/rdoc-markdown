@@ -81,6 +81,17 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "[Topic](#topic)"
   end
 
+  def test_markdownify_accepts_frozen_converter_output
+    page = rdoc_page(relative_name: "frozen.rdoc", comment: "= Topic")
+    converted = (+"# [Topic](#topic)").freeze
+
+    ReverseMarkdown.stub(:convert, converted) do
+      markdown = read_generated("frozen_rdoc.md", pages: [page])
+
+      assert_equal "# Topic\n", markdown
+    end
+  end
+
   def test_multiple_rdoc_heading_levels_are_normalized
     page = rdoc_page(relative_name: "levels.rdoc", comment: "== One\n\n== Two\n\n=== Deep\n\n=== Deeper")
 

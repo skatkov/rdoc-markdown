@@ -62,6 +62,22 @@ module RDocTestHelpers
     end
   end
 
+  def build_rdoc_module(full_name:, description: "", methods: 0, constants: 0, attributes: 0)
+    store = rdoc_store
+    location = RDoc::TopLevel.new("#{full_name.tr(":", "_")}.rb")
+    location.store = store
+
+    RDoc::NormalModule.new(full_name).tap do |mod|
+      mod.store = store
+      mod.full_name = full_name
+      mod.add_comment(RDoc::Comment.new(description), location) unless description.nil?
+
+      Array.new(methods) { |index| mod.add_method(rdoc_method("hidden_#{index}", visible: false)) }
+      Array.new(constants) { |index| mod.add_constant(rdoc_constant("CONST_#{index}", visible: false)) }
+      Array.new(attributes) { |index| mod.add_attribute(rdoc_attribute("attribute_#{index}", visible: false)) }
+    end
+  end
+
   def rdoc_section(comment:, store: rdoc_store, parent: :default_parent, section_store: store)
     parent = rdoc_file(store) if parent == :default_parent
     RDoc::Context::Section.new(parent, "section", RDoc::Comment.new(comment), section_store)

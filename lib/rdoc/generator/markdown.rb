@@ -252,7 +252,7 @@ class RDoc::Generator::Markdown
 
     html = normalize_rdoc_pre_blocks(input)
 
-    md = ReverseMarkdown.convert(html, github_flavored: true)
+    md = ReverseMarkdown.convert(html, github_flavored: true).dup
 
     # Flatten headings whose visible text is wrapped in a self-link.
     md.gsub!(/^(#+)\s\[([^\]]+)\]\((?:#[^)]+)\)$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
@@ -665,11 +665,23 @@ class RDoc::Generator::Markdown
     end
 
     docs_by_name.values
-      .select do |doc|
-        doc.fetch(:score).positive? ||
-          !synthetic_full_name?(doc.fetch(:klass).full_name)
-    end
+      .select { |doc| documentable_class_doc?(doc) }
       .sort_by { |doc| doc.fetch(:display_name) }
+  end
+
+  # Checks whether a normalized class/module candidate should be rendered.
+  #
+  # @param doc [Hash{Symbol => Object}] Candidate class documentation metadata.
+  #
+  # @return [Boolean] True when the class/module has useful generated output.
+  def documentable_class_doc?(doc)
+    klass = doc.fetch(:klass)
+
+    return true if class_member_count(klass).positive?
+    return false if klass.description.empty?
+    return true if nested_classes_and_modules(klass).empty?
+
+    subtree_member_count(klass).positive?
   end
 
   # Collapses repeated namespace segments from synthetic vendored names.
@@ -695,26 +707,44 @@ class RDoc::Generator::Markdown
     normalized
   end
 
-  # Scores how much visible content a class or module has.
+  # Scores how much owned content a class or module has.
   #
   # @param klass [RDoc::Context] Class or module object.
   #
   # @return [Integer] Content score used to choose duplicate docs.
   def class_content_score(klass)
-    score = klass.method_list.size + klass.constants.size + klass.attributes.size
+    score = class_member_count(klass)
     score += 1 unless klass.description.empty?
     score
   end
 
-  # Checks whether a name appears to contain duplicated root namespaces.
+  # Counts methods, constants, and attributes owned by a class or module.
   #
-  # @param full_name [String] Full RDoc object name.
+  # @param klass [RDoc::Context] Class or module object.
   #
-  # @return [Boolean] True when the root namespace appears more than once.
-  def synthetic_full_name?(full_name)
-    parts = full_name.split("::")
-    root = parts.first
-    parts.count(root) > 1
+  # @return [Integer] Number of owned members.
+  def class_member_count(klass)
+    klass.method_list.size + klass.constants.size + klass.attributes.size
+  end
+
+  # Counts methods, constants, and attributes owned by nested classes/modules.
+  #
+  # @param klass [RDoc::Context] Class or module object.
+  #
+  # @return [Integer] Number of descendant members.
+  def subtree_member_count(klass)
+    nested_classes_and_modules(klass).sum do |child|
+      class_member_count(child) + subtree_member_count(child)
+    end
+  end
+
+  # Returns nested classes and modules owned by a class/module object.
+  #
+  # @param klass [RDoc::Context] Class or module object.
+  #
+  # @return [Array<RDoc::Context>] Direct nested classes and modules.
+  def nested_classes_and_modules(klass)
+    klass.classes + klass.modules
   end
 
   # Prepares sorted objects and link lookup state for generation.
