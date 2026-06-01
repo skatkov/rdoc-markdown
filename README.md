@@ -16,7 +16,7 @@ If bundler is not being used to manage dependencies, install the gem by executin
 
     $ gem install rdoc-markdown
 ## Examples
-Find examples in [/examples](/example/) folder. You can regenerate examples by running `./bin/generate.sh`, it will produce examples based on file in `test/data/*` folder.
+Find examples in [/example](/example/) folder. You can regenerate examples by running `./bin/generate.sh`; it produces the sample docs from `test/data/example.rb` and a pinned `jekyll-seo-tag` example from `vendor/jekyll-seo-tag`.
 
 
 ## Usage
@@ -70,6 +70,7 @@ This task validates:
 
 - generated sample docs,
 - checked-in `example/` docs,
+- generated `jekyll-seo-tag` docs,
 - vendored minitest docs,
 - vendored rails docs (Active Support, Active Record, Action Pack, Railties slices).
 
@@ -113,15 +114,17 @@ Use rake tasks to generate markdown output for vendored projects:
 
 ```
 rake vendor:setup
+rake vendor:docs:jekyll_seo_tag
 rake vendor:docs:minitest
 rake vendor:docs:rails
-# or generate both
+# or generate all
 rake vendor:docs
 ```
 
 Output is written to:
 
 - `vendor/docs/minitest`
+- `vendor/docs/jekyll-seo-tag`
 - `vendor/docs/rails`
 
 ## Release

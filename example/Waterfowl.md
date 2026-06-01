@@ -1,5 +1,5 @@
 # Module Waterfowl
-<a id="module-Waterfowl"></a>
+<a id="module-waterfowl"></a>
 
 A mixin for waterfowl creatures.
 

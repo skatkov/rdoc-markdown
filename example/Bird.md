@@ -1,5 +1,5 @@
 # Class Bird
-<a id="class-Bird"></a>
+<a id="class-bird"></a>
 
 The base class for all birds.
 

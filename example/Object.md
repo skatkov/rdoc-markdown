@@ -1,5 +1,5 @@
 # Class Object
-<a id="class-Object"></a>
+<a id="class-object"></a>
 
 ### Constants
 

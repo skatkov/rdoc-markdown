@@ -665,11 +665,25 @@ class RDoc::Generator::Markdown
     end
 
     docs_by_name.values
-      .select do |doc|
-        doc.fetch(:score).positive? ||
-          !synthetic_full_name?(doc.fetch(:klass).full_name)
-    end
+      .select { |doc| documentable_class_doc?(doc) }
       .sort_by { |doc| doc.fetch(:display_name) }
+  end
+
+  # Checks whether a normalized class/module candidate should be rendered.
+  #
+  # @param doc [Hash{Symbol => Object}] Candidate class documentation metadata.
+  #
+  # @return [Boolean] True when the class/module has useful generated output.
+  def documentable_class_doc?(doc)
+    klass = doc.fetch(:klass)
+    score = doc.fetch(:score)
+
+    return false if score.zero? && synthetic_full_name?(klass.full_name)
+    return false if empty_namespace?(klass)
+    return false if placeholder_namespace?(klass)
+    return false if placeholder_namespace?(klass.parent)
+
+    true
   end
 
   # Collapses repeated namespace segments from synthetic vendored names.
@@ -695,15 +709,62 @@ class RDoc::Generator::Markdown
     normalized
   end
 
-  # Scores how much visible content a class or module has.
+  # Scores how much owned content a class or module has.
   #
   # @param klass [RDoc::Context] Class or module object.
   #
   # @return [Integer] Content score used to choose duplicate docs.
   def class_content_score(klass)
-    score = klass.method_list.size + klass.constants.size + klass.attributes.size
+    score = class_member_count(klass)
     score += 1 unless klass.description.empty?
     score
+  end
+
+  # Counts methods, constants, and attributes owned by a class or module.
+  #
+  # @param klass [RDoc::Context] Class or module object.
+  #
+  # @return [Integer] Number of owned members.
+  def class_member_count(klass)
+    klass.method_list.size + klass.constants.size + klass.attributes.size
+  end
+
+  # Checks whether a class/module only exists as an empty namespace container.
+  #
+  # @param klass [RDoc::Context] Class or module object.
+  #
+  # @return [Boolean] True when the object has children but no own content.
+  def empty_namespace?(klass)
+    class_member_count(klass).zero? &&
+      klass.description.empty? &&
+      nested_classes_and_modules(klass).any?
+  end
+
+  # Checks whether a class/module is a documented placeholder around empty children.
+  #
+  # @param klass [RDoc::Context, nil] Class or module object.
+  #
+  # @return [Boolean] True when the object is a placeholder namespace.
+  def placeholder_namespace?(klass)
+    return false unless klass
+
+    children = nested_classes_and_modules(klass)
+
+    class_member_count(klass).zero? &&
+      !klass.description.empty? &&
+      children.any? &&
+      children.all? do |child|
+        class_content_score(child).zero? && nested_classes_and_modules(child).empty?
+      end
+  end
+
+  # Returns nested classes and modules owned by a class/module object.
+  #
+  # @param klass [RDoc::Context] Class or module object.
+  #
+  # @return [Array<RDoc::Context>] Direct nested classes and modules.
+  def nested_classes_and_modules(klass)
+    klass.classes + klass.modules
   end
 
   # Checks whether a name appears to contain duplicated root namespaces.
