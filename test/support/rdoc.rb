@@ -3,11 +3,10 @@
 require "rdoc/rdoc"
 
 module RDocTestHelpers
-  def generator_options(op_dir:, root: nil, markdown_namespaces: nil)
+  def generator_options(op_dir:, root: nil)
     RDoc::Options.new.tap do |options|
       options.op_dir = op_dir
       options.root = root
-      options.generator_options = {markdown_namespaces: markdown_namespaces} unless markdown_namespaces.nil?
     end
   end
 

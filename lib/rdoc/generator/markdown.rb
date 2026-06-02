@@ -638,8 +638,6 @@ class RDoc::Generator::Markdown
 
     classes.select(&:display?).each do |klass|
       display_name = normalized_full_name(klass.full_name)
-      next unless markdown_namespace_included?(display_name)
-
       output_path = turn_to_path(display_name)
       legacy_path = turn_to_path(klass.full_name)
       score = class_content_score(klass)
@@ -737,29 +735,6 @@ class RDoc::Generator::Markdown
     parts = full_name.split("::")
     root = parts.first
     parts.count(root) > 1
-  end
-
-  # Checks whether a normalized class/module name is within the requested output namespaces.
-  #
-  # @param display_name [String] Normalized class/module name.
-  #
-  # @return [Boolean] True when no namespace filter is configured or the name is included.
-  def markdown_namespace_included?(display_name)
-    namespaces = markdown_namespaces
-
-    namespaces.empty? || namespaces.any? do |namespace|
-      display_name == namespace || display_name.start_with?("#{namespace}::")
-    end
-  end
-
-  # Explicit class/module namespaces requested by the caller.
-  #
-  # @return [Array<String>] Namespace roots to generate, or an empty array for all namespaces.
-  def markdown_namespaces
-    @markdown_namespaces ||= begin
-      generator_options = @options.generator_options
-      generator_options.instance_of?(Hash) ? (generator_options[:markdown_namespaces] || []) : []
-    end
   end
 
   # Prepares sorted objects and link lookup state for generation.

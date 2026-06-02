@@ -97,7 +97,7 @@ def ensure_git_checkout(path:, url:, ref: nil)
   sh clone_command.join(" ")
 end
 
-def generate_markdown_docs(title:, root:, output:, files:, markdown_namespaces: nil)
+def generate_markdown_docs(title:, root:, output:, files:)
   raise "No input files for #{title}" if files.empty?
 
   FileUtils.rm_rf(output)
@@ -111,7 +111,6 @@ def generate_markdown_docs(title:, root:, output:, files:, markdown_namespaces: 
   options.root = root
   options.title = title
   options.force_output = true
-  options.generator_options = {markdown_namespaces: markdown_namespaces} unless markdown_namespaces.nil?
 
   RDoc::RDoc.new.document(options)
 end
@@ -139,8 +138,7 @@ def generate_jekyll_seo_tag_docs(output:)
     title: JEKYLL_SEO_TAG_TITLE,
     root: root,
     output: output,
-    files: Dir[File.join(root, "lib/**/*.rb")].uniq,
-    markdown_namespaces: ["Jekyll::SeoTag"]
+    files: Dir[File.join(root, "lib/**/*.rb")].uniq
   )
 end
 
