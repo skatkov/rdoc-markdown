@@ -636,8 +636,10 @@ class RDoc::Generator::Markdown
   def build_class_docs(classes)
     docs_by_name = {}
 
-    classes.each do |klass|
+    classes.select(&:display?).each do |klass|
       display_name = normalized_full_name(klass.full_name)
+      next unless markdown_namespace_included?(display_name)
+
       output_path = turn_to_path(display_name)
       legacy_path = turn_to_path(klass.full_name)
       score = class_content_score(klass)
@@ -665,23 +667,13 @@ class RDoc::Generator::Markdown
     end
 
     docs_by_name.values
-      .select { |doc| documentable_class_doc?(doc) }
+      .select do |doc|
+        klass = doc.fetch(:klass)
+
+        doc.fetch(:score).positive? ||
+          (!class_has_raw_members?(klass) && !synthetic_full_name?(klass.full_name))
+      end
       .sort_by { |doc| doc.fetch(:display_name) }
-  end
-
-  # Checks whether a normalized class/module candidate should be rendered.
-  #
-  # @param doc [Hash{Symbol => Object}] Candidate class documentation metadata.
-  #
-  # @return [Boolean] True when the class/module has useful generated output.
-  def documentable_class_doc?(doc)
-    klass = doc.fetch(:klass)
-
-    return true if class_member_count(klass).positive?
-    return false if klass.description.empty?
-    return true if nested_classes_and_modules(klass).empty?
-
-    subtree_member_count(klass).positive?
   end
 
   # Collapses repeated namespace segments from synthetic vendored names.
@@ -724,27 +716,50 @@ class RDoc::Generator::Markdown
   #
   # @return [Integer] Number of owned members.
   def class_member_count(klass)
-    klass.method_list.size + klass.constants.size + klass.attributes.size
+    klass.method_list.count(&:display?) + klass.constants.count(&:display?) + klass.attributes.count(&:display?)
   end
 
-  # Counts methods, constants, and attributes owned by nested classes/modules.
+  # Checks whether a class or module owns any members before display filtering.
   #
   # @param klass [RDoc::Context] Class or module object.
   #
-  # @return [Integer] Number of descendant members.
-  def subtree_member_count(klass)
-    nested_classes_and_modules(klass).sum do |child|
-      class_member_count(child) + subtree_member_count(child)
+  # @return [Boolean] True when any owned member exists before display filtering.
+  def class_has_raw_members?(klass)
+    klass.method_list.any? || klass.constants.any? || klass.attributes.any?
+  end
+
+  # Checks whether a name appears to contain duplicated root namespaces.
+  #
+  # @param full_name [String] Full RDoc object name.
+  #
+  # @return [Boolean] True when the root namespace appears more than once.
+  def synthetic_full_name?(full_name)
+    parts = full_name.split("::")
+    root = parts.first
+    parts.count(root) > 1
+  end
+
+  # Checks whether a normalized class/module name is within the requested output namespaces.
+  #
+  # @param display_name [String] Normalized class/module name.
+  #
+  # @return [Boolean] True when no namespace filter is configured or the name is included.
+  def markdown_namespace_included?(display_name)
+    namespaces = markdown_namespaces
+
+    namespaces.empty? || namespaces.any? do |namespace|
+      display_name == namespace || display_name.start_with?("#{namespace}::")
     end
   end
 
-  # Returns nested classes and modules owned by a class/module object.
+  # Explicit class/module namespaces requested by the caller.
   #
-  # @param klass [RDoc::Context] Class or module object.
-  #
-  # @return [Array<RDoc::Context>] Direct nested classes and modules.
-  def nested_classes_and_modules(klass)
-    klass.classes + klass.modules
+  # @return [Array<String>] Namespace roots to generate, or an empty array for all namespaces.
+  def markdown_namespaces
+    @markdown_namespaces ||= begin
+      generator_options = @options.generator_options
+      generator_options.instance_of?(Hash) ? (generator_options[:markdown_namespaces] || []) : []
+    end
   end
 
   # Prepares sorted objects and link lookup state for generation.

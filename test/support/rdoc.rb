@@ -3,10 +3,11 @@
 require "rdoc/rdoc"
 
 module RDocTestHelpers
-  def generator_options(op_dir:, root: nil)
+  def generator_options(op_dir:, root: nil, markdown_namespaces: nil)
     RDoc::Options.new.tap do |options|
       options.op_dir = op_dir
       options.root = root
+      options.generator_options = {markdown_namespaces: markdown_namespaces} unless markdown_namespaces.nil?
     end
   end
 
@@ -56,9 +57,9 @@ module RDocTestHelpers
       klass.full_name = full_name
       klass.add_comment(RDoc::Comment.new(description), location) unless description.nil?
 
-      Array.new(methods) { |index| klass.add_method(rdoc_method("hidden_#{index}", visible: false)) }
-      Array.new(constants) { |index| klass.add_constant(rdoc_constant("CONST_#{index}", visible: false)) }
-      Array.new(attributes) { |index| klass.add_attribute(rdoc_attribute("attribute_#{index}", visible: false)) }
+      Array.new(methods) { |index| klass.add_method(rdoc_method("method_#{index}")) }
+      Array.new(constants) { |index| klass.add_constant(rdoc_constant("CONST_#{index}")) }
+      Array.new(attributes) { |index| klass.add_attribute(rdoc_attribute("attribute_#{index}")) }
     end
   end
 
@@ -72,9 +73,9 @@ module RDocTestHelpers
       mod.full_name = full_name
       mod.add_comment(RDoc::Comment.new(description), location) unless description.nil?
 
-      Array.new(methods) { |index| mod.add_method(rdoc_method("hidden_#{index}", visible: false)) }
-      Array.new(constants) { |index| mod.add_constant(rdoc_constant("CONST_#{index}", visible: false)) }
-      Array.new(attributes) { |index| mod.add_attribute(rdoc_attribute("attribute_#{index}", visible: false)) }
+      Array.new(methods) { |index| mod.add_method(rdoc_method("method_#{index}")) }
+      Array.new(constants) { |index| mod.add_constant(rdoc_constant("CONST_#{index}")) }
+      Array.new(attributes) { |index| mod.add_attribute(rdoc_attribute("attribute_#{index}")) }
     end
   end
 
