@@ -752,6 +752,9 @@ class RDoc::Generator::Markdown
   # @return [void]
   def setup
     @output_dir = @options.op_dir
+    unless @output_dir.instance_of?(String)
+      raise TypeError, "RDoc markdown output directory must be a String"
+    end
 
     @class_docs = build_class_docs(@store.all_classes_and_modules.sort)
     @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }

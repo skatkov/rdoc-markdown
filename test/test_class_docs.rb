@@ -628,6 +628,21 @@ class TestClassDocs < Minitest::Test
     ], entries.select { |_name, type, _path| type == "Attribute" }
   end
 
+  def test_generate_rejects_non_string_output_directory_before_writing
+    stringified_dir = File.join(stable_tmpdir("invalid-output-stringified"), "stringified")
+    invalid_output = Object.new
+    invalid_output.define_singleton_method(:to_s) { stringified_dir }
+    options = generator_options(op_dir: stable_tmpdir("invalid-output"))
+    options.op_dir = invalid_output
+    klass = build_rdoc_class(full_name: "InvalidOutput", methods: 1)
+
+    generator = RDoc::Generator::Markdown.new(rdoc_store(classes: [klass]), options)
+    error = assert_raises(TypeError) { generator.generate }
+
+    assert_includes error.message, "RDoc markdown output directory must be a String"
+    assert_false File.exist?(stringified_dir)
+  end
+
   def test_generate_prints_debug_messages_when_debug_is_enabled
     klass = build_rdoc_class(full_name: "Debug::Thing", description: "Doc")
     dir = stable_tmpdir("debug-output")
