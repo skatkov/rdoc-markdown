@@ -137,11 +137,51 @@ class TestGenerator < Minitest::Test
     refute_includes bird_doc, "Arguments: `direction, velocity`"
   end
 
-  def test_generator_writes_nested_leaf_classes_to_nested_paths
+  def test_generator_omits_nodoc_and_invisible_code_objects
+    source = File.join(stable_tmpdir("visibility-source"), "visibility_example.rb")
+    File.write(source, <<~RUBY)
+      class Visible
+        def public_method; end
+        def hidden_method; end # :nodoc:
+
+        private
+
+        def private_method; end
+      end
+
+      class HiddenClass # :nodoc:
+        def leaked_method; end
+      end
+
+      module HiddenModule # :nodoc:
+      end
+    RUBY
+
+    dir = run_generator(source, "visibility test title")
+
+    visible_doc = File.read(File.join(dir, "Visible.md"))
+    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
+      [row["name"], row["type"], row["path"]]
+    end
+
+    assert_true File.exist?(File.join(dir, "Visible.md"))
+    assert_false File.exist?(File.join(dir, "HiddenClass.md"))
+    assert_false File.exist?(File.join(dir, "HiddenModule.md"))
+    assert_includes visible_doc, "#### `public_method()`"
+    refute_includes visible_doc, "hidden_method"
+    refute_includes visible_doc, "private_method"
+    assert_includes entries, ["Visible", "Class", "Visible.md"]
+    assert_includes entries, ["Visible.public_method", "Method", "Visible.md#method-i-public_method"]
+    refute(entries.any? { |name, _type, _path| name.include?("Hidden") })
+    refute(entries.any? { |name, _type, _path| name.include?("hidden_method") })
+    refute(entries.any? { |name, _type, _path| name.include?("private_method") })
+  end
+
+  def test_generator_writes_nested_namespaces_to_nested_paths
     dir = run_generator(File.join(__dir__, "data/namespaced_example.rb"), "namespaced test title")
 
-    assert_false File.exist?(File.join(dir, "Ocean.md"))
-    assert_false File.exist?(File.join(dir, "Ocean/Deep.md"))
+    assert File.exist?(File.join(dir, "Ocean.md"))
+    assert File.exist?(File.join(dir, "Ocean/Deep.md"))
     assert File.exist?(File.join(dir, "Ocean/Deep/Salmon.md"))
   end
 end

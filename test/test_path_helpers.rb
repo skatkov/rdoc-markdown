@@ -63,11 +63,11 @@ class TestPathHelpers < Minitest::Test
     assert_nil markdown_generator.classes
   end
 
-  def test_turn_to_path_writes_nested_leaf_classes_to_nested_paths
+  def test_turn_to_path_writes_nested_namespaces_to_nested_paths
     dir = generate_docs(files: File.join(__dir__, "data/namespaced_example.rb"), title: "namespaced test title")
 
-    assert_false File.exist?(File.join(dir, "Ocean.md"))
-    assert_false File.exist?(File.join(dir, "Ocean/Deep.md"))
+    assert File.exist?(File.join(dir, "Ocean.md"))
+    assert File.exist?(File.join(dir, "Ocean/Deep.md"))
     assert File.exist?(File.join(dir, "Ocean/Deep/Salmon.md"))
   end
 

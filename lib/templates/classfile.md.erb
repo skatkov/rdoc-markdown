@@ -41,6 +41,7 @@
 <%- end -%>
 <% klass.methods_by_type(section).each do |type, visibilities| -%>
 <% visibilities.each do |visibility, methods| -%>
+<% methods = methods.select(&:display?) -%>
 <% next if methods.empty? -%>
 
 ### <%= visibility.capitalize %> <%= type.capitalize %> Methods

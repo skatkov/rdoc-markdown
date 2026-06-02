@@ -9,22 +9,26 @@ require "rdoc/markdown"
 class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#build_class_docs"
   cover "RDoc::Generator::Markdown#class_member_count"
+  cover "RDoc::Generator::Markdown#class_has_raw_members?"
   cover "RDoc::Generator::Markdown#class_content_score"
   cover "RDoc::Generator::Markdown#class_doc_for"
-  cover "RDoc::Generator::Markdown#documentable_class_doc?"
   cover "RDoc::Generator::Markdown#display_name"
   cover "RDoc::Generator::Markdown#emit_classfiles"
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#generate"
   cover "RDoc::Generator::Markdown#legacy_paths_for"
-  cover "RDoc::Generator::Markdown#nested_classes_and_modules"
+  cover "RDoc::Generator::Markdown#markdown_namespace_included?"
+  cover "RDoc::Generator::Markdown#markdown_namespaces"
   cover "RDoc::Generator::Markdown#normalized_full_name"
   cover "RDoc::Generator::Markdown#output_path_for"
   cover "RDoc::Generator::Markdown#setup"
-  cover "RDoc::Generator::Markdown#subtree_member_count"
+  cover "RDoc::Generator::Markdown#synthetic_full_name?"
 
-  def generate_from_store(classes, pages: nil, dir: stable_tmpdir("generate-from-store"), root: nil)
-    generator = RDoc::Generator::Markdown.new(rdoc_store(classes: classes, pages: pages), generator_options(op_dir: dir, root: root))
+  def generate_from_store(classes, pages: nil, dir: stable_tmpdir("generate-from-store"), root: nil, markdown_namespaces: nil)
+    generator = RDoc::Generator::Markdown.new(
+      rdoc_store(classes: classes, pages: pages),
+      generator_options(op_dir: dir, root: root, markdown_namespaces: markdown_namespaces)
+    )
     generator.generate
     dir
   end
@@ -215,68 +219,166 @@ class TestClassDocs < Minitest::Test
     assert_predicate index_entries(dir), :empty?
   end
 
-  def test_generate_skips_zero_score_real_declarations
+  def test_generate_skips_hidden_only_member_declarations
+    hidden_method = build_rdoc_class(full_name: "HiddenMethodOnly")
+    hidden_method.add_method(rdoc_method("hidden_method", visible: false))
+    hidden_constant = build_rdoc_class(full_name: "HiddenConstantOnly")
+    hidden_constant.add_constant(rdoc_constant("HIDDEN", visible: false))
+    hidden_attribute = build_rdoc_class(full_name: "HiddenAttributeOnly")
+    hidden_attribute.add_attribute(rdoc_attribute("hidden_attribute", visible: false))
+
+    dir = generate_from_store([hidden_method, hidden_constant, hidden_attribute])
+
+    assert_false File.exist?(File.join(dir, "HiddenMethodOnly.md"))
+    assert_false File.exist?(File.join(dir, "HiddenConstantOnly.md"))
+    assert_false File.exist?(File.join(dir, "HiddenAttributeOnly.md"))
+    assert_predicate index_entries(dir), :empty?
+  end
+
+  def test_generate_keeps_namespace_when_hidden_descendants_are_skipped
+    namespace = build_rdoc_module(full_name: "HiddenNamespace")
+    hidden_child = build_rdoc_class(full_name: "HiddenNamespace::Child")
+    hidden_child.add_method(rdoc_method("hidden_method", visible: false))
+    nest_class(namespace, hidden_child)
+
+    dir = generate_from_store([namespace, hidden_child])
+
+    assert_true File.exist?(File.join(dir, "HiddenNamespace.md"))
+    assert_false File.exist?(File.join(dir, "HiddenNamespace/Child.md"))
+    assert_includes index_entries(dir), ["HiddenNamespace", "Module", "HiddenNamespace.md"]
+  end
+
+  def test_generate_skips_hidden_class_before_resolving_duplicate_docs
+    hidden = build_rdoc_class(
+      full_name: "VisibleDupe::Hidden::VisibleDupe::Thing",
+      description: "Hidden duplicate",
+      methods: 2
+    )
+    hidden.done_documenting = true
+    visible = build_rdoc_class(
+      full_name: "VisibleDupe::Thing",
+      description: "Visible duplicate",
+      methods: 1
+    )
+
+    dir = generate_from_store([hidden, visible])
+
+    markdown = File.read(File.join(dir, "VisibleDupe/Thing.md"))
+    assert_includes markdown, "Visible duplicate"
+    refute_includes markdown, "Hidden duplicate"
+    assert_false File.exist?(File.join(dir, "VisibleDupe/Hidden/VisibleDupe/Thing.md"))
+    assert_includes index_entries(dir), ["VisibleDupe::Thing", "Class", "VisibleDupe/Thing.md"]
+  end
+
+  def test_generate_keeps_zero_score_real_classes
     real = build_rdoc_class(full_name: "Shell")
     nested = build_rdoc_class(full_name: "Alpha::Another")
 
     dir = generate_from_store([real, nested])
 
-    assert_false File.exist?(File.join(dir, "Shell.md"))
-    assert_false File.exist?(File.join(dir, "Alpha/Another.md"))
-    assert_predicate index_entries(dir), :empty?
+    assert_true File.exist?(File.join(dir, "Shell.md"))
+    assert_true File.exist?(File.join(dir, "Alpha/Another.md"))
+    assert_includes index_entries(dir), ["Shell", "Class", "Shell.md"]
+    assert_includes index_entries(dir), ["Alpha::Another", "Class", "Alpha/Another.md"]
   end
 
-  def test_generate_skips_empty_namespace_modules_that_only_contain_documented_children
+  def test_generate_keeps_empty_namespace_modules_that_contain_documented_children
     namespace = build_rdoc_module(full_name: "Jekyll")
     child = build_rdoc_class(full_name: "Jekyll::SeoTag", methods: 1)
     nest_class(namespace, child)
 
     dir = generate_from_store([namespace, child])
 
-    assert_false File.exist?(File.join(dir, "Jekyll.md"))
+    assert_true File.exist?(File.join(dir, "Jekyll.md"))
     assert_true File.exist?(File.join(dir, "Jekyll/SeoTag.md"))
-    refute_includes index_entries(dir), ["Jekyll", "Module", "Jekyll.md"]
+    assert_includes index_entries(dir), ["Jekyll", "Module", "Jekyll.md"]
     assert_includes index_entries(dir), ["Jekyll::SeoTag", "Class", "Jekyll/SeoTag.md"]
   end
 
-  def test_generate_skips_empty_namespace_modules_that_only_contain_nested_modules
+  def test_generate_keeps_empty_namespace_modules_that_contain_nested_modules
     namespace = build_rdoc_module(full_name: "Jekyll")
     child = build_rdoc_module(full_name: "Jekyll::SeoTag", methods: 1)
     nest_module(namespace, child)
 
     dir = generate_from_store([namespace, child])
 
-    assert_false File.exist?(File.join(dir, "Jekyll.md"))
+    assert_true File.exist?(File.join(dir, "Jekyll.md"))
     assert_true File.exist?(File.join(dir, "Jekyll/SeoTag.md"))
-    refute_includes index_entries(dir), ["Jekyll", "Module", "Jekyll.md"]
+    assert_includes index_entries(dir), ["Jekyll", "Module", "Jekyll.md"]
     assert_includes index_entries(dir), ["Jekyll::SeoTag", "Module", "Jekyll/SeoTag.md"]
   end
 
-  def test_generate_skips_described_namespace_without_api_descendants
+  def test_generate_filters_to_explicit_markdown_namespaces
+    namespace = build_rdoc_module(full_name: "Jekyll")
+    seo_tag = build_rdoc_class(full_name: "Jekyll::SeoTag", methods: 1)
+    drop = build_rdoc_class(full_name: "Jekyll::SeoTag::Drop", methods: 1)
+    plugin = build_rdoc_class(full_name: "Jekyll::Plugin", methods: 1)
+    liquid = build_rdoc_module(full_name: "Liquid", description: "Prevent bundler errors")
+    liquid_tag = build_rdoc_class(full_name: "Liquid::Tag")
+    unrelated = build_rdoc_class(full_name: "Unrelated", methods: 1)
+    nest_class(namespace, seo_tag)
+    nest_class(seo_tag, drop)
+    nest_class(liquid, liquid_tag)
+
+    dir = generate_from_store(
+      [namespace, seo_tag, drop, plugin, liquid, liquid_tag, unrelated],
+      markdown_namespaces: ["Jekyll::SeoTag", "Jekyll::Plugin"]
+    )
+    entries = index_entries(dir)
+
+    assert_false File.exist?(File.join(dir, "Jekyll.md"))
+    assert_true File.exist?(File.join(dir, "Jekyll/SeoTag.md"))
+    assert_true File.exist?(File.join(dir, "Jekyll/SeoTag/Drop.md"))
+    assert_true File.exist?(File.join(dir, "Jekyll/Plugin.md"))
+    assert_false File.exist?(File.join(dir, "Liquid.md"))
+    assert_false File.exist?(File.join(dir, "Liquid/Tag.md"))
+    assert_false File.exist?(File.join(dir, "Unrelated.md"))
+    assert_includes entries, ["Jekyll::SeoTag", "Class", "Jekyll/SeoTag.md"]
+    assert_includes entries, ["Jekyll::SeoTag::Drop", "Class", "Jekyll/SeoTag/Drop.md"]
+    assert_includes entries, ["Jekyll::Plugin", "Class", "Jekyll/Plugin.md"]
+    refute(entries.any? { |name, _type, _path| ["Jekyll", "Liquid", "Liquid::Tag", "Unrelated"].include?(name) })
+  end
+
+  def test_generate_treats_empty_generator_options_as_unfiltered
+    klass = build_rdoc_class(full_name: "EmptyOptions", methods: 1)
+    dir = stable_tmpdir("empty-generator-options")
+    options = generator_options(op_dir: dir)
+    options.generator_options = {}
+    generator = RDoc::Generator::Markdown.new(rdoc_store(classes: [klass]), options)
+
+    generator.generate
+
+    assert_true File.exist?(File.join(dir, "EmptyOptions.md"))
+    assert_includes index_entries(dir), ["EmptyOptions", "Class", "EmptyOptions.md"]
+  end
+
+  def test_generate_keeps_described_namespace_without_api_descendants
     namespace = build_rdoc_module(full_name: "Liquid", description: "Prevent bundler errors")
     child = build_rdoc_class(full_name: "Liquid::Tag")
     nest_class(namespace, child)
 
     dir = generate_from_store([namespace, child])
 
-    assert_false File.exist?(File.join(dir, "Liquid.md"))
-    assert_false File.exist?(File.join(dir, "Liquid/Tag.md"))
-    assert_predicate index_entries(dir), :empty?
+    assert_true File.exist?(File.join(dir, "Liquid.md"))
+    assert_true File.exist?(File.join(dir, "Liquid/Tag.md"))
+    assert_includes index_entries(dir), ["Liquid", "Module", "Liquid.md"]
+    assert_includes index_entries(dir), ["Liquid::Tag", "Class", "Liquid/Tag.md"]
   end
 
-  def test_generate_skips_empty_child_declaration_under_empty_namespace_module
+  def test_generate_keeps_empty_child_declaration_under_empty_namespace_module
     namespace = build_rdoc_module(full_name: "Ocean")
     child = build_rdoc_class(full_name: "Ocean::Salmon")
     nest_class(namespace, child)
 
     dir = generate_from_store([namespace, child])
 
-    assert_false File.exist?(File.join(dir, "Ocean.md"))
-    assert_false File.exist?(File.join(dir, "Ocean/Salmon.md"))
-    assert_predicate index_entries(dir), :empty?
+    assert_true File.exist?(File.join(dir, "Ocean.md"))
+    assert_true File.exist?(File.join(dir, "Ocean/Salmon.md"))
+    assert_includes index_entries(dir), ["Ocean", "Module", "Ocean.md"]
+    assert_includes index_entries(dir), ["Ocean::Salmon", "Class", "Ocean/Salmon.md"]
   end
 
-  def test_generate_skips_empty_child_declaration_under_membered_namespace
+  def test_generate_keeps_empty_child_declaration_under_membered_namespace
     namespace = build_rdoc_module(full_name: "Liquid", description: "Real namespace", methods: 1)
     child = build_rdoc_class(full_name: "Liquid::Tag")
     nest_class(namespace, child)
@@ -284,9 +386,9 @@ class TestClassDocs < Minitest::Test
     dir = generate_from_store([namespace, child])
 
     assert_true File.exist?(File.join(dir, "Liquid.md"))
-    assert_false File.exist?(File.join(dir, "Liquid/Tag.md"))
+    assert_true File.exist?(File.join(dir, "Liquid/Tag.md"))
     assert_includes index_entries(dir), ["Liquid", "Module", "Liquid.md"]
-    refute_includes index_entries(dir), ["Liquid::Tag", "Class", "Liquid/Tag.md"]
+    assert_includes index_entries(dir), ["Liquid::Tag", "Class", "Liquid/Tag.md"]
   end
 
   def test_generate_keeps_described_namespace_when_empty_child_has_documented_child
@@ -299,10 +401,10 @@ class TestClassDocs < Minitest::Test
     dir = generate_from_store([namespace, child, grandchild])
 
     assert_true File.exist?(File.join(dir, "Liquid.md"))
-    assert_false File.exist?(File.join(dir, "Liquid/Tag.md"))
+    assert_true File.exist?(File.join(dir, "Liquid/Tag.md"))
     assert_true File.exist?(File.join(dir, "Liquid/Tag/Block.md"))
     assert_includes index_entries(dir), ["Liquid", "Module", "Liquid.md"]
-    refute_includes index_entries(dir), ["Liquid::Tag", "Class", "Liquid/Tag.md"]
+    assert_includes index_entries(dir), ["Liquid::Tag", "Class", "Liquid/Tag.md"]
     assert_includes index_entries(dir), ["Liquid::Tag::Block", "Class", "Liquid/Tag/Block.md"]
   end
 
@@ -316,10 +418,10 @@ class TestClassDocs < Minitest::Test
     dir = generate_from_store([namespace, empty_child, documented_child])
 
     assert_true File.exist?(File.join(dir, "Liquid.md"))
-    assert_false File.exist?(File.join(dir, "Liquid/Tag.md"))
+    assert_true File.exist?(File.join(dir, "Liquid/Tag.md"))
     assert_true File.exist?(File.join(dir, "Liquid/Drop.md"))
     assert_includes index_entries(dir), ["Liquid", "Module", "Liquid.md"]
-    refute_includes index_entries(dir), ["Liquid::Tag", "Class", "Liquid/Tag.md"]
+    assert_includes index_entries(dir), ["Liquid::Tag", "Class", "Liquid/Tag.md"]
     assert_includes index_entries(dir), ["Liquid::Drop", "Class", "Liquid/Drop.md"]
   end
 
@@ -353,16 +455,16 @@ class TestClassDocs < Minitest::Test
     assert_includes index_entries(dir), ["Useful::Nested", "Module", "Useful/Nested.md"]
   end
 
-  def test_generate_skips_described_namespace_with_only_description_module_descendant
+  def test_generate_keeps_described_namespace_with_only_description_module_descendant
     namespace = build_rdoc_module(full_name: "Useful", description: "Useful namespace")
     nested = build_rdoc_module(full_name: "Useful::Nested", description: "Nested module")
     nest_module(namespace, nested)
 
     dir = generate_from_store([namespace, nested])
 
-    assert_false File.exist?(File.join(dir, "Useful.md"))
+    assert_true File.exist?(File.join(dir, "Useful.md"))
     assert_true File.exist?(File.join(dir, "Useful/Nested.md"))
-    refute_includes index_entries(dir), ["Useful", "Module", "Useful.md"]
+    assert_includes index_entries(dir), ["Useful", "Module", "Useful.md"]
     assert_includes index_entries(dir), ["Useful::Nested", "Module", "Useful/Nested.md"]
   end
 
