@@ -17,17 +17,15 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#generate"
   cover "RDoc::Generator::Markdown#legacy_paths_for"
-  cover "RDoc::Generator::Markdown#markdown_namespace_included?"
-  cover "RDoc::Generator::Markdown#markdown_namespaces"
   cover "RDoc::Generator::Markdown#normalized_full_name"
   cover "RDoc::Generator::Markdown#output_path_for"
   cover "RDoc::Generator::Markdown#setup"
   cover "RDoc::Generator::Markdown#synthetic_full_name?"
 
-  def generate_from_store(classes, pages: nil, dir: stable_tmpdir("generate-from-store"), root: nil, markdown_namespaces: nil)
+  def generate_from_store(classes, pages: nil, dir: stable_tmpdir("generate-from-store"), root: nil)
     generator = RDoc::Generator::Markdown.new(
       rdoc_store(classes: classes, pages: pages),
-      generator_options(op_dir: dir, root: root, markdown_namespaces: markdown_namespaces)
+      generator_options(op_dir: dir, root: root)
     )
     generator.generate
     dir
@@ -306,50 +304,6 @@ class TestClassDocs < Minitest::Test
     assert_true File.exist?(File.join(dir, "Jekyll/SeoTag.md"))
     assert_includes index_entries(dir), ["Jekyll", "Module", "Jekyll.md"]
     assert_includes index_entries(dir), ["Jekyll::SeoTag", "Module", "Jekyll/SeoTag.md"]
-  end
-
-  def test_generate_filters_to_explicit_markdown_namespaces
-    namespace = build_rdoc_module(full_name: "Jekyll")
-    seo_tag = build_rdoc_class(full_name: "Jekyll::SeoTag", methods: 1)
-    drop = build_rdoc_class(full_name: "Jekyll::SeoTag::Drop", methods: 1)
-    plugin = build_rdoc_class(full_name: "Jekyll::Plugin", methods: 1)
-    liquid = build_rdoc_module(full_name: "Liquid", description: "Prevent bundler errors")
-    liquid_tag = build_rdoc_class(full_name: "Liquid::Tag")
-    unrelated = build_rdoc_class(full_name: "Unrelated", methods: 1)
-    nest_class(namespace, seo_tag)
-    nest_class(seo_tag, drop)
-    nest_class(liquid, liquid_tag)
-
-    dir = generate_from_store(
-      [namespace, seo_tag, drop, plugin, liquid, liquid_tag, unrelated],
-      markdown_namespaces: ["Jekyll::SeoTag", "Jekyll::Plugin"]
-    )
-    entries = index_entries(dir)
-
-    assert_false File.exist?(File.join(dir, "Jekyll.md"))
-    assert_true File.exist?(File.join(dir, "Jekyll/SeoTag.md"))
-    assert_true File.exist?(File.join(dir, "Jekyll/SeoTag/Drop.md"))
-    assert_true File.exist?(File.join(dir, "Jekyll/Plugin.md"))
-    assert_false File.exist?(File.join(dir, "Liquid.md"))
-    assert_false File.exist?(File.join(dir, "Liquid/Tag.md"))
-    assert_false File.exist?(File.join(dir, "Unrelated.md"))
-    assert_includes entries, ["Jekyll::SeoTag", "Class", "Jekyll/SeoTag.md"]
-    assert_includes entries, ["Jekyll::SeoTag::Drop", "Class", "Jekyll/SeoTag/Drop.md"]
-    assert_includes entries, ["Jekyll::Plugin", "Class", "Jekyll/Plugin.md"]
-    refute(entries.any? { |name, _type, _path| ["Jekyll", "Liquid", "Liquid::Tag", "Unrelated"].include?(name) })
-  end
-
-  def test_generate_treats_empty_generator_options_as_unfiltered
-    klass = build_rdoc_class(full_name: "EmptyOptions", methods: 1)
-    dir = stable_tmpdir("empty-generator-options")
-    options = generator_options(op_dir: dir)
-    options.generator_options = {}
-    generator = RDoc::Generator::Markdown.new(rdoc_store(classes: [klass]), options)
-
-    generator.generate
-
-    assert_true File.exist?(File.join(dir, "EmptyOptions.md"))
-    assert_includes index_entries(dir), ["EmptyOptions", "Class", "EmptyOptions.md"]
   end
 
   def test_generate_keeps_described_namespace_without_api_descendants
