@@ -8,48 +8,6 @@ require "csv"
 require "cgi"
 require "optparse"
 
-# Adds rdoc-markdown generator configuration to RDoc's option object.
-module RDocMarkdownOptions
-  # Initializes markdown generator options alongside RDoc's built-in options.
-  #
-  # @return [void]
-  def init_ivars
-    super
-    @markdown_unknown_tags = :pass_through
-  end
-
-  # Loads markdown generator options from serialized RDoc options.
-  #
-  # @param map [Hash] Serialized RDoc options.
-  #
-  # @return [void]
-  def init_with(map)
-    super
-    value = map["markdown_unknown_tags"]
-    @markdown_unknown_tags = value unless value.nil?
-  end
-
-  # Applies markdown generator options from a loaded .rdoc_options hash.
-  #
-  # @param map [Hash] Loaded RDoc options.
-  #
-  # @return [void]
-  def override(map)
-    super
-    @markdown_unknown_tags = map["markdown_unknown_tags"] if map.key?("markdown_unknown_tags")
-  end
-end
-
-# RDoc configuration extended with markdown generator options.
-class RDoc::Options
-  prepend RDocMarkdownOptions
-
-  # Controls how reverse_markdown handles unknown HTML tags.
-  #
-  # @return [Symbol]
-  attr_accessor :markdown_unknown_tags
-end
-
 # Generates Markdown output and a CSV search index from an RDoc store.
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
@@ -59,6 +17,37 @@ class RDoc::Generator::Markdown
 
   # Supported reverse_markdown unknown-tag modes.
   MARKDOWN_UNKNOWN_TAGS = %i[pass_through drop bypass raise].freeze
+
+  # Adds rdoc-markdown generator configuration to RDoc's option object.
+  module OptionsExtension
+    # Initializes markdown generator options alongside RDoc's built-in options.
+    #
+    # @return [void]
+    def init_ivars
+      super
+      @markdown_unknown_tags = :pass_through
+    end
+
+    # Loads markdown generator options from serialized RDoc options.
+    #
+    # @param map [Psych::Coder] Serialized RDoc options.
+    #
+    # @return [void]
+    def init_with(map)
+      super
+      @markdown_unknown_tags = map["markdown_unknown_tags"] if map.map.key?("markdown_unknown_tags")
+    end
+
+    # Applies markdown generator options from a loaded .rdoc_options hash.
+    #
+    # @param map [Hash] Loaded RDoc options.
+    #
+    # @return [void]
+    def override(map)
+      super
+      @markdown_unknown_tags = map.fetch("markdown_unknown_tags") if map.key?("markdown_unknown_tags")
+    end
+  end
 
   # Registers markdown generator-specific RDoc options.
   #
@@ -831,4 +820,14 @@ class RDoc::Generator::Markdown
 
     @root_path_segment = Pathname.new(@options.root || ".").basename
   end
+end
+
+# RDoc configuration extended with markdown generator options.
+class RDoc::Options
+  prepend RDoc::Generator::Markdown::OptionsExtension
+
+  # Controls how reverse_markdown handles unknown HTML tags.
+  #
+  # @return [Symbol]
+  attr_accessor :markdown_unknown_tags
 end
