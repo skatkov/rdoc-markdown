@@ -55,7 +55,10 @@ class RDoc::Generator::Markdown
   #
   # @return [void]
   def self.setup_options(rdoc_options)
-    rdoc_options.option_parser.on("--markdown-unknown-tags=MODE") do |value|
+    rdoc_options.option_parser.on(
+      "--markdown-unknown-tags=MODE",
+      "How to handle unknown HTML tags: #{MARKDOWN_UNKNOWN_TAGS.join(", ")}."
+    ) do |value|
       rdoc_options.markdown_unknown_tags = value.to_sym
     end
   end
