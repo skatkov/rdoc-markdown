@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+- Fail before generation when RDoc supplies a non-string output directory
+- Markdown template will only include visible classes/module/methods, same as rdoc does with HTML templates
+
 ## 0.7.0
 
 ### Changed
