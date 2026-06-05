@@ -179,6 +179,8 @@ class TestMarkdownHelpers < Minitest::Test
     options = RDoc::Options.new.parse(%w[--format=markdown --markdown-unknown-tags=drop])
 
     assert_equal :drop, options.markdown_unknown_tags
+    assert_includes options.option_parser.help, "--markdown-unknown-tags=MODE"
+    assert_includes options.option_parser.help, "pass_through, drop, bypass, raise"
   end
 
   def test_markdown_unknown_tags_loads_from_rdoc_options_hash
