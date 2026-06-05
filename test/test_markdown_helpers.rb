@@ -7,6 +7,8 @@ require "rdoc/rdoc"
 require "rdoc/markdown"
 
 class TestMarkdownHelpers < Minitest::Test
+  DEFAULT_MARKDOWN_UNKNOWN_TAGS = Object.new.freeze
+
   cover "RDoc::Generator::Markdown.setup_options"
   cover "RDoc::Generator::Markdown.validate_markdown_unknown_tags"
   cover "RDoc::Generator::Markdown#initialize"
@@ -18,6 +20,9 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#section_description"
   cover "RDoc::Generator::Markdown#finalize_markdown"
   cover "RDoc::Generator::Markdown#normalize_internal_links"
+  cover "RDoc::Generator::Markdown::OptionsExtension#init_ivars"
+  cover "RDoc::Generator::Markdown::OptionsExtension#init_with"
+  cover "RDoc::Generator::Markdown::OptionsExtension#override"
   cover "RDoc::Generator::Markdown#resolve_output_path"
   cover "RDoc::Generator::Markdown#shift_headings"
   cover "RDoc::Generator::Markdown#normalize_definition_list_code_blocks"
@@ -25,10 +30,10 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#definition_list_line?"
   cover "RDoc::Generator::Markdown#normalize_rdoc_pre_blocks"
 
-  def generate_markdown(classes: [], pages: [], root: nil, markdown_unknown_tags: :pass_through)
+  def generate_markdown(classes: [], pages: [], root: nil, markdown_unknown_tags: DEFAULT_MARKDOWN_UNKNOWN_TAGS)
     dir = stable_tmpdir("generated-markdown")
     options = generator_options(op_dir: dir, root: root)
-    options.markdown_unknown_tags = markdown_unknown_tags
+    options.markdown_unknown_tags = markdown_unknown_tags unless markdown_unknown_tags.equal?(DEFAULT_MARKDOWN_UNKNOWN_TAGS)
 
     RDoc::Generator::Markdown.new(
       rdoc_store(classes: classes, pages: pages),
@@ -105,6 +110,8 @@ class TestMarkdownHelpers < Minitest::Test
   end
 
   def test_markdown_unknown_tags_defaults_to_pass_through
+    assert_equal :pass_through, RDoc::Options.new.markdown_unknown_tags
+
     page = raw_html_page(
       relative_name: "unknown-tags.rdoc",
       html: "<p>before</p><custom>text <strong>bold</strong></custom><p>after</p>"
@@ -175,9 +182,16 @@ class TestMarkdownHelpers < Minitest::Test
   end
 
   def test_markdown_unknown_tags_loads_from_rdoc_options_hash
-    options = RDoc::Options.new("markdown_unknown_tags" => :bypass)
+    options = RDoc::Options.new("markdown_unknown_tags" => :bypass, "visibility" => :private)
 
     assert_equal :bypass, options.markdown_unknown_tags
+    assert_equal :private, options.visibility
+  end
+
+  def test_markdown_unknown_tags_rdoc_options_hash_keeps_default_when_key_is_absent
+    options = RDoc::Options.new({})
+
+    assert_equal :pass_through, options.markdown_unknown_tags
   end
 
   def test_markdown_unknown_tags_loads_from_serialized_rdoc_options
@@ -189,6 +203,33 @@ class TestMarkdownHelpers < Minitest::Test
     )
 
     assert_equal :drop, options.markdown_unknown_tags
+    assert_equal Encoding::UTF_8, options.encoding
+    assert_false options.quiet
+  end
+
+  def test_markdown_unknown_tags_serialized_rdoc_options_keep_default_when_key_is_absent
+    RDoc.load_yaml
+
+    options = YAML.safe_load(
+      "--- !ruby/object:RDoc::Options\nencoding: UTF-8\nstatic_path: []\nrdoc_include: []\n",
+      permitted_classes: [RDoc::Options, Symbol]
+    )
+
+    assert_equal :pass_through, options.markdown_unknown_tags
+  end
+
+  def test_markdown_unknown_tags_rejects_nil_from_serialized_rdoc_options
+    RDoc.load_yaml
+    options = YAML.safe_load(
+      "--- !ruby/object:RDoc::Options\nencoding: UTF-8\nstatic_path: []\nrdoc_include: []\nmarkdown_unknown_tags:\n",
+      permitted_classes: [RDoc::Options, Symbol]
+    )
+
+    error = assert_raises(OptionParser::InvalidArgument) do
+      RDoc::Generator::Markdown.new(rdoc_store, options)
+    end
+
+    assert_includes error.message, "invalid markdown_unknown_tags: nil"
   end
 
   def test_multiple_rdoc_heading_levels_are_normalized
