@@ -33,6 +33,22 @@ Run following command in directory with ruby source code:
 
 This will produce a tree of markdown documents and search index in `/doc` folder. Every class in library will have it's own markdown file.
 
+### Unknown HTML tags
+rdoc-markdown uses `reverse_markdown` to convert RDoc's HTML fragments to Markdown. You can configure how unknown HTML tags are handled with:
+
+```sh
+rdoc --format=markdown --markdown-unknown-tags=raise
+```
+
+Accepted values are `pass_through`, `drop`, `bypass`, and `raise`. The default is `pass_through`, which matches `reverse_markdown`'s default behavior.
+
+The same setting can be stored in RDoc's `.rdoc_options` file:
+
+```yaml
+---
+markdown_unknown_tags: :raise
+```
+
 ## Note on index.csv file
 This gem emits index of all markdown files in a index.csv file.
 

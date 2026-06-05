@@ -7,6 +7,9 @@ require "rdoc/rdoc"
 require "rdoc/markdown"
 
 class TestMarkdownHelpers < Minitest::Test
+  cover "RDoc::Generator::Markdown.setup_options"
+  cover "RDoc::Generator::Markdown.validate_markdown_unknown_tags"
+  cover "RDoc::Generator::Markdown#initialize"
   cover "RDoc::Generator::Markdown#markdownify"
   cover "RDoc::Generator::Markdown#describe"
   cover "RDoc::Generator::Markdown#debug"
@@ -22,11 +25,14 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#definition_list_line?"
   cover "RDoc::Generator::Markdown#normalize_rdoc_pre_blocks"
 
-  def generate_markdown(classes: [], pages: [], root: nil)
+  def generate_markdown(classes: [], pages: [], root: nil, markdown_unknown_tags: :pass_through)
     dir = stable_tmpdir("generated-markdown")
+    options = generator_options(op_dir: dir, root: root)
+    options.markdown_unknown_tags = markdown_unknown_tags
+
     RDoc::Generator::Markdown.new(
       rdoc_store(classes: classes, pages: pages),
-      generator_options(op_dir: dir, root: root)
+      options
     ).generate
     dir
   end
@@ -34,6 +40,12 @@ class TestMarkdownHelpers < Minitest::Test
   def read_generated(path, classes: [], pages: [], root: nil)
     dir = generate_markdown(classes: classes, pages: pages, root: root)
     File.read(File.join(dir, path))
+  end
+
+  def raw_html_page(relative_name:, html:)
+    rdoc_page(relative_name: relative_name, comment: "placeholder").tap do |page|
+      page.define_singleton_method(:description) { html }
+    end
   end
 
   def test_pages_are_markdownified_with_headings_links_and_definition_lists
@@ -90,6 +102,93 @@ class TestMarkdownHelpers < Minitest::Test
 
       assert_equal "# Topic\n", markdown
     end
+  end
+
+  def test_markdown_unknown_tags_defaults_to_pass_through
+    page = raw_html_page(
+      relative_name: "unknown-tags.rdoc",
+      html: "<p>before</p><custom>text <strong>bold</strong></custom><p>after</p>"
+    )
+
+    markdown = read_generated("unknown-tags_rdoc.md", pages: [page])
+
+    assert_includes markdown, "before"
+    assert_includes markdown, "<custom>text <strong>bold</strong></custom>"
+    assert_includes markdown, "after"
+  end
+
+  def test_markdown_unknown_tags_can_bypass_tags
+    page = raw_html_page(
+      relative_name: "bypass-tags.rdoc",
+      html: "<p>before</p><custom>text <strong>bold</strong></custom><p>after</p>"
+    )
+
+    markdown = File.read(File.join(generate_markdown(pages: [page], markdown_unknown_tags: :bypass), "bypass-tags_rdoc.md"))
+
+    assert_includes markdown, "before"
+    assert_includes markdown, "text **bold**"
+    assert_includes markdown, "after"
+    refute_includes markdown, "<custom>"
+  end
+
+  def test_markdown_unknown_tags_can_drop_tags_and_content
+    page = raw_html_page(
+      relative_name: "drop-tags.rdoc",
+      html: "<p>before</p><custom>text <strong>bold</strong></custom><p>after</p>"
+    )
+
+    markdown = File.read(File.join(generate_markdown(pages: [page], markdown_unknown_tags: :drop), "drop-tags_rdoc.md"))
+
+    assert_includes markdown, "before"
+    assert_includes markdown, "after"
+    refute_includes markdown, "text"
+    refute_includes markdown, "<custom>"
+  end
+
+  def test_markdown_unknown_tags_can_raise
+    page = raw_html_page(
+      relative_name: "raise-tags.rdoc",
+      html: "<p>before</p><custom>text</custom><p>after</p>"
+    )
+
+    assert_raises(ReverseMarkdown::UnknownTagError) do
+      generate_markdown(pages: [page], markdown_unknown_tags: :raise)
+    end
+  end
+
+  def test_markdown_unknown_tags_rejects_invalid_values
+    options = generator_options(op_dir: stable_tmpdir("invalid-unknown-tags"))
+    options.markdown_unknown_tags = :explode
+
+    error = assert_raises(OptionParser::InvalidArgument) do
+      RDoc::Generator::Markdown.new(rdoc_store, options)
+    end
+
+    assert_includes error.message, "invalid markdown_unknown_tags: :explode"
+    assert_includes error.message, "expected one of: :pass_through, :drop, :bypass, :raise"
+  end
+
+  def test_markdown_unknown_tags_can_be_set_by_cli_option
+    options = RDoc::Options.new.parse(%w[--format=markdown --markdown-unknown-tags=drop])
+
+    assert_equal :drop, options.markdown_unknown_tags
+  end
+
+  def test_markdown_unknown_tags_loads_from_rdoc_options_hash
+    options = RDoc::Options.new("markdown_unknown_tags" => :bypass)
+
+    assert_equal :bypass, options.markdown_unknown_tags
+  end
+
+  def test_markdown_unknown_tags_loads_from_serialized_rdoc_options
+    RDoc.load_yaml
+
+    options = YAML.safe_load(
+      "--- !ruby/object:RDoc::Options\nencoding: UTF-8\nstatic_path: []\nrdoc_include: []\nmarkdown_unknown_tags: :drop\n",
+      permitted_classes: [RDoc::Options, Symbol]
+    )
+
+    assert_equal :drop, options.markdown_unknown_tags
   end
 
   def test_multiple_rdoc_heading_levels_are_normalized

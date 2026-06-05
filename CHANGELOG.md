@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- Add `markdown_unknown_tags` RDoc option to configure reverse_markdown unknown tag handling
+
 ### Changed
 - Fail before generation when RDoc supplies a non-string output directory
 - Markdown template will only include visible classes/module/methods, same as rdoc does with HTML templates
