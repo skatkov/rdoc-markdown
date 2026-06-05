@@ -5,6 +5,6 @@ module Rdoc
   # Version namespace for rdoc-markdown.
   module Markdown
     # Current gem version.
-    VERSION = "0.7.0"
+    VERSION = "0.8.0"
   end
 end

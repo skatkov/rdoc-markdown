@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0
+
 ### Added
 - Add `markdown_unknown_tags` RDoc option to configure reverse_markdown unknown tag handling
 
