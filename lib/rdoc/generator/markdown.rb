@@ -6,6 +6,49 @@ require "erb"
 require "reverse_markdown"
 require "csv"
 require "cgi"
+require "optparse"
+
+# Adds rdoc-markdown generator configuration to RDoc's option object.
+module RDocMarkdownOptions
+  # Initializes markdown generator options alongside RDoc's built-in options.
+  #
+  # @return [void]
+  def init_ivars
+    super
+    @markdown_unknown_tags = :pass_through
+  end
+
+  # Loads markdown generator options from serialized RDoc options.
+  #
+  # @param map [Hash] Serialized RDoc options.
+  #
+  # @return [void]
+  def init_with(map)
+    super
+    value = map["markdown_unknown_tags"]
+    @markdown_unknown_tags = value unless value.nil?
+  end
+
+  # Applies markdown generator options from a loaded .rdoc_options hash.
+  #
+  # @param map [Hash] Loaded RDoc options.
+  #
+  # @return [void]
+  def override(map)
+    super
+    @markdown_unknown_tags = map["markdown_unknown_tags"] if map.key?("markdown_unknown_tags")
+  end
+end
+
+# RDoc configuration extended with markdown generator options.
+class RDoc::Options
+  prepend RDocMarkdownOptions
+
+  # Controls how reverse_markdown handles unknown HTML tags.
+  #
+  # @return [Symbol]
+  attr_accessor :markdown_unknown_tags
+end
 
 # Generates Markdown output and a CSV search index from an RDoc store.
 class RDoc::Generator::Markdown
@@ -13,6 +56,33 @@ class RDoc::Generator::Markdown
 
   # Directory containing ERB templates.
   TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
+
+  # Supported reverse_markdown unknown-tag modes.
+  MARKDOWN_UNKNOWN_TAGS = %i[pass_through drop bypass raise].freeze
+
+  # Registers markdown generator-specific RDoc options.
+  #
+  # @param rdoc_options [RDoc::Options] RDoc options object.
+  #
+  # @return [void]
+  def self.setup_options(rdoc_options)
+    rdoc_options.option_parser.on("--markdown-unknown-tags=MODE") do |value|
+      rdoc_options.markdown_unknown_tags = value.to_sym
+    end
+  end
+
+  # Validates the configured reverse_markdown unknown-tag mode.
+  #
+  # @param value [Symbol] Unknown-tag mode.
+  #
+  # @return [Symbol] Validated unknown-tag mode.
+  def self.validate_markdown_unknown_tags(value)
+    return value if MARKDOWN_UNKNOWN_TAGS.include?(value)
+
+    expected = MARKDOWN_UNKNOWN_TAGS.map { |mode| ":#{mode}" }.join(", ")
+    raise OptionParser::InvalidArgument,
+      "invalid markdown_unknown_tags: #{value.inspect} (expected one of: #{expected})"
+  end
 
   # Source store for generated content.
   #
@@ -50,6 +120,7 @@ class RDoc::Generator::Markdown
   def initialize(store, rdoc_options)
     @store = store
     @options = rdoc_options
+    @markdown_unknown_tags = self.class.validate_markdown_unknown_tags(rdoc_options.markdown_unknown_tags)
 
     @base_dir = Pathname.pwd
   end
@@ -252,7 +323,7 @@ class RDoc::Generator::Markdown
 
     html = normalize_rdoc_pre_blocks(input)
 
-    md = ReverseMarkdown.convert(html, github_flavored: true).dup
+    md = ReverseMarkdown.convert(html, github_flavored: true, unknown_tags: @markdown_unknown_tags).dup
 
     # Flatten headings whose visible text is wrapped in a self-link.
     md.gsub!(/^(#+)\s\[([^\]]+)\]\((?:#[^)]+)\)$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
