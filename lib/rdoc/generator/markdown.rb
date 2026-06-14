@@ -3,11 +3,15 @@
 gem "rdoc"
 
 require "erb"
-require "rbs"
 require "reverse_markdown"
 require "csv"
 require "cgi"
 require "optparse"
+
+begin
+  require "rbs"
+rescue LoadError
+end
 
 # Generates Markdown output and a CSV search index from an RDoc store.
 class RDoc::Generator::Markdown
@@ -809,6 +813,8 @@ class RDoc::Generator::Markdown
   #
   # @return [Hash{Array => String}] Method signature lookup keyed by class and method.
   def build_rbs_method_signatures(files)
+    return {} unless defined?(RBS::Parser)
+
     files.each_with_object({}) do |file, signatures|
       next unless File.extname(file) == ".rbs"
 
