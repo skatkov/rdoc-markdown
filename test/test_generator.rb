@@ -7,13 +7,8 @@ require "rdoc/markdown"
 require "rdiscount"
 
 class TestGenerator < Minitest::Test
-  cover "RDoc::Generator::Markdown#build_rbs_method_signatures"
-  cover "RDoc::Generator::Markdown#collect_rbs_method_definition_signature"
-  cover "RDoc::Generator::Markdown#collect_rbs_method_signatures"
   cover "RDoc::Generator::Markdown#method_signature"
-  cover "RDoc::Generator::Markdown#normalized_rbs_name"
   cover "RDoc::Generator::Markdown#rbs_method_signature"
-  cover "RDoc::Generator::Markdown#rbs_method_signature_key"
   cover "RDoc::Generator::Markdown#setup"
 
   def source_file
@@ -218,32 +213,6 @@ class TestGenerator < Minitest::Test
     refute_includes plain_bird_doc, "#### `chirp(String sound) -> String`"
   end
 
-  def test_generator_ignores_rbs_files_when_rbs_is_unavailable
-    source_dir = stable_tmpdir("rbs-unavailable-source")
-    rbs_file = File.join(source_dir, "bird.rbs")
-    File.write(rbs_file, <<~RBS)
-      class Bird
-        def fly: (String direction) -> bool
-      end
-    RBS
-
-    dir = File.join(stable_tmpdir("rbs-unavailable-output"), "out")
-    klass = build_rdoc_class(full_name: "Bird", description: "Bird docs")
-    klass.add_method(rdoc_method("fly", params: "(direction)"))
-
-    options = generator_options(op_dir: dir)
-    options.files = [rbs_file]
-
-    without_rbs_constant do
-      RDoc::Generator::Markdown.new(rdoc_store(classes: [klass], pages: []), options).generate
-    end
-
-    bird_doc = File.read(File.join(dir, "Bird.md"))
-
-    assert_includes bird_doc, "#### `fly(direction)`"
-    refute_includes bird_doc, "#### `fly(String direction) -> bool`"
-  end
-
   def test_generator_omits_nodoc_and_invisible_code_objects
     source = File.join(stable_tmpdir("visibility-source"), "visibility_example.rb")
     File.write(source, <<~RUBY)
@@ -290,12 +259,5 @@ class TestGenerator < Minitest::Test
     assert File.exist?(File.join(dir, "Ocean.md"))
     assert File.exist?(File.join(dir, "Ocean/Deep.md"))
     assert File.exist?(File.join(dir, "Ocean/Deep/Salmon.md"))
-  end
-
-  def without_rbs_constant
-    rbs = Object.send(:remove_const, :RBS) if Object.const_defined?(:RBS, false)
-    yield
-  ensure
-    Object.const_set(:RBS, rbs) if rbs
   end
 end
