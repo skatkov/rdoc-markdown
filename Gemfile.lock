@@ -4,7 +4,6 @@ PATH
     rdoc-markdown (0.8.0)
       csv
       erb
-      rbs
       rdoc
       reverse_markdown
 
@@ -198,6 +197,7 @@ DEPENDENCIES
   mutant-minitest
   mutex_m
   rake (~> 13.0)
+  rbs
   rdiscount (~> 2.0)
   rdoc-markdown!
   simplecov (~> 0.22)

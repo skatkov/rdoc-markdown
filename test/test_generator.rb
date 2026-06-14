@@ -147,6 +147,8 @@ class TestGenerator < Minitest::Test
   end
 
   def test_generator_uses_rbs_signatures_for_ruby_methods
+    skip "rbs is not available" unless defined?(RBS::Parser)
+
     source_dir = stable_tmpdir("rbs-signature-source")
     ruby_file = File.join(source_dir, "bird.rb")
     rbs_file = File.join(source_dir, "bird.rbs")
@@ -195,11 +197,15 @@ class TestGenerator < Minitest::Test
       end
     RBS
 
+    ruby_only_dir = run_generator([ruby_file], "ruby signature title")
     dir = run_generator([ruby_file, rbs_file], "rbs signature title")
+    ruby_only_bird_doc = File.read(File.join(ruby_only_dir, "Aviary/Bird.md"))
     bird_doc = File.read(File.join(dir, "Aviary/Bird.md"))
     absolute_bird_doc = File.read(File.join(dir, "AbsoluteBird.md"))
     plain_bird_doc = File.read(File.join(dir, "PlainBird.md"))
 
+    assert_includes ruby_only_bird_doc, "#### `fly(direction, velocity)`"
+    refute_includes ruby_only_bird_doc, "#### `fly(String direction, Integer velocity) -> bool`"
     assert_includes bird_doc, "#### `new(String name) -> void`"
     assert_includes bird_doc, "#### `fly(String direction, Integer velocity) -> bool`"
     assert_includes bird_doc, "#### `build(Symbol name) -> String`"
@@ -210,6 +216,32 @@ class TestGenerator < Minitest::Test
     refute_includes bird_doc, "#### `fly(direction, velocity)`"
     refute_includes bird_doc, "#### `build(name)`"
     refute_includes plain_bird_doc, "#### `chirp(String sound) -> String`"
+  end
+
+  def test_generator_ignores_rbs_files_when_rbs_is_unavailable
+    source_dir = stable_tmpdir("rbs-unavailable-source")
+    rbs_file = File.join(source_dir, "bird.rbs")
+    File.write(rbs_file, <<~RBS)
+      class Bird
+        def fly: (String direction) -> bool
+      end
+    RBS
+
+    dir = File.join(stable_tmpdir("rbs-unavailable-output"), "out")
+    klass = build_rdoc_class(full_name: "Bird", description: "Bird docs")
+    klass.add_method(rdoc_method("fly", params: "(direction)"))
+
+    options = generator_options(op_dir: dir)
+    options.files = [rbs_file]
+
+    without_rbs_constant do
+      RDoc::Generator::Markdown.new(rdoc_store(classes: [klass], pages: []), options).generate
+    end
+
+    bird_doc = File.read(File.join(dir, "Bird.md"))
+
+    assert_includes bird_doc, "#### `fly(direction)`"
+    refute_includes bird_doc, "#### `fly(String direction) -> bool`"
   end
 
   def test_generator_omits_nodoc_and_invisible_code_objects
@@ -258,5 +290,12 @@ class TestGenerator < Minitest::Test
     assert File.exist?(File.join(dir, "Ocean.md"))
     assert File.exist?(File.join(dir, "Ocean/Deep.md"))
     assert File.exist?(File.join(dir, "Ocean/Deep/Salmon.md"))
+  end
+
+  def without_rbs_constant
+    rbs = Object.send(:remove_const, :RBS) if Object.const_defined?(:RBS, false)
+    yield
+  ensure
+    Object.const_set(:RBS, rbs) if rbs
   end
 end
