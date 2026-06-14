@@ -3,6 +3,7 @@
 gem "rdoc"
 
 require "erb"
+require "rbs"
 require "reverse_markdown"
 require "csv"
 require "cgi"
@@ -384,13 +385,26 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Normalized method signature.
   def method_signature(method)
-    signature = method.param_seq
+    signature = rbs_method_signature(method) || method.param_seq
     return "()" unless signature.match?(/\S/)
 
     signature = signature.gsub("->", " -> ")
     signature = signature.gsub(/\s+/, " ").strip
     signature = " #{signature}" if signature.start_with?("->")
     merge_method_signature_arguments(signature, method.params)
+  end
+
+  # Looks up a method signature parsed from matching RBS input files.
+  #
+  # @param method [RDoc::AnyMethod] Method object to render.
+  #
+  # @return [String, nil] RBS method type string when available.
+  def rbs_method_signature(method)
+    @rbs_method_signatures[rbs_method_signature_key(
+      class_name: method.parent.full_name,
+      singleton: method.singleton,
+      method_name: method.name
+    )]
   end
 
   # Merges RDoc parameter names into a type-only signature.
@@ -789,6 +803,88 @@ class RDoc::Generator::Markdown
     klass.method_list.any? || klass.constants.any? || klass.attributes.any?
   end
 
+  # Builds a lookup of RBS method signatures for files included in this RDoc run.
+  #
+  # @param files [Array<String>] Input files passed to RDoc.
+  #
+  # @return [Hash{Array => String}] Method signature lookup keyed by class and method.
+  def build_rbs_method_signatures(files)
+    files.each_with_object({}) do |file, signatures|
+      next unless File.extname(file) == ".rbs"
+
+      _buffer, _directives, declarations = RBS::Parser.parse_signature(File.read(file))
+      declarations.each do |declaration|
+        collect_rbs_method_signatures(declaration, signatures: signatures)
+      end
+    end
+  end
+
+  # Adds method signatures from an RBS declaration or member.
+  #
+  # @param declaration [Object] RBS declaration or member.
+  # @param signatures [Hash{Array => String}] Signature lookup being populated.
+  # @param outer_name [String, nil] Containing class or module name.
+  #
+  # @return [void]
+  def collect_rbs_method_signatures(declaration, signatures:, outer_name: nil)
+    case declaration
+    when RBS::AST::Declarations::Class, RBS::AST::Declarations::Module
+      declaration_name = declaration.name
+      full_name = outer_name ? "#{outer_name}::#{declaration_name}" : declaration_name
+      declaration.members.each do |member|
+        collect_rbs_method_signatures(member, signatures: signatures, outer_name: full_name)
+      end
+    when RBS::AST::Members::MethodDefinition
+      collect_rbs_method_definition_signature(declaration, signatures: signatures, outer_name: outer_name)
+    end
+  end
+
+  # Adds a single RBS method definition signature.
+  #
+  # @param method_definition [RBS::AST::Members::MethodDefinition] RBS method definition.
+  # @param signatures [Hash{Array => String}] Signature lookup being populated.
+  # @param outer_name [String] Containing class or module name.
+  #
+  # @return [void]
+  def collect_rbs_method_definition_signature(method_definition, signatures:, outer_name:)
+    method_name = method_definition.name.to_s
+    method_type = method_definition.overloads.last.method_type
+
+    signatures[rbs_method_signature_key(
+      class_name: outer_name,
+      singleton: method_definition.singleton?,
+      method_name: method_name
+    )] = method_type.to_s
+
+    return unless method_name == "initialize" && !method_definition.singleton?
+
+    signatures[rbs_method_signature_key(
+      class_name: outer_name,
+      singleton: true,
+      method_name: "new"
+    )] = method_type.to_s
+  end
+
+  # Normalizes RBS names to match RDoc full names.
+  #
+  # @param name [Object] RBS name-like object.
+  #
+  # @return [String] RDoc-style class or module name.
+  def normalized_rbs_name(name)
+    name.to_s.delete_prefix("::")
+  end
+
+  # Builds the RBS signature lookup key for a method.
+  #
+  # @param class_name [String] RDoc-style class or module name.
+  # @param singleton [Boolean] Whether the method is a singleton method.
+  # @param method_name [String] Method name.
+  #
+  # @return [Array<String, Boolean, String>] Signature lookup key.
+  def rbs_method_signature_key(class_name:, singleton:, method_name:)
+    [normalized_rbs_name(class_name), singleton, method_name]
+  end
+
   # Checks whether a name appears to contain duplicated root namespaces.
   #
   # @param full_name [String] Full RDoc object name.
@@ -813,6 +909,7 @@ class RDoc::Generator::Markdown
     @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
+    @rbs_method_signatures = build_rbs_method_signatures(Array(@options.files))
 
     @known_output_paths = Set.new
     @class_docs.each do |doc|

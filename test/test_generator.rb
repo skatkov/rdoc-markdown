@@ -7,18 +7,27 @@ require "rdoc/markdown"
 require "rdiscount"
 
 class TestGenerator < Minitest::Test
+  cover "RDoc::Generator::Markdown#build_rbs_method_signatures"
+  cover "RDoc::Generator::Markdown#collect_rbs_method_definition_signature"
+  cover "RDoc::Generator::Markdown#collect_rbs_method_signatures"
+  cover "RDoc::Generator::Markdown#method_signature"
+  cover "RDoc::Generator::Markdown#normalized_rbs_name"
+  cover "RDoc::Generator::Markdown#rbs_method_signature"
+  cover "RDoc::Generator::Markdown#rbs_method_signature_key"
+  cover "RDoc::Generator::Markdown#setup"
+
   def source_file
     File.join(File.dirname(__FILE__), "data/example.rb")
   end
 
-  def run_generator(file, title)
+  def run_generator(files, title)
     dir = File.join(stable_tmpdir("generator-output"), "out")
 
     options = RDoc::Options.new
     options.setup_generator "markdown"
 
     options.verbosity = 0
-    options.files = [file]
+    options.files = Array(files)
     options.op_dir = dir
     options.title = title
 
@@ -135,6 +144,72 @@ class TestGenerator < Minitest::Test
 
     assert_includes bird_doc, "#### `fly(direction: string, velocity: number) -> bool`"
     refute_includes bird_doc, "Arguments: `direction, velocity`"
+  end
+
+  def test_generator_uses_rbs_signatures_for_ruby_methods
+    source_dir = stable_tmpdir("rbs-signature-source")
+    ruby_file = File.join(source_dir, "bird.rb")
+    rbs_file = File.join(source_dir, "bird.rbs")
+
+    File.write(ruby_file, <<~RUBY)
+      module Aviary
+        class Bird
+          def initialize(name)
+          end
+
+          def fly(direction, velocity)
+          end
+
+          def build(name)
+          end
+
+          def self.build(name)
+          end
+        end
+      end
+
+      class AbsoluteBird
+        def chirp(sound)
+        end
+      end
+
+      class PlainBird
+        def chirp(sound)
+        end
+      end
+    RUBY
+
+    File.write(rbs_file, <<~RBS)
+      module Aviary
+        class Bird
+          def initialize: (String name) -> void
+          def fly: (String direction, Integer velocity) -> bool
+          def build: (Symbol name) -> String
+          def self.build: (String name) -> Bird
+          def self.initialize: () -> singleton(Bird)
+        end
+      end
+
+      class ::AbsoluteBird
+        def chirp: (String sound) -> String
+      end
+    RBS
+
+    dir = run_generator([ruby_file, rbs_file], "rbs signature title")
+    bird_doc = File.read(File.join(dir, "Aviary/Bird.md"))
+    absolute_bird_doc = File.read(File.join(dir, "AbsoluteBird.md"))
+    plain_bird_doc = File.read(File.join(dir, "PlainBird.md"))
+
+    assert_includes bird_doc, "#### `new(String name) -> void`"
+    assert_includes bird_doc, "#### `fly(String direction, Integer velocity) -> bool`"
+    assert_includes bird_doc, "#### `build(Symbol name) -> String`"
+    assert_includes bird_doc, "#### `build(String name) -> Bird`"
+    assert_includes absolute_bird_doc, "#### `chirp(String sound) -> String`"
+    assert_includes plain_bird_doc, "#### `chirp(sound)`"
+    refute_includes bird_doc, "#### `new() -> singleton(Bird)`"
+    refute_includes bird_doc, "#### `fly(direction, velocity)`"
+    refute_includes bird_doc, "#### `build(name)`"
+    refute_includes plain_bird_doc, "#### `chirp(String sound) -> String`"
   end
 
   def test_generator_omits_nodoc_and_invisible_code_objects
