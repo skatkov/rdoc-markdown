@@ -48,22 +48,11 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   #
   # @return [void]
   def self.add_method_signature(signatures, klass:, method:)
-    signatures[signature_key(klass.full_name, method.singleton, method.name)] = method.param_seq
+    signatures[[klass.full_name, method.singleton, method.name]] = method.param_seq
 
     return unless method.name == "initialize" && !method.singleton
 
-    signatures[signature_key(klass.full_name, true, "new")] = method.param_seq
-  end
-
-  # Builds the signature lookup key for a method.
-  #
-  # @param class_name [String] RDoc-style class or module name.
-  # @param singleton [Boolean] Whether the method is a singleton method.
-  # @param method_name [String] Method name.
-  #
-  # @return [Array<String, Boolean, String>] Signature lookup key.
-  def self.signature_key(class_name, singleton, method_name)
-    [class_name, singleton, method_name]
+    signatures[[klass.full_name, true, "new"]] = method.param_seq
   end
 
   # @param signatures [Hash{Array => String}] Signature lookup.
@@ -77,6 +66,6 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   #
   # @return [String, nil] RBS method type string when available.
   def signature_for(method)
-    @signatures[self.class.signature_key(method.parent.full_name, method.singleton, method.name)]
+    @signatures[[method.parent.full_name, method.singleton, method.name]]
   end
 end
