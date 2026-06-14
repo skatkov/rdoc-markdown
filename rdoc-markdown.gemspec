@@ -34,6 +34,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "csv"
   spec.add_dependency "erb"
   spec.add_dependency "rdoc"
+  spec.add_dependency "rbs"
   spec.add_dependency "reverse_markdown"
 
   spec.add_development_dependency "bundler", ">= 2.0"
