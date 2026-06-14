@@ -27,6 +27,7 @@ class TestRbsSignatureIndex < Minitest::Test
     index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"])
 
     assert_nil index.signature_for(ruby_method(class_name: "Bird", method_name: "fly"))
+    assert_false index.any?
   end
 
   def test_build_returns_empty_index_when_rbs_gem_is_unavailable
@@ -78,6 +79,7 @@ class TestRbsSignatureIndex < Minitest::Test
 
     index = RDoc::Generator::Markdown::RbsSignatureIndex.build([file])
 
+    assert_true index.any?
     assert_equal "(String name) -> void", index.signature_for(ruby_method(
       class_name: "Aviary::Bird",
       method_name: "new",

@@ -68,4 +68,11 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   def signature_for(method)
     @signatures[[method.parent.full_name, method.singleton, method.name]]
   end
+
+  # Checks whether any RBS signatures were parsed.
+  #
+  # @return [Boolean] True when type signatures are available.
+  def any?
+    @signatures.any?
+  end
 end
