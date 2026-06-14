@@ -395,6 +395,13 @@ class RDoc::Generator::Markdown
     merge_method_signature_arguments(signature, method.params)
   end
 
+  # Checks whether this documentation set has parsed RBS signatures.
+  #
+  # @return [Boolean] True when type signatures are available.
+  def types_available?
+    @rbs_method_signatures.any?
+  end
+
   # Merges RDoc parameter names into a type-only signature.
   #
   # @param signature [String] Method signature from RDoc call sequence.
