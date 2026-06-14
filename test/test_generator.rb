@@ -8,7 +8,6 @@ require "rdiscount"
 
 class TestGenerator < Minitest::Test
   cover "RDoc::Generator::Markdown#method_signature"
-  cover "RDoc::Generator::Markdown#rbs_method_signature"
   cover "RDoc::Generator::Markdown#setup"
 
   def source_file

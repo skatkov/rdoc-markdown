@@ -386,22 +386,13 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Normalized method signature.
   def method_signature(method)
-    signature = rbs_method_signature(method) || method.param_seq
+    signature = @rbs_method_signatures.signature_for(method) || method.param_seq
     return "()" unless signature.match?(/\S/)
 
     signature = signature.gsub("->", " -> ")
     signature = signature.gsub(/\s+/, " ").strip
     signature = " #{signature}" if signature.start_with?("->")
     merge_method_signature_arguments(signature, method.params)
-  end
-
-  # Looks up a method signature parsed from matching RBS input files.
-  #
-  # @param method [RDoc::AnyMethod] Method object to render.
-  #
-  # @return [String, nil] RBS method type string when available.
-  def rbs_method_signature(method)
-    @rbs_method_signatures.signature_for(method)
   end
 
   # Merges RDoc parameter names into a type-only signature.
