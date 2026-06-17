@@ -178,7 +178,7 @@ class RDoc::Generator::Markdown
           csv << [
             "#{display_name(klass)}.#{method.name}",
             "Method",
-            "#{output_path_for(klass)}##{method.aref}"
+            "#{output_path_for(klass)}##{method_anchor(method)}"
           ]
         end
 
@@ -616,9 +616,49 @@ class RDoc::Generator::Markdown
   # @return [String] Anchor or relative Markdown link target.
   def method_link(method, current_class:)
     target_parent = method.parent
-    return "##{method.aref}" if target_parent == current_class
+    return "##{method_anchor(method)}" if target_parent == current_class
 
-    "#{output_path_for(target_parent)}##{method.aref}"
+    "#{output_path_for(target_parent)}##{method_anchor(method)}"
+  end
+
+  # Returns the generated Markdown anchor for a method.
+  #
+  # RDoc exposes overloaded constructor documentation as multiple displayable
+  # class methods named `new`, each with the same `method-c-new` aref.
+  #
+  # @param method [RDoc::AnyMethod] Method object to render or link to.
+  #
+  # @return [String] Unique Markdown anchor for this method.
+  def method_anchor(method)
+    @method_anchors_by_object_id.fetch(method.object_id, method.aref)
+  end
+
+  # Assigns unique method anchors within each generated class page.
+  #
+  # @return [Hash{Integer => String}] Method object id to unique anchor.
+  def build_method_anchors
+    @classes.each_with_object({}) do |klass, anchors|
+      counts = Hash.new(0)
+      used = Set.new
+
+      klass.method_list.select(&:display?).each do |method|
+        base_anchor = method.aref
+        counts[base_anchor] += 1
+        anchor = if counts[base_anchor] == 1
+          base_anchor
+        else
+          "#{base_anchor}-#{counts[base_anchor]}"
+        end
+
+        while used.include?(anchor)
+          counts[base_anchor] += 1
+          anchor = "#{base_anchor}-#{counts[base_anchor]}"
+        end
+
+        used << anchor
+        anchors[method.object_id] = anchor
+      end
+    end
   end
 
   # Removes RDoc's generated HTML tags from verbatim pre blocks.
@@ -823,6 +863,7 @@ class RDoc::Generator::Markdown
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
     @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files))
+    @method_anchors_by_object_id = build_method_anchors
 
     @known_output_paths = Set.new
     @class_docs.each do |doc|
