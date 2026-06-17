@@ -141,6 +141,45 @@ class TestGenerator < Minitest::Test
     refute_includes bird_doc, "Arguments: `direction, velocity`"
   end
 
+  def test_generator_disambiguates_duplicate_rdoc_method_arefs
+    source = File.join(stable_tmpdir("duplicate-method-arefs"), "example.rb")
+    File.write(source, <<~RUBY)
+      class DuplicateNewExample
+        def self.new(*args, **options, &block)
+          super
+        end
+
+        def initialize(name)
+        end
+      end
+
+      class AliasThenNewExample
+        class << self
+          alias_method :create, :new
+          def new(name)
+          end
+        end
+
+        def initialize(name, extra = nil)
+        end
+      end
+    RUBY
+
+    dir = run_generator(source, "duplicate arefs")
+    duplicate_doc = File.read(File.join(dir, "DuplicateNewExample.md"))
+    alias_doc = File.read(File.join(dir, "AliasThenNewExample.md"))
+    index_rows = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
+      [row["name"], row["type"], row["path"]]
+    end
+
+    assert_equal 1, duplicate_doc.scan('<a id="method-c-new"></a>').count
+    assert_equal 1, duplicate_doc.scan('<a id="method-c-new-2"></a>').count
+    assert_includes alias_doc, "Alias for: [`new`](#method-c-new)"
+    assert_includes index_rows, ["DuplicateNewExample.new", "Method", "DuplicateNewExample.md#method-c-new"]
+    assert_includes index_rows, ["DuplicateNewExample.new", "Method", "DuplicateNewExample.md#method-c-new-2"]
+    assert_equal index_rows.uniq, index_rows
+  end
+
   def test_generator_uses_rbs_signatures_for_ruby_methods
     skip "rbs is not available" unless defined?(RBS::Parser)
 

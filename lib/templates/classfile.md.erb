@@ -52,7 +52,7 @@ _Type signatures available._
 <% methods.each do |method| -%>
 
 #### `<%= method.name %><%= method_signature(method) %>`
-<%= anchor(method.aref) %>
+<%= anchor(method_anchor(method)) %>
 
 <%= method_description(method, current_class: klass) %>
 <% end -%>
