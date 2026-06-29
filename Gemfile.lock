@@ -29,6 +29,10 @@ GEM
       securerandom (>= 0.3)
       tzinfo (~> 2.0, >= 2.0.5)
       uri (>= 0.13.1)
+    appraisal (2.5.0)
+      bundler
+      rake
+      thor (>= 0.14.0)
     ast (2.4.3)
     base64 (0.3.0)
     better_html (2.2.0)
@@ -167,6 +171,7 @@ GEM
       lint_roller (~> 1.1)
       rubocop-performance (~> 1.26.0)
     stringio (3.2.0)
+    thor (1.5.0)
     tsort (0.2.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
@@ -188,6 +193,7 @@ PLATFORMS
   x86_64-linux-gnu
 
 DEPENDENCIES
+  appraisal
   bundler (>= 2.0)
   commonmarker
   erb_lint

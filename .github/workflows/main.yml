@@ -11,16 +11,14 @@ jobs:
   compatibility:
     name: Tests / RDoc ${{ matrix.rdoc.version }}
     runs-on: ubuntu-latest
-    env:
-      BUNDLE_GEMFILE: ${{ github.workspace }}/${{ matrix.rdoc.gemfile }}
     strategy:
       fail-fast: false
       matrix:
         rdoc:
           - version: "7"
-            gemfile: Gemfile
+            appraisal: rdoc_7
           - version: "8"
-            gemfile: gemfiles/rdoc_8.gemfile
+            appraisal: rdoc_8
 
     steps:
       - uses: actions/checkout@v6
@@ -39,8 +37,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vendored-repos-v1-
       - run: bundle config unset deployment
+      - name: Install appraised bundle
+        run: bundle exec appraisal ${{ matrix.rdoc.appraisal }} bundle install
       - name: Run tests
-        run: bundle exec rake test
+        run: bundle exec appraisal ${{ matrix.rdoc.appraisal }} rake test
 
   quality:
     name: Quality and generated docs
@@ -75,8 +75,6 @@ jobs:
   rdoc8-generated-docs:
     name: Generated docs / RDoc 8
     runs-on: ubuntu-latest
-    env:
-      BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/rdoc_8.gemfile
 
     steps:
       - uses: actions/checkout@v6
@@ -95,5 +93,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vendored-repos-v1-
       - run: bundle config unset deployment
+      - name: Install appraised bundle
+        run: bundle exec appraisal rdoc_8 bundle install
       - name: Validate markdown output (GFM)
-        run: bundle exec rake markdown:validate
+        run: bundle exec appraisal rdoc_8 rake markdown:validate
