@@ -23,6 +23,35 @@ class TestRbsSignatureIndex < Minitest::Test
     method
   end
 
+  def store_with_method(type_signature_lines: nil, sidecar_lines: nil, sidecar: true)
+    klass = build_rdoc_class(full_name: "Bird", description: "docs")
+    method = rdoc_method("fly", params: "(direction)")
+    method.define_singleton_method(:type_signature_lines) { type_signature_lines } unless type_signature_lines.nil?
+    klass.add_method(method)
+    store = rdoc_store(classes: [klass])
+
+    if sidecar
+      store.define_singleton_method(:rbs_signature_for) do |candidate|
+        raise "wrong method" unless candidate.equal?(method)
+
+        sidecar_lines
+      end
+    end
+
+    [store, method]
+  end
+
+  def with_rdoc_parser_for(parser_factory)
+    original_for = RDoc::Parser.method(:for)
+    RDoc::Parser.define_singleton_method(:for) do |top_level, *|
+      parser_factory.call(top_level)
+    end
+
+    yield
+  ensure
+    RDoc::Parser.define_singleton_method(:for, original_for)
+  end
+
   def test_build_returns_empty_index_without_rbs_files
     index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"])
 
@@ -107,6 +136,34 @@ class TestRbsSignatureIndex < Minitest::Test
     assert_empty index.signature_lines_for(ruby_method(class_name: "PlainBird", method_name: "chirp"))
   end
 
+  def test_build_indexes_type_signature_lines_from_rdoc_parser_output
+    file = rbs_file("")
+    test = self
+
+    parser_factory = ->(top_level) do
+      Object.new.tap do |parser|
+        parser.define_singleton_method(:scan) do
+          store = top_level.store
+          klass = test.build_rdoc_class(full_name: "Bird", description: "docs")
+          method = test.rdoc_method("fly", params: "(direction)")
+          method.define_singleton_method(:type_signature_lines) { ["(String direction) -> bool"] }
+          klass.add_method(method)
+          klass.store = store
+          store.classes_hash[klass.full_name] = klass
+        end
+      end
+    end
+
+    with_rdoc_parser_for(parser_factory) do
+      index = RDoc::Generator::Markdown::RbsSignatureIndex.build([file])
+
+      assert_equal ["(String direction) -> bool"], index.signature_lines_for(ruby_method(
+        class_name: "Bird",
+        method_name: "fly"
+      ))
+    end
+  end
+
   def test_build_resolves_relative_rbs_files_against_base_dir
     source_dir = stable_tmpdir("relative-rbs-signature-index")
     current_dir = stable_tmpdir("relative-rbs-current")
@@ -128,129 +185,94 @@ class TestRbsSignatureIndex < Minitest::Test
   end
 
   def test_build_indexes_store_sidecar_signatures
-    klass = build_rdoc_class(full_name: "Bird", description: "docs")
-    method = rdoc_method("fly", params: "(direction)")
-    klass.add_method(method)
-    store = rdoc_store(classes: [klass])
-    store.define_singleton_method(:rbs_signature_for) do |candidate|
-      ["(String direction) -> bool"] if candidate.equal?(method)
-    end
+    store, method = store_with_method(sidecar_lines: ["(String direction) -> bool"])
 
     index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
 
     assert_true index.any?
-    assert_equal ["(String direction) -> bool"], index.signature_lines_for(ruby_method(
-      class_name: "Bird",
-      method_name: "fly"
-    ))
+    assert_equal ["(String direction) -> bool"], index.signature_lines_for(method)
   end
 
-  def test_rbs_signature_lines_from_method_uses_rdoc_8_type_signature_lines
-    method = ruby_method(class_name: "Bird", method_name: "fly")
-    method.define_singleton_method(:type_signature_lines) { ["(String direction) -> bool"] }
+  def test_build_indexes_store_inline_type_signature_lines
+    store, method = store_with_method(type_signature_lines: ["(String direction) -> bool"], sidecar: false)
 
-    assert_equal ["(String direction) -> bool"],
-      RDoc::Generator::Markdown::RbsSignatureIndex.rbs_signature_lines_from_method(method)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+
+    assert_true index.any?
+    assert_equal ["(String direction) -> bool"], index.signature_lines_for(method)
   end
 
-  def test_store_signature_lines_from_method_uses_rdoc_8_store_sidecar_signatures
-    method = ruby_method(class_name: "Bird", method_name: "fly")
-    store = Object.new
-    store.define_singleton_method(:rbs_signature_for) do |candidate|
-      raise "wrong method" unless candidate.equal?(method)
+  def test_build_indexes_store_sidecar_overloads
+    store, method = store_with_method(sidecar_lines: ["(String direction) -> bool", "(Integer velocity) -> bool"])
 
-      ["(String direction) -> bool", "(Integer velocity) -> bool"]
-    end
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
 
-    assert_equal ["(String direction) -> bool", "(Integer velocity) -> bool"],
-      RDoc::Generator::Markdown::RbsSignatureIndex.store_signature_lines_from_method(method, store: store)
+    assert_equal ["(String direction) -> bool", "(Integer velocity) -> bool"], index.signature_lines_for(method)
   end
 
-  def test_store_signature_lines_from_method_discards_blank_store_signature_lines
-    method = ruby_method(class_name: "Bird", method_name: "fly")
-    store = Object.new
-    store.define_singleton_method(:rbs_signature_for) do |candidate|
-      raise "wrong method" unless candidate.equal?(method)
+  def test_build_discards_blank_store_sidecar_signature_lines
+    store, method = store_with_method(sidecar_lines: [nil, "  ", "(String direction) -> bool"])
 
-      [nil, "  ", "(String direction) -> bool"]
-    end
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
 
-    assert_equal ["(String direction) -> bool"],
-      RDoc::Generator::Markdown::RbsSignatureIndex.store_signature_lines_from_method(method, store: store)
+    assert_equal ["(String direction) -> bool"], index.signature_lines_for(method)
   end
 
-  def test_rbs_signature_lines_from_method_accepts_compact_non_whitespace_signatures
-    method = ruby_method(class_name: "Bird", method_name: "name")
-    method.define_singleton_method(:type_signature_lines) { ["String"] }
+  def test_build_ignores_nil_store_sidecar_signature
+    store, method = store_with_method(sidecar_lines: nil)
 
-    assert_equal ["String"], RDoc::Generator::Markdown::RbsSignatureIndex.rbs_signature_lines_from_method(method)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+
+    assert_false index.any?
+    assert_empty index.signature_lines_for(method)
   end
 
-  def test_rbs_signature_lines_from_method_discards_blank_type_signature_lines
-    method = ruby_method(class_name: "Bird", method_name: "name")
-    method.define_singleton_method(:type_signature_lines) { [nil, "  ", "String"] }
+  def test_build_accepts_compact_inline_type_signature_lines
+    store, method = store_with_method(type_signature_lines: ["String"], sidecar: false)
 
-    assert_equal ["String"], RDoc::Generator::Markdown::RbsSignatureIndex.rbs_signature_lines_from_method(method)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+
+    assert_equal ["String"], index.signature_lines_for(method)
   end
 
-  def test_rbs_signature_lines_from_method_ignores_blank_param_seq
-    method = Struct.new(:param_seq).new("  ")
+  def test_build_discards_blank_inline_type_signature_lines
+    store, method = store_with_method(type_signature_lines: [nil, "  "], sidecar: false)
 
-    assert_empty RDoc::Generator::Markdown::RbsSignatureIndex.rbs_signature_lines_from_method(method)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+
+    assert_false index.any?
+    assert_empty index.signature_lines_for(method)
   end
 
-  def test_store_signature_lines_from_method_prefers_inline_rdoc_8_type_signature_lines
-    method = ruby_method(class_name: "Bird", method_name: "fly")
-    method.define_singleton_method(:type_signature_lines) { ["(Symbol direction) -> bool"] }
-    store = Object.new
-    store.define_singleton_method(:rbs_signature_for) do |candidate|
-      raise "wrong method" unless candidate.equal?(method)
+  def test_build_prefers_inline_type_signature_lines_over_store_sidecar_signatures
+    store, method = store_with_method(
+      type_signature_lines: ["(Symbol direction) -> bool"],
+      sidecar_lines: ["(String direction) -> bool"]
+    )
 
-      ["(String direction) -> bool"]
-    end
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
 
-    assert_equal ["(Symbol direction) -> bool"],
-      RDoc::Generator::Markdown::RbsSignatureIndex.store_signature_lines_from_method(method, store: store)
+    assert_equal ["(Symbol direction) -> bool"], index.signature_lines_for(method)
   end
 
-  def test_store_signature_lines_from_method_falls_back_to_store_when_inline_lines_are_empty
-    method = ruby_method(class_name: "Bird", method_name: "fly")
-    method.define_singleton_method(:type_signature_lines) { [nil, "  "] }
-    store = Object.new
-    store.define_singleton_method(:rbs_signature_for) do |candidate|
-      raise "wrong method" unless candidate.equal?(method)
+  def test_build_falls_back_to_store_when_inline_type_signature_lines_are_blank
+    store, method = store_with_method(
+      type_signature_lines: [nil, "  "],
+      sidecar_lines: ["(String direction) -> bool"]
+    )
 
-      ["(String direction) -> bool"]
-    end
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
 
-    assert_equal ["(String direction) -> bool"],
-      RDoc::Generator::Markdown::RbsSignatureIndex.store_signature_lines_from_method(method, store: store)
+    assert_equal ["(String direction) -> bool"], index.signature_lines_for(method)
   end
 
-  def test_store_signature_lines_from_method_ignores_stores_without_sidecar_signature_support
-    method = ruby_method(class_name: "Bird", method_name: "fly")
+  def test_build_ignores_store_methods_without_type_signatures
+    store, method = store_with_method(sidecar: false)
 
-    assert_empty RDoc::Generator::Markdown::RbsSignatureIndex.store_signature_lines_from_method(method, store: Object.new)
-  end
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
 
-  def test_add_method_signature_ignores_blank_signatures
-    signatures = {}
-    klass = Struct.new(:full_name).new("Bird")
-    method = Struct.new(:singleton, :name, :param_seq).new(false, "fly", "  ")
-
-    RDoc::Generator::Markdown::RbsSignatureIndex.add_method_signature_lines(signatures, klass: klass, method: method, lines: ["  "])
-
-    assert_empty signatures
-  end
-
-  def test_add_method_signature_ignores_nil_signatures
-    signatures = {}
-    klass = Struct.new(:full_name).new("Bird")
-    method = Struct.new(:singleton, :name, :param_seq).new(false, "fly", nil)
-
-    RDoc::Generator::Markdown::RbsSignatureIndex.add_method_signature_lines(signatures, klass: klass, method: method, lines: nil)
-
-    assert_empty signatures
+    assert_false index.any?
+    assert_empty index.signature_lines_for(method)
   end
 
   def run_without_rbs_gem(source, *arguments)

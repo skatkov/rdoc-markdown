@@ -76,11 +76,10 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   # @param signatures [Hash{Array => Array<String>}] Signature lookup being populated.
   # @param klass [RDoc::Context] Method owner.
   # @param method [RDoc::AnyMethod] Method object.
-  # @param lines [Array<String>, String, nil] Signature text lines.
+  # @param lines [Array<String>] Signature text lines.
   #
   # @return [void]
   def self.add_method_signature_lines(signatures, klass:, method:, lines:)
-    lines = nonblank_lines(lines)
     return if lines.empty?
 
     signatures[[klass.full_name, method.singleton, method.name]] = lines
@@ -169,4 +168,16 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   def any?
     @signatures.any?
   end
+
+  private_class_method \
+    :signatures_from,
+    :signatures_from_store,
+    :parsed_classes,
+    :rbs_file_path,
+    :add_method_signature_lines,
+    :rbs_signature_lines_from_method,
+    :store_signature_lines_from_method,
+    :method_type_signature_lines,
+    :store_type_signature_lines,
+    :nonblank_lines
 end
