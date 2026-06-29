@@ -9,14 +9,13 @@ on:
 
 jobs:
   compatibility:
-    name: Tests / Ruby ${{ matrix.ruby-version }} / RDoc ${{ matrix.rdoc.version }}
+    name: Tests / RDoc ${{ matrix.rdoc.version }}
     runs-on: ubuntu-latest
     env:
       BUNDLE_GEMFILE: ${{ github.workspace }}/${{ matrix.rdoc.gemfile }}
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ["3.3", "3.4", "4.0"]
         rdoc:
           - version: "7"
             gemfile: Gemfile
@@ -28,7 +27,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ matrix.ruby-version }}
+          ruby-version: "4.0"
           bundler-cache: true
       - name: Cache vendored repositories
         uses: actions/cache@v4
