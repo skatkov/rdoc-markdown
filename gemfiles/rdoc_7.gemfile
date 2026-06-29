@@ -11,6 +11,6 @@ gem "yard-lint"
 gem "mutant"
 gem "mutant-minitest"
 gem "mutex_m"
-gem "rdoc", "~> 8.0"
+gem "rdoc", "~> 7.0"
 
 gemspec path: "../"
