@@ -215,6 +215,88 @@ class TestGenerator < Minitest::Test
     refute_includes bird_doc, "#### `build(name)`"
   end
 
+  def test_generator_uses_relative_rbs_inputs_from_rdoc_start_directory
+    source_dir = stable_tmpdir("relative-rbs-signature-source")
+
+    File.write(File.join(source_dir, "bird.rb"), <<~RUBY)
+      class Bird
+        def fly(direction)
+        end
+      end
+    RUBY
+
+    File.write(File.join(source_dir, "bird.rbs"), <<~RBS)
+      class Bird
+        def fly: (String) -> bool
+      end
+    RBS
+
+    dir = nil
+    Dir.chdir(source_dir) do
+      dir = run_generator(["bird.rb", "bird.rbs"], "relative rbs signature title")
+    end
+    bird_doc = File.read(File.join(dir, "Bird.md"))
+
+    assert_includes bird_doc, "_Type signatures available._"
+    assert_includes bird_doc, "#### `fly(direction: String) -> bool`"
+    refute_includes bird_doc, "#### `fly(direction)`"
+  end
+
+  def test_generator_uses_rdoc_8_auto_discovered_sig_directory
+    skip "RDoc 8 auto-discovers sig directories" if Gem.loaded_specs.fetch("rdoc").version < Gem::Version.new("8.0")
+
+    source_dir = stable_tmpdir("auto-discovered-rbs-source")
+    FileUtils.mkdir_p(File.join(source_dir, "lib"))
+    FileUtils.mkdir_p(File.join(source_dir, "sig"))
+    ruby_file = File.join(source_dir, "lib/bird.rb")
+
+    File.write(ruby_file, <<~RUBY)
+      class Bird
+        def fly(direction)
+        end
+      end
+    RUBY
+
+    File.write(File.join(source_dir, "sig/bird.rbs"), <<~RBS)
+      class Bird
+        def fly: (String) -> bool
+      end
+    RBS
+
+    dir = run_generator([ruby_file], "auto rbs signature title") do |options|
+      options.root = source_dir
+    end
+    bird_doc = File.read(File.join(dir, "Bird.md"))
+
+    assert_includes bird_doc, "_Type signatures available._"
+    assert_includes bird_doc, "#### `fly(direction: String) -> bool`"
+    refute_includes bird_doc, "#### `fly(direction)`"
+  end
+
+  def test_generator_uses_store_sidecar_type_signatures
+    dir = stable_tmpdir("sidecar-signature-generator")
+    klass = build_rdoc_class(full_name: "SignatureExamples", description: "Signature docs")
+    method = rdoc_method("sidecar", params: "(value)")
+    klass.add_method(method)
+    plain_klass = build_rdoc_class(full_name: "PlainSignatureExamples", description: "Plain docs")
+    plain_klass.add_method(rdoc_method("plain", params: "(name)"))
+    store = rdoc_store(classes: [klass, plain_klass], pages: [])
+    store.define_singleton_method(:rbs_signature_for) do |candidate|
+      ["(String) -> bool", "(Integer) -> bool"] if candidate.equal?(method)
+    end
+
+    RDoc::Generator::Markdown.new(store, generator_options(op_dir: dir)).generate
+    doc = File.read(File.join(dir, "SignatureExamples.md"))
+    plain_doc = File.read(File.join(dir, "PlainSignatureExamples.md"))
+
+    assert_includes doc, "_Type signatures available._"
+    assert_includes doc, "#### `sidecar(value: String) -> bool | (value: Integer) -> bool`"
+    refute_includes doc, "#### `sidecar(value: String) -> bool | (Integer) -> bool`"
+    refute_includes doc, "#### `sidecar(value)`"
+    assert_includes plain_doc, "_Type signatures available._"
+    assert_includes plain_doc, "#### `plain(name)`"
+  end
+
   def test_generator_omits_nodoc_and_invisible_code_objects
     source = File.join(stable_tmpdir("visibility-source"), "visibility_example.rb")
     File.write(source, <<~RUBY)

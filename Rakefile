@@ -21,7 +21,10 @@ task default: [:test]
 namespace :erb do
   desc "Lint markdown ERB templates"
   task :lint do
-    sh "bundle exec erb_lint --lint-all"
+    files = Dir["lib/templates/**/*.{md,markdown}.erb"]
+    raise "No markdown ERB templates found" if files.empty?
+
+    sh "bundle", "exec", "erb_lint", *files
   end
 end
 

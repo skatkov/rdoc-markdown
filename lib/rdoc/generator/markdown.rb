@@ -386,13 +386,21 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Normalized method signature.
   def method_signature(method)
-    signature = @rbs_method_signatures.signature_for(method) || method.param_seq
-    return "()" unless signature.match?(/\S/)
+    signatures = @rbs_method_signatures.signature_lines_for(method)
+    signatures = [method.param_seq] if signatures.empty?
 
-    signature = signature.gsub("->", " -> ")
-    signature = signature.gsub(/\s+/, " ").strip
-    signature = " #{signature}" if signature.start_with?("->")
-    merge_method_signature_arguments(signature, method.params)
+    signatures = signatures.filter_map do |signature|
+      next unless signature&.match?(/\S/)
+
+      signature = signature.gsub("->", " -> ")
+      signature = signature.gsub(/\s+/, " ").strip
+      signature = " #{signature}" if signature.start_with?("->")
+      merge_method_signature_arguments(signature, method.params)
+    end
+
+    return "()" if signatures.empty?
+
+    signatures.join(" | ")
   end
 
   # Checks whether this documentation set has parsed RBS signatures.
@@ -822,7 +830,7 @@ class RDoc::Generator::Markdown
     @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
-    @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files))
+    @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files), base_dir: @base_dir, store: @store)
 
     @known_output_paths = Set.new
     @class_docs.each do |doc|
