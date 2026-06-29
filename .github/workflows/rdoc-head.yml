@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/rdoc_head.gemfile
 
     steps:
       - uses: actions/checkout@v6
@@ -28,7 +26,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vendored-repos-v1-
       - run: bundle config unset deployment
+      - name: Install appraised bundle
+        run: bundle exec appraisal rdoc_head bundle install
       - name: Run tests
-        run: bundle exec rake test
+        run: bundle exec appraisal rdoc_head rake test
       - name: Validate markdown output (GFM)
-        run: bundle exec rake markdown:validate
+        run: bundle exec appraisal rdoc_head rake markdown:validate
