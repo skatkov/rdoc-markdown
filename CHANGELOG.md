@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+- Render RDoc 8 inline and sidecar RBS signatures in Markdown method headings.
+- Resolve explicit relative `.rbs` inputs against the directory where RDoc started, not the output directory.
+
+### Changed
+- Run CI against both RDoc 7 and RDoc 8 dependency sets.
+
 ## 0.8.0
 
 ### Added

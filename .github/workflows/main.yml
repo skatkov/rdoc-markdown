@@ -8,11 +8,20 @@ on:
   pull_request:
 
 jobs:
-  build:
+  compatibility:
+    name: Tests / Ruby ${{ matrix.ruby-version }} / RDoc ${{ matrix.rdoc.version }}
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/${{ matrix.rdoc.gemfile }}
     strategy:
+      fail-fast: false
       matrix:
         ruby-version: ["3.3", "3.4", "4.0"]
+        rdoc:
+          - version: "7"
+            gemfile: Gemfile
+          - version: "8"
+            gemfile: gemfiles/rdoc_8.gemfile
 
     steps:
       - uses: actions/checkout@v6
@@ -33,13 +42,59 @@ jobs:
       - run: bundle config unset deployment
       - name: Run tests
         run: bundle exec rake test
+
+  quality:
+    name: Quality and generated docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+      - name: Cache vendored repositories
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor/minitest
+            vendor/rails
+          key: ${{ runner.os }}-vendored-repos-v1-${{ hashFiles('Rakefile') }}
+          restore-keys: |
+            ${{ runner.os }}-vendored-repos-v1-
+      - run: bundle config unset deployment
       - name: Standard Ruby
-        if: matrix.ruby == '4.0'
         uses: standardrb/standard-ruby-action@v1
       - name: Lint markdown ERB templates
         run: bundle exec rake erb:lint
       - name: YARD Lint
-        if: matrix['ruby-version'] == '4.0'
         run: bundle exec yard-lint lib/
+      - name: Validate markdown output (GFM)
+        run: bundle exec rake markdown:validate
+
+  rdoc8-generated-docs:
+    name: Generated docs / RDoc 8
+    runs-on: ubuntu-latest
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/rdoc_8.gemfile
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+      - name: Cache vendored repositories
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor/minitest
+            vendor/rails
+          key: ${{ runner.os }}-vendored-repos-v1-${{ hashFiles('Rakefile') }}
+          restore-keys: |
+            ${{ runner.os }}-vendored-repos-v1-
+      - run: bundle config unset deployment
       - name: Validate markdown output (GFM)
         run: bundle exec rake markdown:validate

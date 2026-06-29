@@ -7,6 +7,7 @@ require "rdoc/markdown"
 
 class TestSignatureHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#method_signature"
+  cover "RDoc::Generator::Markdown#types_available?"
   cover "RDoc::Generator::Markdown#merge_method_signature_arguments"
   cover "RDoc::Generator::Markdown#normalized_method_params"
   cover "RDoc::Generator::Markdown#split_signature_arguments_and_suffix"
@@ -32,9 +33,13 @@ class TestSignatureHelpers < Minitest::Test
   end
 
   def test_method_signatures_are_rendered_from_public_generation
+    nil_param_seq = visible_method("nil_param_seq")
+    nil_param_seq.define_singleton_method(:param_seq) { nil }
+
     doc = generated_class_doc([
       visible_method("blank", signature: "  ", params: "(name)"),
       visible_method("nil_signature"),
+      nil_param_seq,
       visible_method("empty_signature_named_params", signature: "()", params: "(name)"),
       visible_method("returns", signature: " -> bool", params: ""),
       visible_method("returns_proc", signature: " -> Proc[(Integer) -> bool]", params: "(block)"),
@@ -66,6 +71,7 @@ class TestSignatureHelpers < Minitest::Test
 
     assert_includes doc, "#### `blank()`"
     assert_includes doc, "#### `nil_signature()`"
+    assert_includes doc, "#### `nil_param_seq()`"
     assert_includes doc, "#### `empty_signature_named_params()`"
     refute_includes doc, "#### `empty_signature_named_params(name: )`"
     assert_includes doc, "#### `returns -> bool`"
@@ -105,5 +111,15 @@ class TestSignatureHelpers < Minitest::Test
     assert_includes doc, "#### `close_only(String)`"
     refute_includes doc, "#### `open_only(name: String)`"
     refute_includes doc, "#### `close_only(name: String)`"
+  end
+
+  def test_method_signatures_use_rdoc_8_merged_type_signature_lines
+    method = visible_method("typed", params: "(name)")
+    method.define_singleton_method(:type_signature_lines) { ["(String) -> bool"] }
+
+    doc = generated_class_doc([method])
+
+    assert_includes doc, "_Type signatures available._"
+    assert_includes doc, "#### `typed(name: String) -> bool`"
   end
 end
