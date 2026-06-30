@@ -64,7 +64,7 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   # RDoc changes into the output directory before generators run.
   #
   # @param file [String] RBS file path passed to RDoc.
-  # @param base_dir [String, Pathname] Directory where RDoc started.
+  # @param base_dir [String, Pathname, nil] Directory where RDoc started.
   #
   # @return [String] Absolute or already absolute RBS file path.
   def self.rbs_file_path(file, base_dir)
