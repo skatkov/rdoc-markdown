@@ -1,9 +1,5 @@
 # <%= klass.type.capitalize %> <%= display_name(klass) %>
 <%= anchor(klass.aref.strip) %>
-<%- if types_available? -%>
-
-_Type signatures available._
-<%- end -%>
 <%- class_description = describe(klass) -%>
 <%- unless class_description.empty? -%>
 

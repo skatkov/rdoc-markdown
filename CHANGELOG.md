@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.10.1
+
+### Changed
+- Stop adding a global "Type signatures available" notice to generated class/module pages.
+
 ## 0.10.0
 
 - Reworked RDoc 8 support

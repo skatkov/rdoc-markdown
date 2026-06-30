@@ -9,7 +9,6 @@ require "rdiscount"
 class TestGenerator < Minitest::Test
   cover "RDoc::Generator::Markdown#method_signature"
   cover "RDoc::Generator::Markdown#setup"
-  cover "RDoc::Generator::Markdown#types_available?"
 
   def source_file
     File.join(File.dirname(__FILE__), "data/example.rb")
@@ -200,15 +199,11 @@ class TestGenerator < Minitest::Test
     plain_bird_doc = File.read(File.join(dir, "PlainBird.md"))
 
     assert_includes ruby_only_bird_doc, "#### `fly(direction, velocity)`"
-    refute_includes ruby_only_bird_doc, "_Type signatures available._"
-    assert_equal 1, bird_doc.scan("_Type signatures available._").count
     assert_includes bird_doc, "#### `new(String name) -> void`"
     assert_includes bird_doc, "#### `fly(String direction, Integer velocity) -> bool`"
     assert_includes bird_doc, "#### `build(Symbol name) -> String`"
     assert_includes bird_doc, "#### `build(String name) -> Bird`"
-    assert_includes absolute_bird_doc, "_Type signatures available._"
     assert_includes absolute_bird_doc, "#### `chirp(String sound) -> String`"
-    assert_includes plain_bird_doc, "_Type signatures available._"
     assert_includes plain_bird_doc, "#### `chirp(sound)`"
     refute_includes bird_doc, "#### `new() -> singleton(Bird)`"
     refute_includes bird_doc, "#### `fly(direction, velocity)`"
@@ -237,7 +232,6 @@ class TestGenerator < Minitest::Test
     end
     bird_doc = File.read(File.join(dir, "Bird.md"))
 
-    assert_includes bird_doc, "_Type signatures available._"
     assert_includes bird_doc, "#### `fly(direction: String) -> bool`"
     refute_includes bird_doc, "#### `fly(direction)`"
   end
@@ -268,7 +262,6 @@ class TestGenerator < Minitest::Test
     end
     bird_doc = File.read(File.join(dir, "Bird.md"))
 
-    assert_includes bird_doc, "_Type signatures available._"
     assert_includes bird_doc, "#### `fly(direction: String) -> bool`"
     refute_includes bird_doc, "#### `fly(direction)`"
   end
@@ -289,11 +282,9 @@ class TestGenerator < Minitest::Test
     doc = File.read(File.join(dir, "SignatureExamples.md"))
     plain_doc = File.read(File.join(dir, "PlainSignatureExamples.md"))
 
-    assert_includes doc, "_Type signatures available._"
     assert_includes doc, "#### `sidecar(value: String) -> bool | (value: Integer) -> bool`"
     refute_includes doc, "#### `sidecar(value: String) -> bool | (Integer) -> bool`"
     refute_includes doc, "#### `sidecar(value)`"
-    assert_includes plain_doc, "_Type signatures available._"
     assert_includes plain_doc, "#### `plain(name)`"
   end
 

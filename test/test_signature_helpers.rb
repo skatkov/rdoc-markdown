@@ -7,7 +7,6 @@ require "rdoc/markdown"
 
 class TestSignatureHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#method_signature"
-  cover "RDoc::Generator::Markdown#types_available?"
   cover "RDoc::Generator::Markdown#merge_method_signature_arguments"
   cover "RDoc::Generator::Markdown#normalized_method_params"
   cover "RDoc::Generator::Markdown#split_signature_arguments_and_suffix"
@@ -119,7 +118,6 @@ class TestSignatureHelpers < Minitest::Test
 
     doc = generated_class_doc([method])
 
-    assert_includes doc, "_Type signatures available._"
     assert_includes doc, "#### `typed(name: String) -> bool`"
   end
 end
