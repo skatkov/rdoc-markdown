@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.10.0
+
+- Reworked RDoc 8 support
+
+## 0.9.0
+
 ### Fixed
 - Render RDoc 8 inline and sidecar RBS signatures in Markdown method headings.
 - Resolve explicit relative `.rbs` inputs against the directory where RDoc started, not the output directory.
