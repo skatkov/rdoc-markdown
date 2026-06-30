@@ -830,7 +830,7 @@ class RDoc::Generator::Markdown
     @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
-    @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files), base_dir: @base_dir, store: @store)
+    @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files), @base_dir, @store)
 
     @known_output_paths = Set.new
     @class_docs.each do |doc|

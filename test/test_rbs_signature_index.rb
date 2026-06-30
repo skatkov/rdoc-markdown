@@ -175,7 +175,7 @@ class TestRbsSignatureIndex < Minitest::Test
 
     index = nil
     Dir.chdir(current_dir) do
-      index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rbs"], base_dir: source_dir)
+      index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rbs"], source_dir)
     end
 
     assert_equal ["(String direction) -> bool"], index.signature_lines_for(ruby_method(
@@ -187,7 +187,7 @@ class TestRbsSignatureIndex < Minitest::Test
   def test_build_indexes_store_sidecar_signatures
     store, method = store_with_method(sidecar_lines: ["(String direction) -> bool"])
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_true index.any?
     assert_equal ["(String direction) -> bool"], index.signature_lines_for(method)
@@ -196,7 +196,7 @@ class TestRbsSignatureIndex < Minitest::Test
   def test_build_indexes_store_inline_type_signature_lines
     store, method = store_with_method(type_signature_lines: ["(String direction) -> bool"], sidecar: false)
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_true index.any?
     assert_equal ["(String direction) -> bool"], index.signature_lines_for(method)
@@ -205,7 +205,7 @@ class TestRbsSignatureIndex < Minitest::Test
   def test_build_indexes_store_sidecar_overloads
     store, method = store_with_method(sidecar_lines: ["(String direction) -> bool", "(Integer velocity) -> bool"])
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_equal ["(String direction) -> bool", "(Integer velocity) -> bool"], index.signature_lines_for(method)
   end
@@ -213,7 +213,7 @@ class TestRbsSignatureIndex < Minitest::Test
   def test_build_discards_blank_store_sidecar_signature_lines
     store, method = store_with_method(sidecar_lines: [nil, "  ", "(String direction) -> bool"])
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_equal ["(String direction) -> bool"], index.signature_lines_for(method)
   end
@@ -221,7 +221,7 @@ class TestRbsSignatureIndex < Minitest::Test
   def test_build_ignores_nil_store_sidecar_signature
     store, method = store_with_method(sidecar_lines: nil)
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_false index.any?
     assert_empty index.signature_lines_for(method)
@@ -230,7 +230,7 @@ class TestRbsSignatureIndex < Minitest::Test
   def test_build_accepts_compact_inline_type_signature_lines
     store, method = store_with_method(type_signature_lines: ["String"], sidecar: false)
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_equal ["String"], index.signature_lines_for(method)
   end
@@ -238,7 +238,7 @@ class TestRbsSignatureIndex < Minitest::Test
   def test_build_discards_blank_inline_type_signature_lines
     store, method = store_with_method(type_signature_lines: [nil, "  "], sidecar: false)
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_false index.any?
     assert_empty index.signature_lines_for(method)
@@ -250,7 +250,7 @@ class TestRbsSignatureIndex < Minitest::Test
       sidecar_lines: ["(String direction) -> bool"]
     )
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_equal ["(Symbol direction) -> bool"], index.signature_lines_for(method)
   end
@@ -261,7 +261,7 @@ class TestRbsSignatureIndex < Minitest::Test
       sidecar_lines: ["(String direction) -> bool"]
     )
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_equal ["(String direction) -> bool"], index.signature_lines_for(method)
   end
@@ -269,7 +269,7 @@ class TestRbsSignatureIndex < Minitest::Test
   def test_build_ignores_store_methods_without_type_signatures
     store, method = store_with_method(sidecar: false)
 
-    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], store: store)
+    index = RDoc::Generator::Markdown::RbsSignatureIndex.build(["bird.rb"], nil, store)
 
     assert_false index.any?
     assert_empty index.signature_lines_for(method)
