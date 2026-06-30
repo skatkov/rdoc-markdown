@@ -9,9 +9,9 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   # @param store [RDoc::Store, nil] Store containing Ruby code objects and RDoc 8 sidecar signatures.
   #
   # @return [RDoc::Generator::Markdown::RbsSignatureIndex] Signature index.
-  def self.build(files, base_dir: nil, store: nil)
+  def self.build(files, base_dir = nil, store = nil)
     rbs_files = files.select { |file| File.extname(file) == ".rbs" }
-    new(signatures_from_store(store).merge(signatures_from(rbs_files, base_dir: base_dir)))
+    new(signatures_from_store(store).merge(signatures_from(rbs_files, base_dir)))
   end
 
   # Builds signatures by reusing RBS's own RDoc parser.
@@ -20,9 +20,9 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   # @param base_dir [String, Pathname, nil] Directory where RDoc started.
   #
   # @return [Hash{Array => Array<String>}] Signature lookup keyed by class and method.
-  def self.signatures_from(files, base_dir:)
+  def self.signatures_from(files, base_dir)
     files.each_with_object({}) do |file, signatures|
-      parsed_classes(file, base_dir: base_dir).each do |klass|
+      parsed_classes(file, base_dir).each do |klass|
         klass.method_list.each do |method|
           add_method_signature_lines(signatures, klass: klass, method: method, lines: rbs_signature_lines_from_method(method))
         end
@@ -40,7 +40,7 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
 
     store.all_classes_and_modules.each_with_object({}) do |klass, signatures|
       klass.method_list.each do |method|
-        add_method_signature_lines(signatures, klass: klass, method: method, lines: store_signature_lines_from_method(method, store: store))
+        add_method_signature_lines(signatures, klass: klass, method: method, lines: store_signature_lines_from_method(method, store))
       end
     end
   end
@@ -51,8 +51,8 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   # @param base_dir [String, Pathname, nil] Directory where RDoc started.
   #
   # @return [Array<RDoc::Context>] Classes and modules parsed from RBS.
-  def self.parsed_classes(file, base_dir:)
-    file_path = rbs_file_path(file, base_dir: base_dir)
+  def self.parsed_classes(file, base_dir)
+    file_path = rbs_file_path(file, base_dir)
     store = RDoc::Store.new(RDoc::Options.new)
     top_level = store.add_file(file_path)
     parser = RDoc::Parser.for(top_level, File.read(file_path), store.options, nil)
@@ -67,7 +67,7 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   # @param base_dir [String, Pathname] Directory where RDoc started.
   #
   # @return [String] Absolute or already absolute RBS file path.
-  def self.rbs_file_path(file, base_dir:)
+  def self.rbs_file_path(file, base_dir)
     Pathname.new(file).expand_path(base_dir).to_s
   end
 
@@ -110,7 +110,7 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
   # @param store [RDoc::Store] Store with sidecar RBS signatures.
   #
   # @return [Array<String>] RBS signature lines.
-  def self.store_signature_lines_from_method(method, store:)
+  def self.store_signature_lines_from_method(method, store)
     lines = method_type_signature_lines(method)
     lines = store_type_signature_lines(method, store) if lines.empty?
     lines
