@@ -356,7 +356,7 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "\n###### Method Topic\n"
     refute_includes markdown, "\n####### Method Detail\n"
     refute_includes markdown, "\n## Method Detail\n"
-    assert_includes markdown, "#### `plain()`\n<a id=\"method-i-plain\"></a>\n\nNot documented."
+    assert_includes markdown, "#### `plain()` <a id=\"method-i-plain\"></a>\n\nNot documented."
     refute_includes markdown, "Alias for: [`plain`]"
   end
 
