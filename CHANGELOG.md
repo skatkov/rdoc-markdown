@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.10.2
+
+### Fixed
+- Generated anchors stay inline with headings
+
 ## 0.10.1
 
 ### Changed
