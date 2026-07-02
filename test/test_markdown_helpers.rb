@@ -335,7 +335,10 @@ class TestMarkdownHelpers < Minitest::Test
     klass = build_rdoc_class(full_name: "Docs::Thing", description: "= Class Topic")
     klass.add_section("Overview", RDoc::Comment.new("= Section Topic"))
     klass.add_constant(rdoc_constant("VALUE"))
+    constructor = rdoc_method("new", visible: true, comment: "Creates a new entry using +str+.", signature: "(str)")
+    constructor.singleton = true
     method = rdoc_method("run", visible: true, comment: "= Method Topic\n\n=== Method Detail")
+    klass.add_method(constructor)
     klass.add_method(method)
     klass.add_method(rdoc_method("plain", visible: true))
 
@@ -356,7 +359,9 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "\n###### Method Topic\n"
     refute_includes markdown, "\n####### Method Detail\n"
     refute_includes markdown, "\n## Method Detail\n"
-    assert_includes markdown, "#### `plain()` <a id=\"method-i-plain\"></a>\n\nNot documented."
+    assert_includes markdown, "#### `new(str)` <a id=\"method-c-new\"></a>\nCreates a new entry using `str`."
+    refute_includes markdown, "#### `new(str)` <a id=\"method-c-new\"></a>\n\nCreates"
+    assert_includes markdown, "#### `plain()` <a id=\"method-i-plain\"></a>\nNot documented."
     refute_includes markdown, "Alias for: [`plain`]"
   end
 
