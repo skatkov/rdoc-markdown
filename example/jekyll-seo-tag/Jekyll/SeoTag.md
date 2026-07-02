@@ -1,11 +1,10 @@
-# Class Jekyll::SeoTag
 <a id="class-jekyll-seotag"></a>
+# Class Jekyll::SeoTag
 
 ### Constants
 
-#### `MINIFY_REGEX`
 <a id="MINIFY_REGEX"></a>
-
+#### `MINIFY_REGEX`
 Matches all whitespace that follows either
 
 ```
@@ -22,33 +21,28 @@ so that we do not interfere with the HTML comment at the
 very begining
 ```
 
-#### `VERSION`
 <a id="VERSION"></a>
-
+#### `VERSION`
 Not documented.
 
 ### Attributes
 
-#### `context` [RW]
 <a id="attribute-i-context"></a>
-
+#### `context` [RW]
 Not documented.
 
 ### Public Class Methods
 
-#### `new(_tag_name, text, _tokens)`
 <a id="method-c-new"></a>
-
+#### `new(_tag_name, text, _tokens)`
 Not documented.
 
-#### `template()`
 <a id="method-c-template"></a>
-
+#### `template()`
 Not documented.
 
 ### Public Instance Methods
 
-#### `render(context)`
 <a id="method-i-render"></a>
-
+#### `render(context)`
 Not documented.

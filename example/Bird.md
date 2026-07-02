@@ -1,13 +1,11 @@
-# Class Bird
 <a id="class-bird"></a>
-
+# Class Bird
 The base class for all birds.
 
 ### Public Instance Methods
 
-#### `fly(direction: string, velocity: number) -> bool`
 <a id="method-i-fly"></a>
-
+#### `fly(direction: string, velocity: number) -> bool`
 Fly somewhere.
 
 Flying is the most critical feature of birds.
@@ -18,7 +16,6 @@ Flying is the most critical feature of birds.
 fly(:south, 70)
 ```
 
-#### `speak() { |text| ... }`
 <a id="method-i-speak"></a>
-
+#### `speak() { |text| ... }`
 Produce some noise.

@@ -1,4 +1,5 @@
-# <%= klass.type.capitalize %> <%= display_name(klass) %> <%= anchor(klass.aref.strip) %>
+<%= anchor(klass.aref.strip) %>
+# <%= klass.type.capitalize %> <%= display_name(klass) %>
 <%- class_description = describe(klass) -%>
 <%- unless class_description.empty? -%>
 <%= class_description %>
@@ -20,7 +21,8 @@
 ### Constants
 <% constants.sort_by(&:name).each do |const| -%>
 
-#### `<%= const.name %>` <%= anchor(const.name) %>
+<%= anchor(const.name) %>
+#### `<%= const.name %>`
 <%= describe(const, fallback: "Not documented.", heading_level_offset: 4) %>
 <% end -%>
 <%- end -%>
@@ -29,7 +31,8 @@
 ### Attributes
 <% attributes.sort_by(&:name).each do |attr| -%>
 
-#### `<%= attr.name %>` [<%= attr.rw %>] <%= anchor(attr.aref.strip) %>
+<%= anchor(attr.aref.strip) %>
+#### `<%= attr.name %>` [<%= attr.rw %>]
 <%= describe(attr, fallback: "Not documented.", heading_level_offset: 4) %>
 <% end -%>
 <%- end -%>
@@ -41,7 +44,8 @@
 ### <%= visibility.capitalize %> <%= type.capitalize %> Methods
 <% methods.each do |method| -%>
 
-#### `<%= method.name %><%= method_signature(method) %>` <%= anchor(method.aref) %>
+<%= anchor(method.aref) %>
+#### `<%= method.name %><%= method_signature(method) %>`
 <%= method_description(method, current_class: klass) %>
 <% end -%>
 <% end -%>

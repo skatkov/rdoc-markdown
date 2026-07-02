@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- Put generated anchors before heading lines so terminal markdown renderers parse headings correctly.
+
 ## 0.10.3
 - Remove extra spacing between title 3 and content
 

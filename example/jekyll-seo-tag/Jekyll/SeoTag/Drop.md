@@ -1,133 +1,108 @@
-# Class Jekyll::SeoTag::Drop
 <a id="class-jekyll-seotag-drop"></a>
+# Class Jekyll::SeoTag::Drop
 
 ### Constants
 
-#### `FORMAT_STRING_METHODS`
 <a id="FORMAT_STRING_METHODS"></a>
-
+#### `FORMAT_STRING_METHODS`
 Not documented.
 
-#### `HOMEPAGE_OR_ABOUT_REGEX`
 <a id="HOMEPAGE_OR_ABOUT_REGEX"></a>
-
+#### `HOMEPAGE_OR_ABOUT_REGEX`
 Not documented.
 
-#### `TITLE_SEPARATOR`
 <a id="TITLE_SEPARATOR"></a>
-
+#### `TITLE_SEPARATOR`
 Not documented.
 
 ### Public Class Methods
 
-#### `new(text, context)`
 <a id="method-c-new"></a>
-
+#### `new(text, context)`
 Not documented.
 
 ### Public Instance Methods
 
-#### `author()`
 <a id="method-i-author"></a>
-
+#### `author()`
 A drop representing the page author
 
-#### `canonical_url()`
 <a id="method-i-canonical_url"></a>
-
+#### `canonical_url()`
 Not documented.
 
-#### `date_modified()`
 <a id="method-i-date_modified"></a>
-
+#### `date_modified()`
 Not documented.
 
-#### `date_published()`
 <a id="method-i-date_published"></a>
-
+#### `date_published()`
 Not documented.
 
-#### `description()`
 <a id="method-i-description"></a>
-
+#### `description()`
 Not documented.
 
-#### `image()`
 <a id="method-i-image"></a>
-
+#### `image()`
 Returns a [`Drop`](Drop.md) representing the page’s image Returns nil if the image has no path, to preserve backwards compatability
 
-#### `json_ld()`
 <a id="method-i-json_ld"></a>
-
+#### `json_ld()`
 A drop representing the JSON-LD output
 
-#### `links()`
 <a id="method-i-links"></a>
-
+#### `links()`
 Not documented.
 
-#### `logo()`
 <a id="method-i-logo"></a>
-
+#### `logo()`
 Not documented.
 
-#### `name()`
 <a id="method-i-name"></a>
-
+#### `name()`
 rubocop:enable Metrics/CyclomaticComplexity
 
-#### `page_lang()`
 <a id="method-i-page_lang"></a>
-
+#### `page_lang()`
 Not documented.
 
-#### `page_locale()`
 <a id="method-i-page_locale"></a>
-
+#### `page_locale()`
 Not documented.
 
-#### `page_title()`
 <a id="method-i-page_title"></a>
-
+#### `page_title()`
 Page title without site title or description appended
 
-#### `site_description()`
 <a id="method-i-site_description"></a>
-
+#### `site_description()`
 Not documented.
 
-#### `site_tagline()`
 <a id="method-i-site_tagline"></a>
-
+#### `site_tagline()`
 Not documented.
 
-#### `site_tagline_or_description()`
 <a id="method-i-site_tagline_or_description"></a>
-
+#### `site_tagline_or_description()`
 Not documented.
 
-#### `site_title()`
 <a id="method-i-site_title"></a>
-
+#### `site_title()`
 Not documented.
 
-#### `title()`
 <a id="method-i-title"></a>
-
+#### `title()`
 Page title with site title or description appended rubocop:disable Metrics/CyclomaticComplexity
 
-#### `title?()`
 <a id="method-i-title-3F"></a>
-
+#### `title?()`
 Should the ‘\<title\>` tag be generated for this page?
 
-#### `type()`
 <a id="method-i-type"></a>
-
+#### `type()`
 Not documented.
 
-#### `version()`
 <a id="method-i-version"></a>
-
+#### `version()`
 Not documented.
