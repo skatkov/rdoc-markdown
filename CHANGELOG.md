@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.10.3
+- Remove extra spacing between title 3 and content
+
 ## 0.10.2
 
 ### Fixed
