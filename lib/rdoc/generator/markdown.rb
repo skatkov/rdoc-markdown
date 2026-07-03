@@ -5,8 +5,8 @@ gem "rdoc"
 require "erb"
 require "reverse_markdown"
 require "csv"
-require "cgi"
 require "optparse"
+require_relative "markdown/rdoc_markdown_pre"
 
 # Generates Markdown output and a CSV search index from an RDoc store.
 class RDoc::Generator::Markdown
@@ -315,9 +315,7 @@ class RDoc::Generator::Markdown
     # - bypass - Ignore the unknown tag but try to convert its content
     # - raise - Raise an error to let you know
 
-    html = normalize_rdoc_pre_blocks(input)
-
-    md = ReverseMarkdown.convert(html, github_flavored: true, unknown_tags: @markdown_unknown_tags).dup
+    md = ReverseMarkdown.convert(input, github_flavored: true, unknown_tags: @markdown_unknown_tags).dup
 
     # Flatten headings whose visible text is wrapped in a self-link.
     md.gsub!(/^(#+)\s\[([^\]]+)\]\((?:#[^)]+)\)$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
@@ -574,7 +572,7 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Markdown with convertible blocks normalized.
   def normalize_definition_list_code_blocks(markdown)
-    markdown.gsub(/```\n(.+?)\n```/m) do
+    markdown.gsub(/```[^\n]*\n(.+?)\n```/m) do
       body = Regexp.last_match(1)
       converted = convert_definition_list_block(body)
       converted.nil? ? Regexp.last_match : converted
@@ -620,19 +618,6 @@ class RDoc::Generator::Markdown
     return "##{method.aref}" if target_parent == current_class
 
     "#{output_path_for(target_parent)}##{method.aref}"
-  end
-
-  # Removes RDoc's generated HTML tags from verbatim pre blocks.
-  #
-  # @param html [String] RDoc HTML fragment.
-  #
-  # @return [String] HTML fragment with normalized pre blocks.
-  def normalize_rdoc_pre_blocks(html)
-    html.gsub(%r{<pre\b[^>]*>(?:.+?)</pre>}m) do
-      raw = Regexp.last_match(0)
-      text = raw.gsub(/<[^>]+>/, "")
-      "<pre>#{CGI.unescapeHTML(text)}</pre>"
-    end
   end
 
   # Rewrites local Markdown links relative to the current output file.
