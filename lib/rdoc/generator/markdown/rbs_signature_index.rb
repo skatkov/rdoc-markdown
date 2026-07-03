@@ -148,7 +148,11 @@ class RDoc::Generator::Markdown::RbsSignatureIndex
     Array(lines).select { |line| line&.match?(/\S/) }
   end
 
+  # Creates an immutable signature index.
+  #
   # @param signatures [Hash{Array => Array<String>}] Signature lookup.
+  #
+  # @return [void]
   def initialize(signatures)
     @signatures = signatures
   end
