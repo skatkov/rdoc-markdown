@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- properly convert code block to markdown with language definition
+
 ### Fixed
 - Put generated anchors before heading lines so terminal markdown renderers parse headings correctly.
 

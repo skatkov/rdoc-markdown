@@ -28,7 +28,7 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#normalize_definition_list_code_blocks"
   cover "RDoc::Generator::Markdown#convert_definition_list_block"
   cover "RDoc::Generator::Markdown#definition_list_line?"
-  cover "RDoc::Generator::Markdown#normalize_rdoc_pre_blocks"
+  cover "ReverseMarkdown::Converters::RDocMarkdownPre*"
 
   def generate_markdown(classes: [], pages: [], root: nil, markdown_unknown_tags: DEFAULT_MARKDOWN_UNKNOWN_TAGS)
     dir = stable_tmpdir("generated-markdown")
@@ -107,6 +107,14 @@ class TestMarkdownHelpers < Minitest::Test
 
       assert_equal "# Topic\n", markdown
     end
+  end
+
+  def test_markdownify_uses_github_flavored_markdown
+    page = raw_html_page(relative_name: "github-flavored.rdoc", html: "<p><del>old</del></p>")
+
+    markdown = read_generated("github-flavored_rdoc.md", pages: [page])
+
+    assert_includes markdown, "~~old~~"
   end
 
   def test_markdown_unknown_tags_defaults_to_pass_through
@@ -256,12 +264,43 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "<br />"
   end
 
+  def test_rdoc_ruby_pre_blocks_preserve_language_metadata
+    page = rdoc_page(relative_name: "ruby-block.rdoc", comment: "= Heading\n\n    require 'erb'\n    puts :ok\n")
+
+    markdown = read_generated("ruby-block_rdoc.md", pages: [page])
+
+    assert_includes markdown, "```ruby\nrequire 'erb'\nputs :ok\n```"
+  end
+
+  def test_pre_block_language_classes_are_preserved
+    page = raw_html_page(relative_name: "json-block.rdoc", html: "<pre class=\"json\">{&quot;ok&quot;: true}</pre>")
+    r_page = raw_html_page(relative_name: "r-block.rdoc", html: "<pre class=\"r\">1</pre>")
+
+    markdown = read_generated("json-block_rdoc.md", pages: [page])
+    r_markdown = read_generated("r-block_rdoc.md", pages: [r_page])
+
+    assert_includes markdown, "```json\n{\"ok\": true}\n```"
+    assert_includes r_markdown, "```r\n1\n```"
+  end
+
+  def test_pre_converter_uses_only_simple_language_classes
+    assert_equal "```r\nputs :ok\n```\n", ReverseMarkdown.convert("<pre class=\"r\">\nputs :ok\n</pre>", github_flavored: true)
+    assert_equal "```\nputs :ok\n```\n", ReverseMarkdown.convert("<pre class=\"highlight\">puts :ok</pre>", github_flavored: true)
+    assert_equal "```\nputs :ok\n```\n", ReverseMarkdown.convert("<pre class=\"1bad\">puts :ok</pre>", github_flavored: true)
+  end
+
+  def test_pre_converter_preserves_reverse_markdown_parent_highlight_language
+    markdown = ReverseMarkdown.convert("<div class=\"highlight-ruby\"><pre>puts :ok</pre></div>", github_flavored: true)
+
+    assert_includes markdown, "```ruby\nputs :ok\n```"
+  end
+
   def test_invalid_definition_list_blocks_remain_plain_text
     page = rdoc_page(relative_name: "invalid-definition.rdoc", comment: "= Heading\n\n  bird::\n  plain text\n")
 
     markdown = read_generated("invalid-definition_rdoc.md", pages: [page])
 
-    assert_includes markdown, "```\nbird::\nplain text\n```"
+    assert_includes markdown, "```ruby\nbird::\nplain text\n```"
     refute_includes markdown, "- plain text"
   end
 
