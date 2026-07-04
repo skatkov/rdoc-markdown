@@ -11,7 +11,7 @@ class ReverseMarkdown::Converters::RDocMarkdownPre < ReverseMarkdown::Converters
   # @param _state [Hash] reverse_markdown converter state.
   #
   # @return [String] Markdown code fence.
-  def convert(node, _state = {})
+  def convert(node, _state)
     content = treat_children(rdoc_pre_node(node), {})
     "\n```#{language(node)}\n" << content << "\n```\n"
   end
