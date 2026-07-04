@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.11.0
+
+### Changed
 - properly convert code block to markdown with language definition
 
 ### Fixed
