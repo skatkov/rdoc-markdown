@@ -8,7 +8,13 @@ AllValidators:
 
   Exclude:
     - '\.git'
+    - ".erb_linters"
+    - ".erb_linters/**/*"
+    - "coverage"
+    - "coverage/**/*"
+    - "tmp"
     - "vendor/**/*"
+    - "vendor"
     - "node_modules/**/*"
     - "spec/**/*"
     - "test/**/*"

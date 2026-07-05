@@ -398,9 +398,9 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "\n###### Method Topic\n"
     refute_includes markdown, "\n####### Method Detail\n"
     refute_includes markdown, "\n## Method Detail\n"
-    assert_includes markdown, "<a id=\"method-c-new\"></a>\n#### `new(str)`\nCreates a new entry using `str`."
-    refute_includes markdown, "<a id=\"method-c-new\"></a>\n#### `new(str)`\n\nCreates"
-    assert_includes markdown, "<a id=\"method-i-plain\"></a>\n#### `plain()`\nNot documented."
+    assert_includes markdown, "#### `new(str)`<a id=\"method-c-new\"></a>\nCreates a new entry using `str`."
+    refute_includes markdown, "#### `new(str)`<a id=\"method-c-new\"></a>\n\nCreates"
+    assert_includes markdown, "#### `plain()`<a id=\"method-i-plain\"></a>\nNot documented."
     refute_includes markdown, "Alias for: [`plain`]"
   end
 

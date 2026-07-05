@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.11.1
+
+- Changed headings from standalone anchors to adjacent inline anchors:
+
 ## 0.11.0
 
 ### Changed
