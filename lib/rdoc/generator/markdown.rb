@@ -23,19 +23,6 @@ class RDoc::Generator::Markdown
   # Source page basenames that should be indexed as changelogs.
   CHANGELOG_PAGE_BASENAMES = %w[changelog history].freeze
 
-  # Source page basenames that should be auto-included as project entry points.
-  ROOT_ENTRY_PAGE_BASENAMES = (%w[readme guide] + CHANGELOG_PAGE_BASENAMES).freeze
-
-  # Source page extensions that RDoc can parse as text pages.
-  ROOT_ENTRY_PAGE_EXTENSIONS = %w[.rdoc .md .markdown].freeze
-
-  # Root-level entry point filenames to add when callers pass only code files.
-  ROOT_ENTRY_PAGE_FILENAMES = ROOT_ENTRY_PAGE_BASENAMES.flat_map do |basename|
-    [basename.upcase, basename.capitalize, basename].uniq.flat_map do |filename_basename|
-      ROOT_ENTRY_PAGE_EXTENSIONS.map { |extension| "#{filename_basename}#{extension}" }
-    end
-  end.freeze
-
   # Adds rdoc-markdown generator configuration to RDoc's option object.
   module OptionsExtension
     # Initializes markdown generator options alongside RDoc's built-in options.
@@ -79,22 +66,12 @@ class RDoc::Generator::Markdown
 
       unless files.empty?
         @options.root = Pathname(@options.root).expand_path
-        files |= root_entry_page_files(@options.root)
+        files |= Dir.glob(
+          @options.root.join("{README,Readme,readme,GUIDE,Guide,guide,CHANGELOG,Changelog,changelog,HISTORY,History,history}.{rdoc,md,markdown}")
+        ).select { |path| File.file?(path) }
       end
 
       super
-    end
-
-    private
-
-    # Returns existing root-level entry pages.
-    #
-    # @param root [Pathname] Expanded RDoc root directory.
-    # @return [Array<String>] Source paths.
-    def root_entry_page_files(root)
-      ROOT_ENTRY_PAGE_FILENAMES
-        .map { |filename| root.join(filename).to_s }
-        .select { |path| File.file?(path) }
     end
   end
 
