@@ -7,8 +7,12 @@ require "rdoc/markdown"
 require "rdiscount"
 
 class TestGenerator < Minitest::Test
+  cover "RDoc::Generator::Markdown#emit_csv_index"
+  cover "RDoc::Generator::Markdown#main_page?"
   cover "RDoc::Generator::Markdown#method_signature"
+  cover "RDoc::Generator::Markdown#page_type"
   cover "RDoc::Generator::Markdown#setup"
+  cover "RDoc::Generator::Markdown::RDocExtension#parse_files"
 
   def source_file
     File.join(File.dirname(__FILE__), "data/example.rb")
@@ -23,6 +27,7 @@ class TestGenerator < Minitest::Test
     options.verbosity = 0
     options.files = Array(files)
     options.op_dir = dir
+    options.root = File.expand_path(File.dirname(Array(files).first.to_s)) unless Array(files).empty?
     options.title = title
 
     yield options if block_given?
@@ -107,6 +112,113 @@ class TestGenerator < Minitest::Test
     ]
 
     assert_equal(expected, result)
+  end
+
+  def test_generator_auto_includes_root_pages_and_marks_configured_main_page
+    workspace = stable_tmpdir("readme-source")
+    root = File.join(workspace, "pkg")
+    lib_dir = File.join(root, "lib")
+    FileUtils.mkdir_p(lib_dir)
+
+    File.write(File.join(lib_dir, "project.rb"), <<~RUBY)
+      class Project
+      end
+    RUBY
+    File.write(File.join(root, "README.md"), "# Project\n")
+    File.write(File.join(root, "Guide.rdoc"), "= Guide\n")
+    File.write(File.join(root, "CHANGELOG.md"), "# Changes\n")
+    File.write(File.join(root, "history.md"), "# History\n")
+    FileUtils.mkdir_p(File.join(root, "readme.markdown"))
+    File.write(File.join(root, "readme.markdown", "nested.rb"), "class Nested; end\n")
+
+    dir = nil
+    Dir.chdir(workspace) do
+      dir = run_generator(["pkg/lib/project.rb"], "readme title") do |options|
+        options.main_page = "README.md"
+        options.root = Pathname("pkg")
+      end
+    end
+
+    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
+      [row["name"], row["type"], row["path"]]
+    end
+
+    assert_true File.exist?(File.join(dir, "README_md.md"))
+    assert_true File.exist?(File.join(dir, "Guide_rdoc.md"))
+    assert_true File.exist?(File.join(dir, "CHANGELOG_md.md"))
+    assert_true File.exist?(File.join(dir, "history_md.md"))
+    assert_false File.exist?(File.join(dir, "pkg/README_md.md"))
+    assert_false File.exist?(File.join(dir, "Nested.md"))
+    assert_includes entries, ["README", "Readme", "README_md.md"]
+    assert_includes entries, ["Guide", "Page", "Guide_rdoc.md"]
+    assert_includes entries, ["CHANGELOG", "changelog", "CHANGELOG_md.md"]
+    assert_includes entries, ["history", "changelog", "history_md.md"]
+    refute_includes entries, ["README", "Page", "README_md.md"]
+    refute_includes entries, ["Guide", "Readme", "Guide_rdoc.md"]
+    refute(entries.any? { |name, _type, _path| name == "Nested" })
+  end
+
+  def test_generator_does_not_duplicate_explicit_root_pages
+    workspace = stable_tmpdir("explicit-readme-source")
+    root = File.join(workspace, "pkg")
+    lib_dir = File.join(root, "lib")
+    FileUtils.mkdir_p(lib_dir)
+
+    File.write(File.join(lib_dir, "project.rb"), "class Project; end\n")
+    File.write(File.join(root, "README.md"), "# Project\n")
+    File.write(File.join(root, "Guide.rdoc"), "= Guide\n")
+
+    dir = nil
+    Dir.chdir(workspace) do
+      dir = run_generator(["pkg/lib/project.rb", "pkg/README.md"], "explicit readme title") do |options|
+        options.root = Pathname("pkg")
+      end
+    end
+
+    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
+      [row["name"], row["type"], row["path"]]
+    end
+
+    assert_equal 1, entries.count { |entry| entry == ["README", "Page", "README_md.md"] }
+    assert_includes entries, ["Guide", "Page", "Guide_rdoc.md"]
+  end
+
+  def test_generator_leaves_empty_file_list_to_rdoc_scan
+    root = stable_tmpdir("empty-file-list-source")
+    File.write(File.join(root, "project.rb"), "class Project; end\n")
+    File.write(File.join(root, "README.md"), "# Project\n")
+
+    dir = run_generator([], "empty file list title") do |options|
+      options.root = root
+    end
+
+    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
+      [row["name"], row["type"], row["path"]]
+    end
+
+    assert_true File.exist?(File.join(dir, "Project.md"))
+    assert_true File.exist?(File.join(dir, "README_md.md"))
+    assert_includes entries, ["Project", "Class", "Project.md"]
+    assert_includes entries, ["README", "Page", "README_md.md"]
+  end
+
+  def test_root_page_hook_does_not_change_other_generators
+    root = stable_tmpdir("darkfish-source")
+    source = File.join(root, "project.rb")
+    dir = File.join(stable_tmpdir("darkfish-output"), "out")
+    File.write(source, "class Project; end\n")
+    File.write(File.join(root, "README.md"), "# Project\n")
+
+    options = RDoc::Options.new
+    options.setup_generator("darkfish")
+    options.verbosity = 0
+    options.files = [source]
+    options.op_dir = dir
+    options.root = root
+
+    RDoc::RDoc.new.document(options)
+
+    assert_empty Dir[File.join(dir, "**", "README*")]
   end
 
   def test_generator_with_private_visibility

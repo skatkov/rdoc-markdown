@@ -20,6 +20,22 @@ class RDoc::Generator::Markdown
   # Supported reverse_markdown unknown-tag modes.
   MARKDOWN_UNKNOWN_TAGS = %i[pass_through drop bypass raise].freeze
 
+  # Source page basenames that should be indexed as changelogs.
+  CHANGELOG_PAGE_BASENAMES = %w[changelog history].freeze
+
+  # Source page basenames that should be auto-included as project entry points.
+  ROOT_ENTRY_PAGE_BASENAMES = (%w[readme guide] + CHANGELOG_PAGE_BASENAMES).freeze
+
+  # Source page extensions that RDoc can parse as text pages.
+  ROOT_ENTRY_PAGE_EXTENSIONS = %w[.rdoc .md .markdown].freeze
+
+  # Root-level entry point filenames to add when callers pass only code files.
+  ROOT_ENTRY_PAGE_FILENAMES = ROOT_ENTRY_PAGE_BASENAMES.flat_map do |basename|
+    [basename.upcase, basename.capitalize, basename].uniq.flat_map do |filename_basename|
+      ROOT_ENTRY_PAGE_EXTENSIONS.map { |extension| "#{filename_basename}#{extension}" }
+    end
+  end.freeze
+
   # Adds rdoc-markdown generator configuration to RDoc's option object.
   module OptionsExtension
     # Initializes markdown generator options alongside RDoc's built-in options.
@@ -48,6 +64,37 @@ class RDoc::Generator::Markdown
     def override(map)
       super
       @markdown_unknown_tags = map.fetch("markdown_unknown_tags") if map.key?("markdown_unknown_tags")
+    end
+  end
+
+  # Adds markdown generator source files at parse time.
+  module RDocExtension
+    # Parses explicit markdown source files plus root entry pages.
+    #
+    # @param files [Array<String>] Source paths from RDoc options.
+    #
+    # @return [Array<RDoc::TopLevel>]
+    def parse_files(files)
+      return super unless @options.generator == RDoc::Generator::Markdown
+
+      unless files.empty?
+        @options.root = Pathname(@options.root).expand_path
+        files |= root_entry_page_files(@options.root)
+      end
+
+      super
+    end
+
+    private
+
+    # Returns existing root-level entry pages.
+    #
+    # @param root [Pathname] Expanded RDoc root directory.
+    # @return [Array<String>] Source paths.
+    def root_entry_page_files(root)
+      ROOT_ENTRY_PAGE_FILENAMES
+        .map { |filename| root.join(filename).to_s }
+        .select { |path| File.file?(path) }
     end
   end
 
@@ -210,7 +257,7 @@ class RDoc::Generator::Markdown
       @pages.each do |page|
         csv << [
           page.page_name,
-          "Page",
+          page_type(page),
           page_output_path(page)
         ]
       end
@@ -274,6 +321,35 @@ class RDoc::Generator::Markdown
     return basename if dirname == "."
 
     "#{dirname}/#{basename}"
+  end
+
+  # Returns the CSV type for a text page.
+  #
+  # @param page [RDoc::TopLevel] Page object to index.
+  #
+  # @return [String] CSV type.
+  def page_type(page)
+    return "changelog" if changelog_page?(page)
+
+    main_page?(page) ? "Readme" : "Page"
+  end
+
+  # Checks whether a text page is a changelog/history page.
+  #
+  # @param page [RDoc::TopLevel] Page object to index.
+  #
+  # @return [Boolean]
+  def changelog_page?(page)
+    CHANGELOG_PAGE_BASENAMES.include?(File.basename(page.relative_name, ".*").downcase)
+  end
+
+  # Checks whether a text page is RDoc's configured main page.
+  #
+  # @param page [RDoc::TopLevel] Page object to index.
+  #
+  # @return [Boolean]
+  def main_page?(page)
+    page.full_name == @options.main_page
   end
 
   # Returns the normalized display name for a class or module.
@@ -829,4 +905,9 @@ class RDoc::Options
   #
   # @return [Symbol]
   attr_accessor :markdown_unknown_tags
+end
+
+# RDoc runner extension for markdown-specific source selection.
+class RDoc::RDoc
+  prepend RDoc::Generator::Markdown::RDocExtension
 end

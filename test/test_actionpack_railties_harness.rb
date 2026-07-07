@@ -64,6 +64,8 @@ class TestActionpackRailtiesHarness < Minitest::Test
 
     assert_includes entries, ["README", "Page", "actionpack/README_rdoc.md"]
     assert_includes entries, ["README", "Page", "railties/README_rdoc.md"]
+    refute_includes entries, ["README", "Readme", "actionpack/README_rdoc.md"]
+    refute_includes entries, ["README", "Readme", "railties/README_rdoc.md"]
     assert_includes entries, ["RDOC_MAIN", "Page", "railties/RDOC_MAIN_md.md"]
   end
 end
