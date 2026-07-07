@@ -233,7 +233,7 @@ class RDoc::Generator::Markdown
 
       @pages.each do |page|
         type = if changelog_page?(page)
-          "changelog"
+          "Changelog"
         else
           (page.full_name == @options.main_page) ? "Readme" : "Page"
         end

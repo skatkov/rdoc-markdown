@@ -151,8 +151,8 @@ class TestGenerator < Minitest::Test
     assert_false File.exist?(File.join(dir, "Nested.md"))
     assert_includes entries, ["README", "Readme", "README_md.md"]
     assert_includes entries, ["Guide", "Page", "Guide_rdoc.md"]
-    assert_includes entries, ["CHANGELOG", "changelog", "CHANGELOG_md.md"]
-    assert_includes entries, ["history", "changelog", "history_md.md"]
+    assert_includes entries, ["CHANGELOG", "Changelog", "CHANGELOG_md.md"]
+    assert_includes entries, ["history", "Changelog", "history_md.md"]
     refute_includes entries, ["README", "Page", "README_md.md"]
     refute_includes entries, ["Guide", "Readme", "Guide_rdoc.md"]
     refute(entries.any? { |name, _type, _path| name == "Nested" })
