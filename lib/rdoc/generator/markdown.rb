@@ -232,9 +232,15 @@ class RDoc::Generator::Markdown
       end
 
       @pages.each do |page|
+        type = if changelog_page?(page)
+          "changelog"
+        else
+          (page.full_name == @options.main_page) ? "Readme" : "Page"
+        end
+
         csv << [
           page.page_name,
-          page_type(page),
+          type,
           page_output_path(page)
         ]
       end
@@ -300,17 +306,6 @@ class RDoc::Generator::Markdown
     "#{dirname}/#{basename}"
   end
 
-  # Returns the CSV type for a text page.
-  #
-  # @param page [RDoc::TopLevel] Page object to index.
-  #
-  # @return [String] CSV type.
-  def page_type(page)
-    return "changelog" if changelog_page?(page)
-
-    main_page?(page) ? "Readme" : "Page"
-  end
-
   # Checks whether a text page is a changelog/history page.
   #
   # @param page [RDoc::TopLevel] Page object to index.
@@ -318,15 +313,6 @@ class RDoc::Generator::Markdown
   # @return [Boolean]
   def changelog_page?(page)
     CHANGELOG_PAGE_BASENAMES.include?(File.basename(page.relative_name, ".*").downcase)
-  end
-
-  # Checks whether a text page is RDoc's configured main page.
-  #
-  # @param page [RDoc::TopLevel] Page object to index.
-  #
-  # @return [Boolean]
-  def main_page?(page)
-    page.full_name == @options.main_page
   end
 
   # Returns the normalized display name for a class or module.

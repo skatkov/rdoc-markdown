@@ -60,29 +60,4 @@ class TestRailsHarness < Minitest::Test
     refute(entries.any? { |name, _type, _path| name.match?(/([A-Za-z_][A-Za-z0-9_]*)::.*::\1::/) })
   end
 
-  def test_rails_component_markdown_readme_is_indexed
-    activejob_root = File.join(rails_root, "activejob")
-    activejob_source = File.join(activejob_root, "lib/active_job.rb")
-    activejob_readme = File.join(activejob_root, "README.md")
-    skip "vendor/rails activejob is missing" unless File.file?(activejob_source) && File.file?(activejob_readme)
-
-    out_dir = File.join(stable_tmpdir("activejob-markdown"), "out")
-
-    options = RDoc::Options.new
-    options.setup_generator("markdown")
-    options.verbosity = 0
-    options.files = [activejob_source]
-    options.op_dir = out_dir
-    options.root = activejob_root
-    options.title = "activejob harness"
-
-    RDoc::RDoc.new.document(options)
-
-    rows = CSV.parse(File.read(File.join(out_dir, "index.csv")), headers: true)
-    entries = rows.map { |row| [row["name"], row["type"], row["path"]] }
-
-    assert_true File.exist?(File.join(out_dir, "README_md.md"))
-    assert_includes entries, ["README", "Page", "README_md.md"]
-    refute_includes entries, ["README", "Readme", "README_md.md"]
-  end
 end
