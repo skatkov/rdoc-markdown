@@ -232,15 +232,9 @@ class RDoc::Generator::Markdown
       end
 
       @pages.each do |page|
-        type = if changelog_page?(page)
-          "Changelog"
-        else
-          (page.full_name == @options.main_page) ? "Readme" : "Page"
-        end
-
         csv << [
           page.page_name,
-          type,
+          page_type(page),
           page_output_path(page)
         ]
       end
@@ -313,6 +307,29 @@ class RDoc::Generator::Markdown
   # @return [Boolean]
   def changelog_page?(page)
     CHANGELOG_PAGE_BASENAMES.include?(File.basename(page.relative_name, ".*").downcase)
+  end
+
+  # Checks whether a text page is the root README page.
+  #
+  # @param page [RDoc::TopLevel] Page object to index.
+  #
+  # @return [Boolean]
+  def readme_page?(page)
+    source_path = normalize_input_path_for_output(page.relative_name)
+
+    File.dirname(source_path) == "." && File.basename(source_path, ".*").casecmp?("README")
+  end
+
+  # Returns the search-index type for a text page.
+  #
+  # @param page [RDoc::TopLevel] Page object to index.
+  #
+  # @return [String]
+  def page_type(page)
+    return "Changelog" if changelog_page?(page)
+    return "Readme" if readme_page?(page) || page.full_name == @options.main_page
+
+    "Page"
   end
 
   # Returns the normalized display name for a class or module.

@@ -158,6 +158,29 @@ class TestGenerator < Minitest::Test
     refute(entries.any? { |name, _type, _path| name == "Nested" })
   end
 
+  def test_generator_marks_configured_non_readme_main_page
+    workspace = stable_tmpdir("configured-main-page-source")
+    root = File.join(workspace, "pkg")
+    FileUtils.mkdir_p(File.join(root, "lib"))
+
+    File.write(File.join(root, "lib/project.rb"), "class Project; end\n")
+    File.write(File.join(root, "Guide.rdoc"), "= Guide\n")
+
+    dir = nil
+    Dir.chdir(workspace) do
+      dir = run_generator(["pkg/lib/project.rb", "pkg/Guide.rdoc"], "configured main page title") do |options|
+        options.main_page = "Guide.rdoc"
+        options.root = Pathname("pkg")
+      end
+    end
+
+    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
+      [row["name"], row["type"], row["path"]]
+    end
+
+    assert_includes entries, ["Guide", "Readme", "Guide_rdoc.md"]
+  end
+
   def test_generator_does_not_duplicate_explicit_root_pages
     workspace = stable_tmpdir("explicit-readme-source")
     root = File.join(workspace, "pkg")
@@ -168,18 +191,18 @@ class TestGenerator < Minitest::Test
     File.write(File.join(root, "README.md"), "# Project\n")
     File.write(File.join(root, "Guide.rdoc"), "= Guide\n")
 
-    dir = nil
-    Dir.chdir(workspace) do
-      dir = run_generator(["pkg/lib/project.rb", "pkg/README.md"], "explicit readme title") do |options|
-        options.root = Pathname("pkg")
-      end
+    dir = run_generator(
+      [File.join(root, "lib/project.rb"), File.join(root, "README.md")],
+      "explicit readme title"
+    ) do |options|
+      options.root = root
     end
 
     entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
       [row["name"], row["type"], row["path"]]
     end
 
-    assert_equal 1, entries.count { |entry| entry == ["README", "Page", "README_md.md"] }
+    assert_equal 1, entries.count { |entry| entry == ["README", "Readme", "README_md.md"] }
     assert_includes entries, ["Guide", "Page", "Guide_rdoc.md"]
   end
 
@@ -199,7 +222,7 @@ class TestGenerator < Minitest::Test
     assert_true File.exist?(File.join(dir, "Project.md"))
     assert_true File.exist?(File.join(dir, "README_md.md"))
     assert_includes entries, ["Project", "Class", "Project.md"]
-    assert_includes entries, ["README", "Page", "README_md.md"]
+    assert_includes entries, ["README", "Readme", "README_md.md"]
   end
 
   def test_root_page_hook_does_not_change_other_generators
