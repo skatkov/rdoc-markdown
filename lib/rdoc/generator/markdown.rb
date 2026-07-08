@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# shareable_constant_value: literal
 
 gem "rdoc"
 
@@ -14,14 +15,24 @@ class RDoc::Generator::Markdown
 
   require_relative "markdown/rbs_signature_index"
 
+  # Supported reverse_markdown unknown-tag modes.
+  MARKDOWN_UNKNOWN_TAGS = %i[pass_through drop bypass raise]
+
+  # Root source page basenames and their search-index types.
+  ROOT_PAGES = {
+    "readme" => "Readme",
+    "guide" => "Readme",
+    "changelog" => "Changelog",
+    "history" => "Changelog"
+  }
+
+  # Source page extensions RDoc should auto-include from the root directory.
+  ROOT_PAGE_EXTENSIONS = %w[.rdoc .md .markdown]
+
+  # shareable_constant_value: none
+
   # Directory containing ERB templates.
   TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
-
-  # Supported reverse_markdown unknown-tag modes.
-  MARKDOWN_UNKNOWN_TAGS = %i[pass_through drop bypass raise].freeze
-
-  # Source page basenames that should be indexed as changelogs.
-  CHANGELOG_PAGE_BASENAMES = %w[changelog history].freeze
 
   # Adds rdoc-markdown generator configuration to RDoc's option object.
   module OptionsExtension
@@ -62,9 +73,14 @@ class RDoc::Generator::Markdown
       return if @files.empty?
 
       @root = Pathname(@root).expand_path
-      @files |= Dir.glob(
-        @root.join("{README,Readme,readme,GUIDE,Guide,guide,CHANGELOG,Changelog,changelog,HISTORY,History,history}.{rdoc,md,markdown}")
-      ).select { |path| File.file?(path) }
+      @files |= Dir.children(@root).filter_map do |name|
+        path = @root.join(name)
+        next unless path.file?
+        next unless ROOT_PAGE_EXTENSIONS.include?(File.extname(name))
+        next unless ROOT_PAGES.key?(File.basename(name, ".*").downcase)
+
+        path.to_s
+      end
     end
   end
 
@@ -293,24 +309,25 @@ class RDoc::Generator::Markdown
     "#{dirname}/#{basename}"
   end
 
-  # Checks whether a text page is a changelog/history page.
+  # Returns the configured search-index type for a root text page.
   #
   # @param page [RDoc::TopLevel] Page object to index.
   #
-  # @return [Boolean]
-  def changelog_page?(page)
-    CHANGELOG_PAGE_BASENAMES.include?(File.basename(page.relative_name, ".*").downcase)
+  # @return [String, nil]
+  def root_page_type(page)
+    source_path = normalize_input_path_for_output(page.relative_name)
+    return unless File.dirname(source_path) == "."
+
+    ROOT_PAGES[File.basename(source_path, ".*").downcase]
   end
 
-  # Checks whether a text page is the root README page.
+  # Checks whether a text page is the configured main page.
   #
   # @param page [RDoc::TopLevel] Page object to index.
   #
   # @return [Boolean]
-  def readme_page?(page)
-    source_path = normalize_input_path_for_output(page.relative_name)
-
-    File.dirname(source_path) == "." && File.basename(source_path, ".*").casecmp?("README")
+  def main_page?(page)
+    page.full_name == @options.main_page
   end
 
   # Returns the search-index type for a text page.
@@ -319,10 +336,9 @@ class RDoc::Generator::Markdown
   #
   # @return [String]
   def page_type(page)
-    return "Changelog" if changelog_page?(page)
-    return "Readme" if readme_page?(page) || page.full_name == @options.main_page
+    return "Readme" if main_page?(page)
 
-    "Page"
+    root_page_type(page) || "Page"
   end
 
   # Returns the normalized display name for a class or module.
