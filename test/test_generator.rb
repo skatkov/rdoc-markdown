@@ -249,22 +249,52 @@ class TestGenerator < Minitest::Test
     refute_includes options.files, license
   end
 
-  def test_markdown_check_files_dedupes_and_validates_auto_root_pages_without_rewriting_inputs
+  def test_markdown_check_files_does_not_rescue_invalid_explicit_files_with_auto_root_pages
+    root = File.expand_path(stable_tmpdir("missing-only-explicit-source"))
+    missing = File.join(root, "missing.rb")
+    readme = File.join(root, "README.md")
+    File.write(readme, "# Project\n")
+
+    options = RDoc::Options.new
+    options.setup_generator("markdown")
+    options.files = [missing]
+    options.root = root
+
+    options.check_files
+
+    assert_empty options.files
+  end
+
+  def test_markdown_check_files_skips_unreadable_auto_root_pages
+    root = File.expand_path(stable_tmpdir("unreadable-auto-root-page-source"))
+    source = File.join(root, "project.rb")
+    guide = File.join(root, "Guide.md")
+    File.write(source, "class Project; end\n")
+    File.write(guide, "# Guide\n")
+
+    options = RDoc::Options.new
+    options.setup_generator("markdown")
+    options.files = [source]
+    options.root = root
+
+    File.stub(:readable?, ->(path) { File.expand_path(path.to_s) != guide }) do
+      options.check_files
+    end
+
+    refute_includes options.files, guide
+  end
+
+  def test_markdown_check_files_dedupes_auto_root_pages_without_rewriting_inputs
     workspace = File.expand_path(stable_tmpdir("auto-root-page-validation-source"))
     root = File.join(workspace, "pkg")
     FileUtils.mkdir_p(File.join(root, "lib"))
 
     source = File.join(root, "lib/project.rb")
     readme = File.join(root, "README.md")
-    guide = File.join(root, "Guide.md")
     relative_source = "pkg/lib/project.rb"
     relative_readme = "pkg/README.md"
-    relative_guide = "pkg/Guide.md"
     File.write(source, "class Project; end\n")
     File.write(readme, "# Project\n")
-    File.write(guide, "# Guide\n")
-
-    File.chmod(0, guide)
 
     options = RDoc::Options.new
     options.setup_generator("markdown")
@@ -281,9 +311,6 @@ class TestGenerator < Minitest::Test
     assert_equal 1, options.files.count(relative_readme)
     refute_includes options.files, source
     refute_includes options.files, readme
-    refute_includes options.files, relative_guide unless File.readable?(guide)
-  ensure
-    File.chmod(0o644, guide) if guide && File.exist?(guide)
   end
 
   def test_generator_leaves_empty_file_list_to_rdoc_scan

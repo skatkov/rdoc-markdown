@@ -81,6 +81,7 @@ class RDoc::Generator::Markdown
     # @return [void]
     def check_files
       return super unless @generator == RDoc::Generator::Markdown
+      super
       return if @files.empty?
 
       root = Pathname(@root)
@@ -90,14 +91,13 @@ class RDoc::Generator::Markdown
         Dir.children(expanded_root).filter_map do |name|
           path = expanded_root.join(name)
           next unless path.file?
+          next unless File.readable?(path)
           next unless RDoc::Generator::Markdown.root_page_type_for(name)
           next if expanded_files.include?(path.to_s)
 
           root.join(name).to_s
         end
       )
-
-      super
     end
   end
 

@@ -71,7 +71,7 @@ class TestPathHelpers < Minitest::Test
   end
 
   def test_page_output_path_rewrites_page_filenames_and_preserves_directories
-    files = Dir[File.join(pages_root, "**/*.rdoc")]
+    files = %w[README.rdoc guides/README.rdoc guides/getting.started.rdoc].map { |path| File.join(pages_root, path) }
     dir = generate_docs(files: files, title: "page test title", root: pages_root)
 
     assert File.exist?(File.join(dir, "README_rdoc.md"))
