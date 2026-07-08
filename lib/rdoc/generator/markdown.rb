@@ -68,19 +68,24 @@ class RDoc::Generator::Markdown
     #
     # @return [void]
     def check_files
-      super
-      return unless @generator == RDoc::Generator::Markdown
+      return super unless @generator == RDoc::Generator::Markdown
       return if @files.empty?
 
       @root = Pathname(@root).expand_path
-      @files |= Dir.children(@root).filter_map do |name|
-        path = @root.join(name)
-        next unless path.file?
-        next unless ROOT_PAGE_EXTENSIONS.include?(File.extname(name))
-        next unless ROOT_PAGES.key?(File.basename(name, ".*").downcase)
+      @files.concat(
+        Dir.children(@root).filter_map do |name|
+          path = @root.join(name)
+          next unless path.file?
+          next unless ROOT_PAGE_EXTENSIONS.include?(File.extname(name))
+          next unless ROOT_PAGES.key?(File.basename(name, ".*").downcase)
 
-        path.to_s
-      end
+          path
+        end
+      )
+
+      @files.map! { |file| Pathname(file).expand_path.to_s }
+      @files.uniq!
+      super
     end
   end
 

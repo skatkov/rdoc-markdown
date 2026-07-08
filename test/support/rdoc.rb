@@ -1,8 +1,29 @@
 # frozen_string_literal: true
 
+require "csv"
+require "fileutils"
 require "rdoc/rdoc"
 
 module RDocTestHelpers
+  def index_entries(dir)
+    CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
+      [row["name"], row["type"], row["path"]]
+    end
+  end
+
+  def project_fixture(name, files = {})
+    workspace = stable_tmpdir(name)
+    root = File.join(workspace, "pkg")
+
+    {"lib/project.rb" => "class Project; end\n"}.merge(files).each do |path, content|
+      target = File.join(root, path)
+      FileUtils.mkdir_p(File.dirname(target))
+      File.write(target, content)
+    end
+
+    [workspace, root]
+  end
+
   def generator_options(op_dir:, root: nil)
     RDoc::Options.new.tap do |options|
       options.op_dir = op_dir

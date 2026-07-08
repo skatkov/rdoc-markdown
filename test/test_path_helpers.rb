@@ -2,7 +2,6 @@
 
 require_relative "test_helper"
 
-require "csv"
 require "rdoc/rdoc"
 require "rdoc/markdown"
 
@@ -79,8 +78,7 @@ class TestPathHelpers < Minitest::Test
     assert File.exist?(File.join(dir, "guides/README_rdoc.md"))
     assert File.exist?(File.join(dir, "guides/getting_started_rdoc.md"))
 
-    index_rows = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true)
-    entries = index_rows.map { |row| [row["name"], row["type"], row["path"]] }
+    entries = index_entries(dir)
 
     assert_includes entries, ["README", "Readme", "README_rdoc.md"]
     assert_includes entries, ["README", "Page", "guides/README_rdoc.md"]
@@ -114,22 +112,17 @@ class TestPathHelpers < Minitest::Test
     assert File.exist?(File.join(dotted_dir, "guides/basename_rdoc.md"))
     assert File.exist?(File.join(relative_dir, "guides/relative_rdoc.md"))
 
-    index_rows = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true)
-    entries = index_rows.map { |row| [row["name"], row["type"], row["path"]] }
+    entries = index_entries(dir)
 
     assert_includes entries, ["install.me", "Page", "guides/install_me_rdoc.md"]
     assert_includes entries, ["absolute", "Page", "guides/absolute_rdoc.md"]
     assert_includes entries, ["README", "Readme", "README_rdoc.md"]
 
-    dotted_entries = CSV.parse(File.read(File.join(dotted_dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    dotted_entries = index_entries(dotted_dir)
     assert_includes dotted_entries, ["dotted", "Page", "guides/dotted_rdoc.md"]
     assert_includes dotted_entries, ["basename", "Page", "guides/basename_rdoc.md"]
 
-    relative_entries = CSV.parse(File.read(File.join(relative_dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    relative_entries = index_entries(relative_dir)
     assert_includes relative_entries, ["relative", "Page", "guides/relative_rdoc.md"]
   end
 
@@ -161,7 +154,7 @@ class TestPathHelpers < Minitest::Test
     assert_eql "Absolute path\n", File.read(File.join(dir, "docs/absolute_rdoc.md"))
     assert_eql "Windows path\n", File.read(File.join(dir, "docs/windows_rdoc.md"))
 
-    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map { |row| [row["name"], row["type"], row["path"]] }
+    entries = index_entries(dir)
     assert_includes entries, ["dot", "Page", "docs/dot_rdoc.md"]
     assert_includes entries, ["absolute", "Page", "docs/absolute_rdoc.md"]
     assert_includes entries.map(&:last), "docs/windows_rdoc.md"

@@ -115,25 +115,16 @@ class TestGenerator < Minitest::Test
   end
 
   def test_generator_auto_includes_root_pages_and_marks_configured_main_page
-    workspace = stable_tmpdir("readme-source")
-    root = File.join(workspace, "pkg")
-    lib_dir = File.join(root, "lib")
-    docs_dir = File.join(root, "docs")
-    FileUtils.mkdir_p(lib_dir)
-    FileUtils.mkdir_p(docs_dir)
-
-    File.write(File.join(lib_dir, "project.rb"), <<~RUBY)
-      class Project
-      end
-    RUBY
-    File.write(File.join(root, "README.md"), "# Project\n")
-    File.write(File.join(root, "Guide.rdoc"), "= Guide\n")
-    File.write(File.join(root, "CHANGELOG.md"), "# Changes\n")
-    File.write(File.join(root, "HiStOrY.markdown"), "# History\n")
-    File.write(File.join(root, "README.txt"), "Plain text\n")
-    File.write(File.join(docs_dir, "CHANGELOG.md"), "# Nested changes\n")
-    FileUtils.mkdir_p(File.join(root, "readme.markdown"))
-    File.write(File.join(root, "readme.markdown", "nested.rb"), "class Nested; end\n")
+    workspace, = project_fixture(
+      "readme-source",
+      "README.md" => "# Project\n",
+      "Guide.rdoc" => "= Guide\n",
+      "CHANGELOG.md" => "# Changes\n",
+      "HiStOrY.markdown" => "# History\n",
+      "README.txt" => "Plain text\n",
+      "docs/CHANGELOG.md" => "# Nested changes\n",
+      "readme.markdown/nested.rb" => "class Nested; end\n"
+    )
 
     dir = nil
     Dir.chdir(workspace) do
@@ -143,9 +134,7 @@ class TestGenerator < Minitest::Test
       end
     end
 
-    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    entries = index_entries(dir)
 
     assert_true File.exist?(File.join(dir, "README_md.md"))
     assert_true File.exist?(File.join(dir, "Guide_rdoc.md"))
@@ -166,12 +155,7 @@ class TestGenerator < Minitest::Test
   end
 
   def test_generator_marks_configured_non_readme_main_page
-    workspace = stable_tmpdir("configured-main-page-source")
-    root = File.join(workspace, "pkg")
-    FileUtils.mkdir_p(File.join(root, "lib"))
-
-    File.write(File.join(root, "lib/project.rb"), "class Project; end\n")
-    File.write(File.join(root, "Guide.rdoc"), "= Guide\n")
+    workspace, = project_fixture("configured-main-page-source", "Guide.rdoc" => "= Guide\n")
 
     dir = nil
     Dir.chdir(workspace) do
@@ -181,22 +165,13 @@ class TestGenerator < Minitest::Test
       end
     end
 
-    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    entries = index_entries(dir)
 
     assert_includes entries, ["Guide", "Readme", "Guide_rdoc.md"]
   end
 
   def test_generator_marks_configured_nested_main_page
-    workspace = stable_tmpdir("configured-nested-main-page-source")
-    root = File.join(workspace, "pkg")
-    docs_dir = File.join(root, "docs")
-    FileUtils.mkdir_p(File.join(root, "lib"))
-    FileUtils.mkdir_p(docs_dir)
-
-    File.write(File.join(root, "lib/project.rb"), "class Project; end\n")
-    File.write(File.join(docs_dir, "Guide.rdoc"), "= Guide\n")
+    workspace, = project_fixture("configured-nested-main-page-source", "docs/Guide.rdoc" => "= Guide\n")
 
     dir = nil
     Dir.chdir(workspace) do
@@ -206,20 +181,13 @@ class TestGenerator < Minitest::Test
       end
     end
 
-    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    entries = index_entries(dir)
 
     assert_includes entries, ["Guide", "Readme", "docs/Guide_rdoc.md"]
   end
 
   def test_generator_marks_configured_root_changelog_main_page
-    workspace = stable_tmpdir("configured-changelog-main-page-source")
-    root = File.join(workspace, "pkg")
-    FileUtils.mkdir_p(File.join(root, "lib"))
-
-    File.write(File.join(root, "lib/project.rb"), "class Project; end\n")
-    File.write(File.join(root, "CHANGELOG.md"), "# Changes\n")
+    workspace, = project_fixture("configured-changelog-main-page-source", "CHANGELOG.md" => "# Changes\n")
 
     dir = nil
     Dir.chdir(workspace) do
@@ -229,22 +197,17 @@ class TestGenerator < Minitest::Test
       end
     end
 
-    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    entries = index_entries(dir)
 
     assert_includes entries, ["CHANGELOG", "Readme", "CHANGELOG_md.md"]
   end
 
   def test_generator_does_not_duplicate_explicit_root_pages
-    workspace = stable_tmpdir("explicit-readme-source")
-    root = File.join(workspace, "pkg")
-    lib_dir = File.join(root, "lib")
-    FileUtils.mkdir_p(lib_dir)
-
-    File.write(File.join(lib_dir, "project.rb"), "class Project; end\n")
-    File.write(File.join(root, "README.md"), "# Project\n")
-    File.write(File.join(root, "Guide.rdoc"), "= Guide\n")
+    _workspace, root = project_fixture(
+      "explicit-readme-source",
+      "README.md" => "# Project\n",
+      "Guide.rdoc" => "= Guide\n"
+    )
 
     dir = run_generator(
       [File.join(root, "lib/project.rb"), File.join(root, "README.md")],
@@ -253,9 +216,7 @@ class TestGenerator < Minitest::Test
       options.root = root
     end
 
-    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    entries = index_entries(dir)
 
     assert_equal 1, entries.count { |entry| entry == ["README", "Readme", "README_md.md"] }
     assert_includes entries, ["Guide", "Readme", "Guide_rdoc.md"]
@@ -284,6 +245,38 @@ class TestGenerator < Minitest::Test
     refute_includes options.files, license
   end
 
+  def test_markdown_check_files_normalizes_and_validates_auto_root_pages
+    workspace = File.expand_path(stable_tmpdir("auto-root-page-validation-source"))
+    root = File.join(workspace, "pkg")
+    FileUtils.mkdir_p(File.join(root, "lib"))
+
+    source = File.join(root, "lib/project.rb")
+    readme = File.join(root, "README.md")
+    guide = File.join(root, "Guide.md")
+    File.write(source, "class Project; end\n")
+    File.write(readme, "# Project\n")
+    File.write(guide, "# Guide\n")
+
+    File.chmod(0, guide)
+
+    options = RDoc::Options.new
+    options.setup_generator("markdown")
+    options.files = ["pkg/lib/project.rb", "pkg/README.md"]
+    options.root = Pathname("pkg")
+
+    Dir.chdir(workspace) do
+      options.check_files
+    end
+
+    assert_includes options.files, source
+    assert_includes options.files, readme
+    assert_equal 1, options.files.count(readme)
+    refute_includes options.files, guide unless File.readable?(guide)
+    assert(options.files.all? { |file| Pathname(file).absolute? })
+  ensure
+    File.chmod(0o644, guide) if guide && File.exist?(guide)
+  end
+
   def test_generator_leaves_empty_file_list_to_rdoc_scan
     root = stable_tmpdir("empty-file-list-source")
     File.write(File.join(root, "project.rb"), "class Project; end\n")
@@ -293,9 +286,7 @@ class TestGenerator < Minitest::Test
       options.root = root
     end
 
-    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    entries = index_entries(dir)
 
     assert_true File.exist?(File.join(dir, "Project.md"))
     assert_true File.exist?(File.join(dir, "README_md.md"))
@@ -320,6 +311,25 @@ class TestGenerator < Minitest::Test
     RDoc::RDoc.new.document(options)
 
     assert_empty Dir[File.join(dir, "**", "README*")]
+  end
+
+  def test_markdown_check_files_delegates_other_generators_to_rdoc_validation
+    root = stable_tmpdir("darkfish-file-validation-source")
+    source = File.join(root, "project.rb")
+    missing = File.join(root, "missing.rb")
+    File.write(source, "class Project; end\n")
+    File.write(File.join(root, "README.md"), "# Project\n")
+
+    options = RDoc::Options.new
+    options.setup_generator("darkfish")
+    options.files = [source, missing]
+    options.root = root
+
+    options.check_files
+
+    assert_includes options.files, source
+    refute_includes options.files, missing
+    refute_includes options.files, File.join(root, "README.md")
   end
 
   def test_generator_with_private_visibility
@@ -449,6 +459,37 @@ class TestGenerator < Minitest::Test
     refute_includes bird_doc, "#### `fly(direction)`"
   end
 
+  def test_generator_setup_resolves_relative_rbs_files_from_initialize_directory
+    skip "rbs is not available" unless defined?(RBS::Parser)
+
+    source_dir = File.expand_path(stable_tmpdir("direct-relative-rbs-signature-source"))
+    other_dir = File.expand_path(stable_tmpdir("direct-relative-rbs-signature-current"))
+    output_dir = File.join(source_dir, "out")
+
+    File.write(File.join(source_dir, "bird.rbs"), <<~RBS)
+      class Bird
+        def fly: (String) -> bool
+      end
+    RBS
+
+    klass = build_rdoc_class(full_name: "Bird", description: "Bird docs")
+    klass.add_method(rdoc_method("fly", params: "(direction)"))
+    store = rdoc_store(classes: [klass])
+    options = generator_options(op_dir: output_dir)
+    options.files = ["bird.rbs"]
+
+    Dir.chdir(source_dir) do
+      generator = RDoc::Generator::Markdown.new(store, options)
+
+      Dir.chdir(other_dir) do
+        generator.generate
+      end
+    end
+
+    bird_doc = File.read(File.join(output_dir, "Bird.md"))
+    assert_includes bird_doc, "#### `fly(direction: String) -> bool`"
+  end
+
   def test_generator_uses_rdoc_8_auto_discovered_sig_directory
     skip "RDoc 8 auto-discovers sig directories" if Gem.loaded_specs.fetch("rdoc").version < Gem::Version.new("8.0")
 
@@ -524,9 +565,7 @@ class TestGenerator < Minitest::Test
     dir = run_generator(source, "visibility test title")
 
     visible_doc = File.read(File.join(dir, "Visible.md"))
-    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    entries = index_entries(dir)
 
     assert_true File.exist?(File.join(dir, "Visible.md"))
     assert_false File.exist?(File.join(dir, "HiddenClass.md"))
