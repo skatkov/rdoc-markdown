@@ -71,20 +71,21 @@ class RDoc::Generator::Markdown
       return super unless @generator == RDoc::Generator::Markdown
       return if @files.empty?
 
-      @root = Pathname(@root).expand_path
+      root = Pathname(@root)
+      expanded_root = root.expand_path
+      expanded_files = @files.map { |file| Pathname(file).expand_path.to_s }
       @files.concat(
-        Dir.children(@root).filter_map do |name|
-          path = @root.join(name)
+        Dir.children(expanded_root).filter_map do |name|
+          path = expanded_root.join(name)
           next unless path.file?
           next unless ROOT_PAGE_EXTENSIONS.include?(File.extname(name))
           next unless ROOT_PAGES.key?(File.basename(name, ".*").downcase)
+          next if expanded_files.include?(path.to_s)
 
-          path
+          root.join(name).to_s
         end
       )
 
-      @files.map! { |file| Pathname(file).expand_path.to_s }
-      @files.uniq!
       super
     end
   end
@@ -155,6 +156,7 @@ class RDoc::Generator::Markdown
     @markdown_unknown_tags = self.class.validate_markdown_unknown_tags(rdoc_options.markdown_unknown_tags)
 
     @base_dir = Pathname.pwd
+    @expanded_root = Pathname(@options.root.to_s).expand_path
   end
 
   # Writes class files, page files, and the search index.
@@ -332,7 +334,7 @@ class RDoc::Generator::Markdown
   #
   # @return [Boolean]
   def main_page?(page)
-    page.full_name == @options.main_page
+    normalize_input_path_for_output(page.full_name) == normalize_input_path_for_output(@options.main_page.to_s)
   end
 
   # Returns the search-index type for a text page.
@@ -739,7 +741,7 @@ class RDoc::Generator::Markdown
   def normalize_input_path_for_output(path)
     normalized = path.tr("\\", "/").sub(%r{\A\./}, "")
 
-    root = File.expand_path(@options.root.to_s)
+    root = @expanded_root.to_s
     normalized = normalized.sub(%r{\A#{Regexp.escape(root)}/}, "")
     normalized = normalized.sub(%r{\A/}, "")
 

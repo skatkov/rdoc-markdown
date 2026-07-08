@@ -176,7 +176,7 @@ class TestGenerator < Minitest::Test
     dir = nil
     Dir.chdir(workspace) do
       dir = run_generator(["pkg/lib/project.rb", "pkg/docs/Guide.rdoc"], "configured nested main page title") do |options|
-        options.main_page = "docs/Guide.rdoc"
+        options.main_page = "pkg/docs/Guide.rdoc"
         options.root = Pathname("pkg")
       end
     end
@@ -245,7 +245,7 @@ class TestGenerator < Minitest::Test
     refute_includes options.files, license
   end
 
-  def test_markdown_check_files_normalizes_and_validates_auto_root_pages
+  def test_markdown_check_files_dedupes_and_validates_auto_root_pages_without_rewriting_inputs
     workspace = File.expand_path(stable_tmpdir("auto-root-page-validation-source"))
     root = File.join(workspace, "pkg")
     FileUtils.mkdir_p(File.join(root, "lib"))
@@ -253,6 +253,9 @@ class TestGenerator < Minitest::Test
     source = File.join(root, "lib/project.rb")
     readme = File.join(root, "README.md")
     guide = File.join(root, "Guide.md")
+    relative_source = "pkg/lib/project.rb"
+    relative_readme = "pkg/README.md"
+    relative_guide = "pkg/Guide.md"
     File.write(source, "class Project; end\n")
     File.write(readme, "# Project\n")
     File.write(guide, "# Guide\n")
@@ -261,18 +264,20 @@ class TestGenerator < Minitest::Test
 
     options = RDoc::Options.new
     options.setup_generator("markdown")
-    options.files = ["pkg/lib/project.rb", "pkg/README.md"]
+    options.files = [relative_source, relative_readme]
     options.root = Pathname("pkg")
 
     Dir.chdir(workspace) do
       options.check_files
     end
 
-    assert_includes options.files, source
-    assert_includes options.files, readme
-    assert_equal 1, options.files.count(readme)
-    refute_includes options.files, guide unless File.readable?(guide)
-    assert(options.files.all? { |file| Pathname(file).absolute? })
+    assert_equal Pathname("pkg"), options.root
+    assert_includes options.files, relative_source
+    assert_includes options.files, relative_readme
+    assert_equal 1, options.files.count(relative_readme)
+    refute_includes options.files, source
+    refute_includes options.files, readme
+    refute_includes options.files, relative_guide unless File.readable?(guide)
   ensure
     File.chmod(0o644, guide) if guide && File.exist?(guide)
   end
