@@ -12,7 +12,6 @@ class TestGenerator < Minitest::Test
   cover "RDoc::Generator::Markdown#method_signature"
   cover "RDoc::Generator::Markdown#page_type"
   cover "RDoc::Generator::Markdown#setup"
-  cover "RDoc::Generator::Markdown::OptionsExtension#check_files"
 
   def source_file
     File.join(File.dirname(__FILE__), "data/example.rb")
@@ -114,7 +113,7 @@ class TestGenerator < Minitest::Test
     assert_equal(expected, result)
   end
 
-  def test_generator_auto_includes_root_pages_and_marks_configured_main_page
+  def test_generator_marks_explicit_root_pages_and_configured_main_page
     workspace, = project_fixture(
       "readme-source",
       "README.md" => "# Project\n",
@@ -129,7 +128,18 @@ class TestGenerator < Minitest::Test
 
     dir = nil
     Dir.chdir(workspace) do
-      dir = run_generator(["pkg/lib/project.rb", "pkg/docs/CHANGELOG.md", "pkg/CHANGELOG.txt"], "readme title") do |options|
+      dir = run_generator(
+        [
+          "pkg/lib/project.rb",
+          "pkg/README.md",
+          "pkg/Guide.rdoc",
+          "pkg/CHANGELOG.md",
+          "pkg/CHANGELOG.txt",
+          "pkg/HiStOrY.markdown",
+          "pkg/docs/CHANGELOG.md"
+        ],
+        "readme title"
+      ) do |options|
         options.main_page = "README.md"
         options.root = Pathname("pkg")
       end
@@ -190,12 +200,12 @@ class TestGenerator < Minitest::Test
     assert_includes entries, ["Guide", "Readme", "docs/Guide_rdoc.md"]
   end
 
-  def test_generator_marks_configured_root_changelog_main_page
+  def test_generator_marks_configured_explicit_root_changelog_main_page
     workspace, = project_fixture("configured-changelog-main-page-source", "CHANGELOG.md" => "# Changes\n")
 
     dir = nil
     Dir.chdir(workspace) do
-      dir = run_generator(["pkg/lib/project.rb"], "configured changelog main page title") do |options|
+      dir = run_generator(["pkg/lib/project.rb", "pkg/CHANGELOG.md"], "configured changelog main page title") do |options|
         options.main_page = "CHANGELOG.md"
         options.root = Pathname("pkg")
       end
@@ -206,111 +216,32 @@ class TestGenerator < Minitest::Test
     assert_includes entries, ["CHANGELOG", "Readme", "CHANGELOG_md.md"]
   end
 
-  def test_generator_does_not_duplicate_explicit_root_pages
-    _workspace, root = project_fixture(
-      "explicit-readme-source",
+  def test_generator_does_not_auto_include_root_pages_for_explicit_file_lists
+    workspace, = project_fixture(
+      "explicit-file-list-source",
       "README.md" => "# Project\n",
-      "Guide.rdoc" => "= Guide\n"
+      "CHANGELOG.md" => <<~MARKDOWN
+        # Changes
+
+        Routing constraints may use /[^/]+/ patterns.
+
+        [^valid]: Valid footnote.
+      MARKDOWN
     )
 
-    dir = run_generator(
-      [File.join(root, "lib/project.rb"), File.join(root, "README.md")],
-      "explicit readme title"
-    ) do |options|
-      options.root = root
+    dir = nil
+    Dir.chdir(workspace) do
+      dir = run_generator(["pkg/lib/project.rb", "pkg/README.md"], "explicit file list title") do |options|
+        options.root = Pathname("pkg")
+      end
     end
 
     entries = index_entries(dir)
 
-    assert_equal 1, entries.count { |entry| entry == ["README", "Readme", "README_md.md"] }
-    assert_includes entries, ["Guide", "Readme", "Guide_rdoc.md"]
-  end
-
-  def test_markdown_check_files_keeps_rdoc_file_validation
-    root = File.expand_path(stable_tmpdir("missing-explicit-source"))
-    source = File.join(root, "project.rb")
-    missing = File.join(root, "missing.rb")
-    readme = File.join(root, "README.md")
-    license = File.join(root, "LICENSE.md")
-    File.write(source, "class Project; end\n")
-    File.write(readme, "# Project\n")
-    File.write(license, "# License\n")
-
-    options = RDoc::Options.new
-    options.setup_generator("markdown")
-    options.files = [source, missing]
-    options.root = root
-
-    options.check_files
-
-    assert_includes options.files, source
-    refute_includes options.files, missing
-    assert_includes options.files, readme
-    refute_includes options.files, license
-  end
-
-  def test_markdown_check_files_does_not_rescue_invalid_explicit_files_with_auto_root_pages
-    root = File.expand_path(stable_tmpdir("missing-only-explicit-source"))
-    missing = File.join(root, "missing.rb")
-    readme = File.join(root, "README.md")
-    File.write(readme, "# Project\n")
-
-    options = RDoc::Options.new
-    options.setup_generator("markdown")
-    options.files = [missing]
-    options.root = root
-
-    options.check_files
-
-    assert_empty options.files
-  end
-
-  def test_markdown_check_files_skips_unreadable_auto_root_pages
-    root = File.expand_path(stable_tmpdir("unreadable-auto-root-page-source"))
-    source = File.join(root, "project.rb")
-    guide = File.join(root, "Guide.md")
-    File.write(source, "class Project; end\n")
-    File.write(guide, "# Guide\n")
-
-    options = RDoc::Options.new
-    options.setup_generator("markdown")
-    options.files = [source]
-    options.root = root
-
-    File.stub(:readable?, ->(path) { File.expand_path(path.to_s) != guide }) do
-      options.check_files
-    end
-
-    refute_includes options.files, guide
-  end
-
-  def test_markdown_check_files_dedupes_auto_root_pages_without_rewriting_inputs
-    workspace = File.expand_path(stable_tmpdir("auto-root-page-validation-source"))
-    root = File.join(workspace, "pkg")
-    FileUtils.mkdir_p(File.join(root, "lib"))
-
-    source = File.join(root, "lib/project.rb")
-    readme = File.join(root, "README.md")
-    relative_source = "pkg/lib/project.rb"
-    relative_readme = "pkg/README.md"
-    File.write(source, "class Project; end\n")
-    File.write(readme, "# Project\n")
-
-    options = RDoc::Options.new
-    options.setup_generator("markdown")
-    options.files = [relative_source, relative_readme]
-    options.root = Pathname("pkg")
-
-    Dir.chdir(workspace) do
-      options.check_files
-    end
-
-    assert_equal Pathname("pkg"), options.root
-    assert_includes options.files, relative_source
-    assert_includes options.files, relative_readme
-    assert_equal 1, options.files.count(relative_readme)
-    refute_includes options.files, source
-    refute_includes options.files, readme
+    assert_true File.exist?(File.join(dir, "README_md.md"))
+    assert_false File.exist?(File.join(dir, "CHANGELOG_md.md"))
+    assert_includes entries, ["README", "Readme", "README_md.md"]
+    refute(entries.any? { |name, _type, _path| name == "CHANGELOG" })
   end
 
   def test_generator_leaves_empty_file_list_to_rdoc_scan
@@ -328,44 +259,6 @@ class TestGenerator < Minitest::Test
     assert_true File.exist?(File.join(dir, "README_md.md"))
     assert_includes entries, ["Project", "Class", "Project.md"]
     assert_includes entries, ["README", "Readme", "README_md.md"]
-  end
-
-  def test_root_page_hook_does_not_change_other_generators
-    root = stable_tmpdir("darkfish-source")
-    source = File.join(root, "project.rb")
-    dir = File.join(stable_tmpdir("darkfish-output"), "out")
-    File.write(source, "class Project; end\n")
-    File.write(File.join(root, "README.md"), "# Project\n")
-
-    options = RDoc::Options.new
-    options.setup_generator("darkfish")
-    options.verbosity = 0
-    options.files = [source]
-    options.op_dir = dir
-    options.root = root
-
-    RDoc::RDoc.new.document(options)
-
-    assert_empty Dir[File.join(dir, "**", "README*")]
-  end
-
-  def test_markdown_check_files_delegates_other_generators_to_rdoc_validation
-    root = stable_tmpdir("darkfish-file-validation-source")
-    source = File.join(root, "project.rb")
-    missing = File.join(root, "missing.rb")
-    File.write(source, "class Project; end\n")
-    File.write(File.join(root, "README.md"), "# Project\n")
-
-    options = RDoc::Options.new
-    options.setup_generator("darkfish")
-    options.files = [source, missing]
-    options.root = root
-
-    options.check_files
-
-    assert_includes options.files, source
-    refute_includes options.files, missing
-    refute_includes options.files, File.join(root, "README.md")
   end
 
   def test_generator_with_private_visibility

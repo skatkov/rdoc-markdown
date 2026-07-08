@@ -26,7 +26,7 @@ class RDoc::Generator::Markdown
     "history" => "Changelog"
   }
 
-  # Source page extensions RDoc should auto-include from the root directory.
+  # Source page extensions eligible for root page classification.
   ROOT_PAGE_EXTENSIONS = %w[.rdoc .md .markdown]
 
   # Returns the configured search-index type for an eligible root text page path.
@@ -76,29 +76,6 @@ class RDoc::Generator::Markdown
       @markdown_unknown_tags = map.fetch("markdown_unknown_tags") if map.key?("markdown_unknown_tags")
     end
 
-    # Adds markdown root entry pages to explicit source files.
-    #
-    # @return [void]
-    def check_files
-      return super unless @generator == RDoc::Generator::Markdown
-      super
-      return if @files.empty?
-
-      root = Pathname(@root)
-      expanded_root = root.expand_path
-      expanded_files = @files.map { |file| Pathname(file).expand_path.to_s }
-      @files.concat(
-        Dir.children(expanded_root).filter_map do |name|
-          path = expanded_root.join(name)
-          next unless path.file?
-          next unless File.readable?(path)
-          next unless RDoc::Generator::Markdown.root_page_type_for(name)
-          next if expanded_files.include?(path.to_s)
-
-          root.join(name).to_s
-        end
-      )
-    end
   end
 
   # Registers markdown generator-specific RDoc options.
