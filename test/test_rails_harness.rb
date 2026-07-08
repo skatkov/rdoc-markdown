@@ -58,5 +58,4 @@ class TestRailsHarness < Minitest::Test
 
     refute(entries.any? { |name, _type, _path| name.match?(/([A-Za-z_][A-Za-z0-9_]*)::.*::\1::/) })
   end
-
 end
