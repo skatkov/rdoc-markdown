@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# shareable_constant_value: literal
 
 gem "rdoc"
 
@@ -14,11 +15,36 @@ class RDoc::Generator::Markdown
 
   require_relative "markdown/rbs_signature_index"
 
+  # Supported reverse_markdown unknown-tag modes.
+  MARKDOWN_UNKNOWN_TAGS = %i[pass_through drop bypass raise]
+
+  # Root source page basenames and their search-index types.
+  ROOT_PAGES = {
+    "readme" => "Readme",
+    "guide" => "Readme",
+    "changelog" => "Changelog",
+    "history" => "Changelog"
+  }
+
+  # Source page extensions RDoc should auto-include from the root directory.
+  ROOT_PAGE_EXTENSIONS = %w[.rdoc .md .markdown]
+
+  # Returns the configured search-index type for an eligible root text page path.
+  #
+  # @param source_path [String] Normalized source path relative to the root.
+  #
+  # @return [String, nil]
+  def self.root_page_type_for(source_path)
+    return unless File.dirname(source_path) == "."
+    return unless ROOT_PAGE_EXTENSIONS.include?(File.extname(source_path))
+
+    ROOT_PAGES[File.basename(source_path, ".*").downcase]
+  end
+
+  # shareable_constant_value: none
+
   # Directory containing ERB templates.
   TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
-
-  # Supported reverse_markdown unknown-tag modes.
-  MARKDOWN_UNKNOWN_TAGS = %i[pass_through drop bypass raise].freeze
 
   # Adds rdoc-markdown generator configuration to RDoc's option object.
   module OptionsExtension
@@ -48,6 +74,30 @@ class RDoc::Generator::Markdown
     def override(map)
       super
       @markdown_unknown_tags = map.fetch("markdown_unknown_tags") if map.key?("markdown_unknown_tags")
+    end
+
+    # Adds markdown root entry pages to explicit source files.
+    #
+    # @return [void]
+    def check_files
+      return super unless @generator == RDoc::Generator::Markdown
+      super
+      return if @files.empty?
+
+      root = Pathname(@root)
+      expanded_root = root.expand_path
+      expanded_files = @files.map { |file| Pathname(file).expand_path.to_s }
+      @files.concat(
+        Dir.children(expanded_root).filter_map do |name|
+          path = expanded_root.join(name)
+          next unless path.file?
+          next unless File.readable?(path)
+          next unless RDoc::Generator::Markdown.root_page_type_for(name)
+          next if expanded_files.include?(path.to_s)
+
+          root.join(name).to_s
+        end
+      )
     end
   end
 
@@ -117,6 +167,7 @@ class RDoc::Generator::Markdown
     @markdown_unknown_tags = self.class.validate_markdown_unknown_tags(rdoc_options.markdown_unknown_tags)
 
     @base_dir = Pathname.pwd
+    @expanded_root = Pathname(@options.root.to_s).expand_path
   end
 
   # Writes class files, page files, and the search index.
@@ -210,7 +261,7 @@ class RDoc::Generator::Markdown
       @pages.each do |page|
         csv << [
           page.page_name,
-          "Page",
+          page_type(page),
           page_output_path(page)
         ]
       end
@@ -274,6 +325,26 @@ class RDoc::Generator::Markdown
     return basename if dirname == "."
 
     "#{dirname}/#{basename}"
+  end
+
+  # Checks whether a text page is the configured main page.
+  #
+  # @param page [RDoc::TopLevel] Page object to index.
+  #
+  # @return [Boolean]
+  def main_page?(page)
+    normalize_input_path_for_output(page.full_name) == normalize_input_path_for_output(@options.main_page.to_s)
+  end
+
+  # Returns the search-index type for a text page.
+  #
+  # @param page [RDoc::TopLevel] Page object to index.
+  #
+  # @return [String]
+  def page_type(page)
+    return "Readme" if main_page?(page)
+
+    self.class.root_page_type_for(normalize_input_path_for_output(page.relative_name)) || "Page"
   end
 
   # Returns the normalized display name for a class or module.
@@ -669,7 +740,7 @@ class RDoc::Generator::Markdown
   def normalize_input_path_for_output(path)
     normalized = path.tr("\\", "/").sub(%r{\A\./}, "")
 
-    root = File.expand_path(@options.root.to_s)
+    root = @expanded_root.to_s
     normalized = normalized.sub(%r{\A#{Regexp.escape(root)}/}, "")
     normalized = normalized.sub(%r{\A/}, "")
 

@@ -2,7 +2,6 @@
 
 require_relative "test_helper"
 
-require "csv"
 require "rdoc/rdoc"
 require "rdoc/markdown"
 
@@ -72,16 +71,17 @@ class TestPathHelpers < Minitest::Test
   end
 
   def test_page_output_path_rewrites_page_filenames_and_preserves_directories
-    files = Dir[File.join(pages_root, "**/*.rdoc")]
+    files = %w[README.rdoc guides/README.rdoc guides/getting.started.rdoc].map { |path| File.join(pages_root, path) }
     dir = generate_docs(files: files, title: "page test title", root: pages_root)
 
     assert File.exist?(File.join(dir, "README_rdoc.md"))
+    assert File.exist?(File.join(dir, "guides/README_rdoc.md"))
     assert File.exist?(File.join(dir, "guides/getting_started_rdoc.md"))
 
-    index_rows = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true)
-    entries = index_rows.map { |row| [row["name"], row["type"], row["path"]] }
+    entries = index_entries(dir)
 
-    assert_includes entries, ["README", "Page", "README_rdoc.md"]
+    assert_includes entries, ["README", "Readme", "README_rdoc.md"]
+    assert_includes entries, ["README", "Page", "guides/README_rdoc.md"]
     assert_includes entries, ["getting.started", "Page", "guides/getting_started_rdoc.md"]
   end
 
@@ -90,6 +90,7 @@ class TestPathHelpers < Minitest::Test
     dotted_root = File.expand_path(File.join(stable_tmpdir("root.with.dots"), "pages+v1"))
     relative_store = rdoc_store
     relative_root = "tmp/relative-root-pages"
+    rdoc_page(store, relative_name: File.join(pages_root, "README.rdoc"), comment: "Readme")
     rdoc_page(store, relative_name: "pages/guides/install.me.rdoc", comment: "Install me")
     rdoc_page(store, relative_name: File.join(pages_root, "guides/absolute.rdoc"), comment: "Absolute install")
     rdoc_page(store, relative_name: File.join(dotted_root, "guides/dotted.rdoc"), comment: "Dotted root")
@@ -106,25 +107,22 @@ class TestPathHelpers < Minitest::Test
 
     assert File.exist?(File.join(dir, "guides/install_me_rdoc.md"))
     assert File.exist?(File.join(dir, "guides/absolute_rdoc.md"))
+    assert File.exist?(File.join(dir, "README_rdoc.md"))
     assert File.exist?(File.join(dotted_dir, "guides/dotted_rdoc.md"))
     assert File.exist?(File.join(dotted_dir, "guides/basename_rdoc.md"))
     assert File.exist?(File.join(relative_dir, "guides/relative_rdoc.md"))
 
-    index_rows = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true)
-    entries = index_rows.map { |row| [row["name"], row["type"], row["path"]] }
+    entries = index_entries(dir)
 
     assert_includes entries, ["install.me", "Page", "guides/install_me_rdoc.md"]
     assert_includes entries, ["absolute", "Page", "guides/absolute_rdoc.md"]
+    assert_includes entries, ["README", "Readme", "README_rdoc.md"]
 
-    dotted_entries = CSV.parse(File.read(File.join(dotted_dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    dotted_entries = index_entries(dotted_dir)
     assert_includes dotted_entries, ["dotted", "Page", "guides/dotted_rdoc.md"]
     assert_includes dotted_entries, ["basename", "Page", "guides/basename_rdoc.md"]
 
-    relative_entries = CSV.parse(File.read(File.join(relative_dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
+    relative_entries = index_entries(relative_dir)
     assert_includes relative_entries, ["relative", "Page", "guides/relative_rdoc.md"]
   end
 
@@ -156,7 +154,7 @@ class TestPathHelpers < Minitest::Test
     assert_eql "Absolute path\n", File.read(File.join(dir, "docs/absolute_rdoc.md"))
     assert_eql "Windows path\n", File.read(File.join(dir, "docs/windows_rdoc.md"))
 
-    entries = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map { |row| [row["name"], row["type"], row["path"]] }
+    entries = index_entries(dir)
     assert_includes entries, ["dot", "Page", "docs/dot_rdoc.md"]
     assert_includes entries, ["absolute", "Page", "docs/absolute_rdoc.md"]
     assert_includes entries.map(&:last), "docs/windows_rdoc.md"

@@ -2,7 +2,6 @@
 
 require_relative "test_helper"
 
-require "csv"
 require "rdoc/rdoc"
 require "rdoc/markdown"
 
@@ -39,12 +38,6 @@ class TestClassDocs < Minitest::Test
 
     assert_true File.exist?(canonical_path)
     assert_eql 1, index_entries(dir).count { |entry| entry == [primary.full_name, "Class", "#{primary.full_name.tr(":", "/")}.md"] }
-  end
-
-  def index_entries(dir)
-    CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
-      [row["name"], row["type"], row["path"]]
-    end
   end
 
   def nest_class(parent, child)
@@ -671,7 +664,7 @@ class TestClassDocs < Minitest::Test
     assert_includes entries, ["Csv::Thing", "Class", "Csv/Thing.md"]
     assert_includes entries, ["Csv::Thing.run", "Method", "Csv/Thing.md#method-i-run"]
     refute_includes entries, ["Csv::Thing.hidden", "Method", "Csv/Thing.md#method-i-hidden"]
-    assert_includes entries, ["guide", "Page", "guide_rdoc.md"]
+    assert_includes entries, ["guide", "Readme", "guide_rdoc.md"]
 
     assert_eql [
       ["Csv::Thing.ALPHA", "Constant", "Csv/Thing.md#ALPHA"],
