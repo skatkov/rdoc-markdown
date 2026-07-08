@@ -52,26 +52,19 @@ class RDoc::Generator::Markdown
       super
       @markdown_unknown_tags = map.fetch("markdown_unknown_tags") if map.key?("markdown_unknown_tags")
     end
-  end
 
-  # Adds markdown generator source files at parse time.
-  module RDocExtension
-    # Parses explicit markdown source files plus root entry pages.
+    # Adds markdown root entry pages to explicit source files.
     #
-    # @param files [Array<String>] Source paths from RDoc options.
-    #
-    # @return [Array<RDoc::TopLevel>]
-    def parse_files(files)
-      return super unless @options.generator == RDoc::Generator::Markdown
-
-      unless files.empty?
-        @options.root = Pathname(@options.root).expand_path
-        files |= Dir.glob(
-          @options.root.join("{README,Readme,readme,GUIDE,Guide,guide,CHANGELOG,Changelog,changelog,HISTORY,History,history}.{rdoc,md,markdown}")
-        ).select { |path| File.file?(path) }
-      end
-
+    # @return [void]
+    def check_files
       super
+      return unless @generator == RDoc::Generator::Markdown
+      return if @files.empty?
+
+      @root = Pathname(@root).expand_path
+      @files |= Dir.glob(
+        @root.join("{README,Readme,readme,GUIDE,Guide,guide,CHANGELOG,Changelog,changelog,HISTORY,History,history}.{rdoc,md,markdown}")
+      ).select { |path| File.file?(path) }
     end
   end
 
@@ -885,9 +878,4 @@ class RDoc::Options
   #
   # @return [Symbol]
   attr_accessor :markdown_unknown_tags
-end
-
-# RDoc runner extension for markdown-specific source selection.
-class RDoc::RDoc
-  prepend RDoc::Generator::Markdown::RDocExtension
 end

@@ -12,7 +12,7 @@ class TestGenerator < Minitest::Test
   cover "RDoc::Generator::Markdown#method_signature"
   cover "RDoc::Generator::Markdown#page_type"
   cover "RDoc::Generator::Markdown#setup"
-  cover "RDoc::Generator::Markdown::RDocExtension#parse_files"
+  cover "RDoc::Generator::Markdown::OptionsExtension#check_files"
 
   def source_file
     File.join(File.dirname(__FILE__), "data/example.rb")
@@ -204,6 +204,26 @@ class TestGenerator < Minitest::Test
 
     assert_equal 1, entries.count { |entry| entry == ["README", "Readme", "README_md.md"] }
     assert_includes entries, ["Guide", "Page", "Guide_rdoc.md"]
+  end
+
+  def test_markdown_check_files_keeps_rdoc_file_validation
+    root = File.expand_path(stable_tmpdir("missing-explicit-source"))
+    source = File.join(root, "project.rb")
+    missing = File.join(root, "missing.rb")
+    readme = File.join(root, "README.md")
+    File.write(source, "class Project; end\n")
+    File.write(readme, "# Project\n")
+
+    options = RDoc::Options.new
+    options.setup_generator("markdown")
+    options.files = [source, missing]
+    options.root = root
+
+    options.check_files
+
+    assert_includes options.files, source
+    refute_includes options.files, missing
+    assert_includes options.files, readme
   end
 
   def test_generator_leaves_empty_file_list_to_rdoc_scan
