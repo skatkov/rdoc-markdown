@@ -29,6 +29,18 @@ class RDoc::Generator::Markdown
   # Source page extensions RDoc should auto-include from the root directory.
   ROOT_PAGE_EXTENSIONS = %w[.rdoc .md .markdown]
 
+  # Returns the configured search-index type for an eligible root text page path.
+  #
+  # @param source_path [String] Normalized source path relative to the root.
+  #
+  # @return [String, nil]
+  def self.root_page_type_for(source_path)
+    return unless File.dirname(source_path) == "."
+    return unless ROOT_PAGE_EXTENSIONS.include?(File.extname(source_path))
+
+    ROOT_PAGES[File.basename(source_path, ".*").downcase]
+  end
+
   # shareable_constant_value: none
 
   # Directory containing ERB templates.
@@ -78,8 +90,7 @@ class RDoc::Generator::Markdown
         Dir.children(expanded_root).filter_map do |name|
           path = expanded_root.join(name)
           next unless path.file?
-          next unless ROOT_PAGE_EXTENSIONS.include?(File.extname(name))
-          next unless ROOT_PAGES.key?(File.basename(name, ".*").downcase)
+          next unless RDoc::Generator::Markdown.root_page_type_for(name)
           next if expanded_files.include?(path.to_s)
 
           root.join(name).to_s
@@ -316,18 +327,6 @@ class RDoc::Generator::Markdown
     "#{dirname}/#{basename}"
   end
 
-  # Returns the configured search-index type for a root text page.
-  #
-  # @param page [RDoc::TopLevel] Page object to index.
-  #
-  # @return [String, nil]
-  def root_page_type(page)
-    source_path = normalize_input_path_for_output(page.relative_name)
-    return unless File.dirname(source_path) == "."
-
-    ROOT_PAGES[File.basename(source_path, ".*").downcase]
-  end
-
   # Checks whether a text page is the configured main page.
   #
   # @param page [RDoc::TopLevel] Page object to index.
@@ -345,7 +344,7 @@ class RDoc::Generator::Markdown
   def page_type(page)
     return "Readme" if main_page?(page)
 
-    root_page_type(page) || "Page"
+    self.class.root_page_type_for(normalize_input_path_for_output(page.relative_name)) || "Page"
   end
 
   # Returns the normalized display name for a class or module.

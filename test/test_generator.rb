@@ -120,6 +120,7 @@ class TestGenerator < Minitest::Test
       "README.md" => "# Project\n",
       "Guide.rdoc" => "= Guide\n",
       "CHANGELOG.md" => "# Changes\n",
+      "CHANGELOG.txt" => "Plain changes\n",
       "HiStOrY.markdown" => "# History\n",
       "README.txt" => "Plain text\n",
       "docs/CHANGELOG.md" => "# Nested changes\n",
@@ -128,7 +129,7 @@ class TestGenerator < Minitest::Test
 
     dir = nil
     Dir.chdir(workspace) do
-      dir = run_generator(["pkg/lib/project.rb", "pkg/docs/CHANGELOG.md"], "readme title") do |options|
+      dir = run_generator(["pkg/lib/project.rb", "pkg/docs/CHANGELOG.md", "pkg/CHANGELOG.txt"], "readme title") do |options|
         options.main_page = "README.md"
         options.root = Pathname("pkg")
       end
@@ -139,6 +140,7 @@ class TestGenerator < Minitest::Test
     assert_true File.exist?(File.join(dir, "README_md.md"))
     assert_true File.exist?(File.join(dir, "Guide_rdoc.md"))
     assert_true File.exist?(File.join(dir, "CHANGELOG_md.md"))
+    assert_true File.exist?(File.join(dir, "CHANGELOG_txt.md"))
     assert_true File.exist?(File.join(dir, "HiStOrY_markdown.md"))
     assert_false File.exist?(File.join(dir, "README_txt.md"))
     assert_false File.exist?(File.join(dir, "pkg/README_md.md"))
@@ -146,11 +148,13 @@ class TestGenerator < Minitest::Test
     assert_includes entries, ["README", "Readme", "README_md.md"]
     assert_includes entries, ["Guide", "Readme", "Guide_rdoc.md"]
     assert_includes entries, ["CHANGELOG", "Changelog", "CHANGELOG_md.md"]
+    assert_includes entries, ["CHANGELOG", "Page", "CHANGELOG_txt.md"]
     assert_includes entries, ["HiStOrY.markdown", "Changelog", "HiStOrY_markdown.md"]
     assert_includes entries, ["CHANGELOG", "Page", "docs/CHANGELOG_md.md"]
     refute_includes entries, ["README", "Page", "README_md.md"]
     refute_includes entries, ["Guide", "Page", "Guide_rdoc.md"]
     refute_includes entries, ["CHANGELOG", "Changelog", "docs/CHANGELOG_md.md"]
+    refute_includes entries, ["CHANGELOG", "Changelog", "CHANGELOG_txt.md"]
     refute(entries.any? { |name, _type, _path| name == "Nested" })
   end
 
