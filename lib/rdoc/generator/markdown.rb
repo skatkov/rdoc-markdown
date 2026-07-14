@@ -359,9 +359,23 @@ class RDoc::Generator::Markdown
   # @return [String] Markdown code or link.
   def metadata_reference(target, label)
     class_doc = @class_docs_by_object_id[target.object_id]
-    return "`#{label}`" unless class_doc
+    code_span = metadata_code_span(label)
+    return code_span unless class_doc
 
-    "[`#{label}`](#{class_doc.fetch(:output_path)})"
+    "[#{code_span}](#{class_doc.fetch(:output_path)})"
+  end
+
+  # Renders table metadata as a code span without exposing pipe or backtick syntax.
+  #
+  # @param value [String] Metadata text.
+  #
+  # @return [String] GFM table-safe Markdown code span.
+  def metadata_code_span(value)
+    value = value.gsub("|", "\\|")
+    fence = "`" * (value.scan(/`+/).max_by(&:length).to_s.length + 1)
+    padding = " " if value.start_with?("`") || value.end_with?("`")
+
+    "#{fence}#{padding}#{value}#{padding}#{fence}"
   end
 
   # Converts RDoc HTML into GitHub-flavored Markdown.

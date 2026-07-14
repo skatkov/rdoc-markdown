@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Adding metadata to classes/modules
+
 ## 0.11.1
 
 - Changed headings from standalone anchors to adjacent inline anchors:

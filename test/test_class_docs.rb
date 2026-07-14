@@ -16,6 +16,7 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#generate"
   cover "RDoc::Generator::Markdown#legacy_paths_for"
+  cover "RDoc::Generator::Markdown#metadata_code_span"
   cover "RDoc::Generator::Markdown#normalized_full_name"
   cover "RDoc::Generator::Markdown#output_path_for"
   cover "RDoc::Generator::Markdown#setup"
@@ -76,6 +77,25 @@ class TestClassDocs < Minitest::Test
     assert_includes entries, ["VendoredPathExpander::PathExpander", "Class", "VendoredPathExpander/PathExpander.md"]
     assert_eql 1, entries.count { |entry| entry == ["VendoredPathExpander::PathExpander", "Class", "VendoredPathExpander/PathExpander.md"] }
     refute(entries.any? { |name, _type, _path| name.include?("VendoredPathExpander::Minitest::VendoredPathExpander") })
+  end
+
+  def test_generate_escapes_metadata_code_spans
+    store = rdoc_store
+    source = rdoc_file(store, name: "`lib|source``|.rb")
+    plain_source = rdoc_file(store, name: "plain|source.rb")
+    klass = RDoc::NormalClass.new("EscapedMetadata", "Base|``Name|`")
+    klass.store = store
+    klass.full_name = "EscapedMetadata"
+    klass.record_location(source)
+    klass.record_location(plain_source)
+    klass.add_comment(RDoc::Comment.new("Escaped metadata"), source)
+
+    dir = generate_from_store([klass])
+    markdown = File.read(File.join(dir, "EscapedMetadata.md"))
+
+    assert_includes markdown, "| **Inherits** | ``` Base\\|``Name\\|` ``` |"
+    assert_includes markdown, "``` `lib\\|source``\\|.rb ```"
+    assert_includes markdown, "`plain\\|source.rb`"
   end
 
   def test_generate_normalizes_synthetic_class_with_multiple_middle_segments
