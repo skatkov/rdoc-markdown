@@ -9,6 +9,7 @@ require "rdiscount"
 class TestGenerator < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#main_page?"
+  cover "RDoc::Generator::Markdown#metadata_reference"
   cover "RDoc::Generator::Markdown#method_signature"
   cover "RDoc::Generator::Markdown#page_type"
   cover "RDoc::Generator::Markdown#setup"
@@ -64,6 +65,14 @@ class TestGenerator < Minitest::Test
     end
 
     duck_doc = File.read("#{dir}/Duck.md")
+    assert_includes duck_doc, <<~MARKDOWN.strip
+      |  |  |
+      | --- | --- |
+      | **Inherits** | [`Object`](Object.md) |
+      | **Includes** | [`Waterfowl`](Waterfowl.md) |
+      | **Defined in** | `example.rb` |
+    MARKDOWN
+    assert_includes duck_doc, "| **Defined in** | `example.rb` |\n\nA duck is"
     assert_includes duck_doc, "[`Waterfowl`](Waterfowl.md)"
     assert_includes duck_doc, "[`Bird`](Bird.md)"
     refute_match(%r{\]\((?!https?://|mailto:|#)[^)]+\.html(?:#[^)]+)?\)}, duck_doc)
@@ -74,6 +83,7 @@ class TestGenerator < Minitest::Test
     refute_includes duck_doc, "```\nbird::"
 
     bird_doc = File.read("#{dir}/Bird.md")
+    refute_includes bird_doc, "| **Includes** |"
     refute_match(/\[¶\]/, bird_doc)
     refute_match(/\[↑\]\(#top\)/, bird_doc)
     assert_includes bird_doc, "##### Example"
@@ -111,6 +121,40 @@ class TestGenerator < Minitest::Test
     ]
 
     assert_equal(expected, result)
+  end
+
+  def test_generator_renders_class_metadata_for_reopened_classes
+    _workspace, root = project_fixture(
+      "class-metadata",
+      "lib/metadata.rb" => <<~RUBY,
+        class MetadataBase; end
+        module FirstMixin; end
+        module SecondMixin; end
+
+        class MetadataExample < MetadataBase
+          include FirstMixin
+          include SecondMixin
+          include ExternalMixin
+        end
+      RUBY
+      "lib/reopened.rb" => "class MetadataExample; end\n"
+    )
+
+    files = [File.join(root, "lib/metadata.rb"), File.join(root, "lib/reopened.rb")]
+    dir = run_generator(files, "class metadata") { |options| options.root = root }
+    metadata_doc = File.read(File.join(dir, "MetadataExample.md"))
+
+    assert_includes metadata_doc, <<~MARKDOWN.strip
+      |  |  |
+      | --- | --- |
+      | **Inherits** | [`MetadataBase`](MetadataBase.md) |
+      | **Includes** | [`FirstMixin`](FirstMixin.md), [`SecondMixin`](SecondMixin.md), `ExternalMixin` |
+      | **Defined in** | `lib/metadata.rb`, `lib/reopened.rb` |
+    MARKDOWN
+
+    first_mixin_doc = File.read(File.join(dir, "FirstMixin.md"))
+    refute_includes first_mixin_doc, "| **Inherits** |"
+    assert_includes first_mixin_doc, "| **Defined in** | `lib/metadata.rb` |"
   end
 
   def test_generator_marks_explicit_root_pages_and_configured_main_page

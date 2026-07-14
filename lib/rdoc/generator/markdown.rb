@@ -351,6 +351,19 @@ class RDoc::Generator::Markdown
     class_doc_for(code_object).fetch(:legacy_paths)
   end
 
+  # Renders a class or module reference, linking it when its documentation is emitted.
+  #
+  # @param target [RDoc::ClassModule, String] Resolved RDoc object or unresolved name.
+  # @param label [String] Visible reference text.
+  #
+  # @return [String] Markdown code or link.
+  def metadata_reference(target, label)
+    class_doc = @class_docs_by_object_id[target.object_id]
+    return "`#{label}`" unless class_doc
+
+    "[`#{label}`](#{class_doc.fetch(:output_path)})"
+  end
+
   # Converts RDoc HTML into GitHub-flavored Markdown.
   #
   # @param input [String] RDoc HTML fragment.

@@ -1,4 +1,22 @@
 # <%= klass.type.capitalize %> <%= display_name(klass) %><%= anchor(klass.aref.strip) %>
+<%- superclass = klass.superclass if klass.type == "class" -%>
+<%- includes = klass.includes -%>
+<%- source_files = klass.in_files -%>
+<%- if superclass || !includes.empty? || !source_files.empty? -%>
+
+|  |  |
+| --- | --- |
+<%- if superclass -%>
+| **Inherits** | <%= metadata_reference(superclass, superclass.respond_to?(:full_name) ? superclass.full_name : superclass) %> |
+<%- end -%>
+<%- unless includes.empty? -%>
+| **Includes** | <%= includes.map { |mixin| metadata_reference(mixin.module, mixin.name) }.join(", ") %> |
+<%- end -%>
+<%- unless source_files.empty? -%>
+| **Defined in** | <%= source_files.map { |file| "`#{file.relative_name}`" }.join(", ") %> |
+<%- end -%>
+<%- end -%>
+
 <%- class_description = describe(klass) -%>
 <%- unless class_description.empty? -%>
 <%= class_description %>
