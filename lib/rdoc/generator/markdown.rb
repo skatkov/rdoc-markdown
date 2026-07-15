@@ -766,7 +766,7 @@ class RDoc::Generator::Markdown
   #
   # @return [Hash{Symbol => Object}] Metadata for rendering the object.
   def class_doc_for(code_object)
-    @class_docs_by_name.fetch(normalized_full_name(code_object.full_name))
+    @class_docs_by_object_id.fetch(code_object.object_id)
   end
 
   # Builds canonical class documentation metadata from RDoc objects.
@@ -888,6 +888,7 @@ class RDoc::Generator::Markdown
     end
 
     @class_docs = build_class_docs(@store.all_classes_and_modules.sort)
+    @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
     @class_docs_by_name = @class_docs.to_h { |doc| [doc.fetch(:display_name), doc] }
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)

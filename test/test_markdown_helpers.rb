@@ -424,6 +424,19 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "Alias for: [`find`](../OtherAliases.md#method-i-find)"
   end
 
+  def test_method_alias_cannot_link_to_discarded_duplicate
+    selected = build_rdoc_class(full_name: "Real::Thing", description: "Selected", methods: 2)
+    discarded = build_rdoc_class(full_name: "Real::Inner::Real::Thing", description: "Discarded")
+    aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
+    ghost = rdoc_method("ghost", visible: true)
+    alias_method = rdoc_method("phantom", visible: true)
+    alias_method.is_alias_for = ghost
+    discarded.add_method(ghost)
+    aliases.add_method(alias_method)
+
+    assert_raises(KeyError) { generate_markdown(classes: [selected, discarded, aliases]) }
+  end
+
   def test_generated_markdown_collapses_blank_lines_and_strips_line_endings
     page = rdoc_page(relative_name: "spacing.rdoc", comment: "Line 1  \n\n\nLine 2")
 
