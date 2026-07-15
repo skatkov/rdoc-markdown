@@ -2,6 +2,8 @@
 
 require_relative "test_helper"
 
+require "commonmarker"
+require "nokogiri"
 require "rdoc/rdoc"
 require "rdoc/markdown"
 
@@ -16,7 +18,8 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#generate"
   cover "RDoc::Generator::Markdown#legacy_paths_for"
-  cover "RDoc::Generator::Markdown#metadata_code_span"
+  cover "RDoc::Generator::Markdown#metadata_reference"
+  cover "RDoc::Generator::Markdown#metadata_table_cell"
   cover "RDoc::Generator::Markdown#normalized_full_name"
   cover "RDoc::Generator::Markdown#output_path_for"
   cover "RDoc::Generator::Markdown#setup"
@@ -79,23 +82,24 @@ class TestClassDocs < Minitest::Test
     refute(entries.any? { |name, _type, _path| name.include?("VendoredPathExpander::Minitest::VendoredPathExpander") })
   end
 
-  def test_generate_escapes_metadata_code_spans
+  def test_generate_renders_metadata_as_table_cells
     store = rdoc_store
-    source = rdoc_file(store, name: "`lib|source``|.rb")
-    plain_source = rdoc_file(store, name: "plain|source.rb")
-    klass = RDoc::NormalClass.new("EscapedMetadata", "Base|``Name|`")
+    source = rdoc_file(store, name: "a\\|b|c.rb")
+    klass = RDoc::NormalClass.new("EscapedMetadata", "Struct.new(\n  :value\n)")
     klass.store = store
     klass.full_name = "EscapedMetadata"
     klass.record_location(source)
-    klass.record_location(plain_source)
     klass.add_comment(RDoc::Comment.new("Escaped metadata"), source)
 
     dir = generate_from_store([klass])
     markdown = File.read(File.join(dir, "EscapedMetadata.md"))
+    fragment = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+    rows = fragment.css("table tbody tr").map { |row| row.css("td").map(&:text) }
 
-    assert_includes markdown, "| **Inherits** | ``` Base\\|``Name\\|` ``` |"
-    assert_includes markdown, "``` `lib\\|source``\\|.rb ```"
-    assert_includes markdown, "`plain\\|source.rb`"
+    assert_eql [
+      ["Inherits", "Struct.new( :value )"],
+      ["Defined in", "a\\|b|c.rb"]
+    ], rows
   end
 
   def test_generate_normalizes_synthetic_class_with_multiple_middle_segments

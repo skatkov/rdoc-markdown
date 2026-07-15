@@ -253,16 +253,17 @@ class RDoc::Generator::Markdown
     template = ERB.new(template_content, trim_mode: "-")
 
     @classes.each do |klass|
-      result = finalize_markdown(template.result(binding), current_output_path: output_path_for(klass))
+      content = template.result(binding)
+      output_path = output_path_for(klass)
 
-      out_file = Pathname.new("#{output_dir}/#{output_path_for(klass)}")
+      out_file = Pathname.new("#{output_dir}/#{output_path}")
       out_file.dirname.mkpath
-      File.write(out_file, result)
+      File.write(out_file, finalize_markdown(content, current_output_path: output_path))
 
       legacy_paths_for(klass).each do |legacy_path|
         legacy_file = Pathname.new("#{output_dir}/#{legacy_path}")
         legacy_file.dirname.mkpath
-        File.write(legacy_file, result)
+        File.write(legacy_file, finalize_markdown(content, current_output_path: legacy_path))
       end
     end
   end
@@ -356,26 +357,22 @@ class RDoc::Generator::Markdown
   # @param target [RDoc::ClassModule, String] Resolved RDoc object or unresolved name.
   # @param label [String] Visible reference text.
   #
-  # @return [String] Markdown code or link.
+  # @return [String] Markdown text or link.
   def metadata_reference(target, label)
-    class_doc = @class_docs_by_object_id[target.object_id]
-    code_span = metadata_code_span(label)
-    return code_span unless class_doc
+    class_doc = @class_docs_by_name[normalized_full_name(target.full_name)] if target.respond_to?(:full_name)
+    cell = metadata_table_cell(label)
+    return cell unless class_doc
 
-    "[#{code_span}](#{class_doc.fetch(:output_path)})"
+    "[#{cell}](#{class_doc.fetch(:output_path)})"
   end
 
-  # Renders table metadata as a code span without exposing pipe or backtick syntax.
+  # Normalizes and escapes text for a Markdown table cell.
   #
   # @param value [String] Metadata text.
   #
-  # @return [String] GFM table-safe Markdown code span.
-  def metadata_code_span(value)
-    value = value.gsub("|", "\\|")
-    fence = "`" * (value.scan(/`+/).max_by(&:length).to_s.length + 1)
-    padding = " " if value.start_with?("`") || value.end_with?("`")
-
-    "#{fence}#{padding}#{value}#{padding}#{fence}"
+  # @return [String] GFM table-safe Markdown text.
+  def metadata_table_cell(value)
+    value.split.join(" ").gsub(/[[:punct:]]/) { |character| "\\#{character}" }
   end
 
   # Converts RDoc HTML into GitHub-flavored Markdown.
@@ -758,7 +755,7 @@ class RDoc::Generator::Markdown
   #
   # @return [Hash{Symbol => Object}] Metadata for rendering the object.
   def class_doc_for(code_object)
-    @class_docs_by_object_id.fetch(code_object.object_id)
+    @class_docs_by_name.fetch(normalized_full_name(code_object.full_name))
   end
 
   # Builds canonical class documentation metadata from RDoc objects.
@@ -880,7 +877,7 @@ class RDoc::Generator::Markdown
     end
 
     @class_docs = build_class_docs(@store.all_classes_and_modules.sort)
-    @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
+    @class_docs_by_name = @class_docs.to_h { |doc| [doc.fetch(:display_name), doc] }
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
     @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files), @base_dir, @store)

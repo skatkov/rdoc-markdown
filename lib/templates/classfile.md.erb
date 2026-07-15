@@ -13,7 +13,7 @@
 | **Includes** | <%= includes.map { |mixin| metadata_reference(mixin.module, mixin.name) }.join(", ") %> |
 <%- end -%>
 <%- unless source_files.empty? -%>
-| **Defined in** | <%= source_files.map { |file| metadata_code_span(file.relative_name) }.join(", ") %> |
+| **Defined in** | <%= source_files.map { |file| metadata_table_cell(file.relative_name) }.join(", ") %> |
 <%- end -%>
 <%- end -%>
 
