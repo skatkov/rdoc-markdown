@@ -370,13 +370,13 @@ class RDoc::Generator::Markdown
     "[#{cell}](#{class_doc.fetch(:output_path)})"
   end
 
-  # Normalizes and escapes text for a Markdown table cell.
+  # Escapes text for a Markdown table cell.
   #
   # @param value [String] Metadata text.
   #
   # @return [String] GFM table-safe Markdown text.
   def metadata_table_cell(value)
-    value.split.join(" ").gsub(/[[:punct:]]/) { |character| "\\#{character}" }
+    value.gsub(/[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]/) { |character| "\\#{character}" }
   end
 
   # Converts RDoc HTML into GitHub-flavored Markdown.

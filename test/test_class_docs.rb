@@ -84,8 +84,8 @@ class TestClassDocs < Minitest::Test
 
   def test_generate_renders_metadata_as_table_cells
     store = rdoc_store
-    source = rdoc_file(store, name: "a\\|b|c.rb")
-    klass = RDoc::NormalClass.new("EscapedMetadata", "Struct.new(\n  :value\n)")
+    source = rdoc_file(store, name: "a  b—c\\|d.rb")
+    klass = RDoc::NormalClass.new("EscapedMetadata", "Struct.new(\n  :value\n) { |member| member }")
     klass.store = store
     klass.full_name = "EscapedMetadata"
     klass.record_location(source)
@@ -97,8 +97,8 @@ class TestClassDocs < Minitest::Test
     rows = fragment.css("table tbody tr").map { |row| row.css("td").map(&:text) }
 
     assert_eql [
-      ["Inherits", "Struct.new( :value )"],
-      ["Defined in", "a\\|b|c.rb"]
+      ["Inherits", "Struct.new( :value ) { |member| member }"],
+      ["Defined in", "a  b—c\\|d.rb"]
     ], rows
   end
 

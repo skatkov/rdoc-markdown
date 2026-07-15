@@ -7,7 +7,7 @@
 |  |  |
 | --- | --- |
 <%- if superclass -%>
-| **Inherits** | <%= metadata_reference(superclass, superclass.respond_to?(:full_name) ? superclass.full_name : superclass) %> |
+| **Inherits** | <%= metadata_reference(superclass, superclass.respond_to?(:full_name) ? superclass.full_name : superclass.split.join(" ")) %> |
 <%- end -%>
 <%- unless includes.empty? -%>
 | **Includes** | <%= includes.map { |mixin| metadata_reference(mixin.module, mixin.name) }.join(", ") %> |
