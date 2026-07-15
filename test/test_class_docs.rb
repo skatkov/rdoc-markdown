@@ -623,21 +623,24 @@ class TestClassDocs < Minitest::Test
     klass = build_rdoc_class(
       full_name: "Solo::Inner::Solo::Thing",
       description: "See {alpha}[alpha_rdoc.html], {canonical}[Solo/Thing.html], " \
-                   "and {legacy}[Solo/Inner/Solo/Thing.html].",
+                   "{legacy}[Solo/Inner/Solo/Thing.html], and {sibling}[Sibling.html].",
       methods: 1
     )
+    sibling = build_rdoc_class(full_name: "Solo::Sibling", description: "Sibling docs")
     pages = [
       rdoc_page(relative_name: "alpha.rdoc", comment: "Alpha page"),
       rdoc_page(relative_name: "hidden.rdoc", comment: "Hidden page", display: false),
       rdoc_page(relative_name: "binary.rdoc", comment: "Binary page", parser: nil)
     ]
 
-    dir = generate_from_store([klass], pages: pages)
+    dir = generate_from_store([klass, sibling], pages: pages)
 
     markdown = File.read(File.join(dir, "Solo/Thing.md"))
     assert_includes markdown, "[alpha](../alpha_rdoc.md)"
     assert_includes markdown, "[canonical](Thing.md)"
     assert_includes markdown, "[legacy](Inner/Solo/Thing.md)"
+    assert_includes markdown, "[sibling](Sibling.md)"
+    assert_includes File.read(File.join(dir, "Solo/Inner/Solo/Thing.md")), "[sibling](../../Sibling.md)"
     assert_false File.exist?(File.join(dir, "hidden_rdoc.md"))
     assert_false File.exist?(File.join(dir, "binary_rdoc.md"))
   end
