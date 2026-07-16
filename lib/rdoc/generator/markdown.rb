@@ -75,7 +75,6 @@ class RDoc::Generator::Markdown
       super
       @markdown_unknown_tags = map.fetch("markdown_unknown_tags") if map.key?("markdown_unknown_tags")
     end
-
   end
 
   # Registers markdown generator-specific RDoc options.
