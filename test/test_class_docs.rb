@@ -2,6 +2,8 @@
 
 require_relative "test_helper"
 
+require "commonmarker"
+require "nokogiri"
 require "rdoc/rdoc"
 require "rdoc/markdown"
 
@@ -16,6 +18,8 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#generate"
   cover "RDoc::Generator::Markdown#legacy_paths_for"
+  cover "RDoc::Generator::Markdown#metadata_reference"
+  cover "RDoc::Generator::Markdown#metadata_table_cell"
   cover "RDoc::Generator::Markdown#normalized_full_name"
   cover "RDoc::Generator::Markdown#output_path_for"
   cover "RDoc::Generator::Markdown#setup"
@@ -76,6 +80,42 @@ class TestClassDocs < Minitest::Test
     assert_includes entries, ["VendoredPathExpander::PathExpander", "Class", "VendoredPathExpander/PathExpander.md"]
     assert_eql 1, entries.count { |entry| entry == ["VendoredPathExpander::PathExpander", "Class", "VendoredPathExpander/PathExpander.md"] }
     refute(entries.any? { |name, _type, _path| name.include?("VendoredPathExpander::Minitest::VendoredPathExpander") })
+  end
+
+  def test_generate_renders_metadata_as_table_cells
+    store = rdoc_store
+    source = rdoc_file(store, name: "a  b—c\\|d.rb")
+    klass = RDoc::NormalClass.new("EscapedMetadata", "Struct.new(\n  :value\n) { |member| member }")
+    klass.store = store
+    klass.full_name = "EscapedMetadata"
+    klass.record_location(source)
+    klass.add_comment(RDoc::Comment.new("Escaped metadata"), source)
+
+    dir = generate_from_store([klass])
+    markdown = File.read(File.join(dir, "EscapedMetadata.md"))
+    fragment = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+    rows = fragment.css("table tbody tr").map { |row| row.css("td").map(&:text) }
+
+    assert_eql [
+      ["Inherits", "Struct.new( :value ) { |member| member }"],
+      ["Defined in", "a  b—c\\|d.rb"]
+    ], rows
+  end
+
+  def test_generate_renders_filename_line_break_inside_one_table_row
+    store = rdoc_store
+    source = rdoc_file(store, name: "line\nbreak.rb")
+    klass = RDoc::NormalClass.new("SingleLineMetadata")
+    klass.store = store
+    klass.full_name = "SingleLineMetadata"
+    klass.record_location(source)
+
+    dir = generate_from_store([klass])
+    markdown = File.read(File.join(dir, "SingleLineMetadata.md"))
+    table = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).at_css("table")
+
+    assert_eql [["Defined in", "line break.rb"]],
+      table.css("tbody tr").map { |row| row.css("td").map(&:text) }
   end
 
   def test_generate_normalizes_synthetic_class_with_multiple_middle_segments
@@ -599,21 +639,24 @@ class TestClassDocs < Minitest::Test
     klass = build_rdoc_class(
       full_name: "Solo::Inner::Solo::Thing",
       description: "See {alpha}[alpha_rdoc.html], {canonical}[Solo/Thing.html], " \
-                   "and {legacy}[Solo/Inner/Solo/Thing.html].",
+                   "{legacy}[Solo/Inner/Solo/Thing.html], and {sibling}[Sibling.html].",
       methods: 1
     )
+    sibling = build_rdoc_class(full_name: "Solo::Sibling", description: "Sibling docs")
     pages = [
       rdoc_page(relative_name: "alpha.rdoc", comment: "Alpha page"),
       rdoc_page(relative_name: "hidden.rdoc", comment: "Hidden page", display: false),
       rdoc_page(relative_name: "binary.rdoc", comment: "Binary page", parser: nil)
     ]
 
-    dir = generate_from_store([klass], pages: pages)
+    dir = generate_from_store([klass, sibling], pages: pages)
 
     markdown = File.read(File.join(dir, "Solo/Thing.md"))
     assert_includes markdown, "[alpha](../alpha_rdoc.md)"
     assert_includes markdown, "[canonical](Thing.md)"
     assert_includes markdown, "[legacy](Inner/Solo/Thing.md)"
+    assert_includes markdown, "[sibling](Sibling.md)"
+    assert_includes File.read(File.join(dir, "Solo/Inner/Solo/Thing.md")), "[sibling](../../Sibling.md)"
     assert_false File.exist?(File.join(dir, "hidden_rdoc.md"))
     assert_false File.exist?(File.join(dir, "binary_rdoc.md"))
   end

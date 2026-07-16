@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Adding metadata to classes/modules
+- Fixed: cross-linking between markdown files
+
 ## 0.11.1
 
 - Changed headings from standalone anchors to adjacent inline anchors:

@@ -75,7 +75,6 @@ class RDoc::Generator::Markdown
       super
       @markdown_unknown_tags = map.fetch("markdown_unknown_tags") if map.key?("markdown_unknown_tags")
     end
-
   end
 
   # Registers markdown generator-specific RDoc options.
@@ -253,16 +252,17 @@ class RDoc::Generator::Markdown
     template = ERB.new(template_content, trim_mode: "-")
 
     @classes.each do |klass|
-      result = finalize_markdown(template.result(binding), current_output_path: output_path_for(klass))
+      content = template.result(binding)
+      output_path = output_path_for(klass)
 
-      out_file = Pathname.new("#{output_dir}/#{output_path_for(klass)}")
-      out_file.dirname.mkpath
-      File.write(out_file, result)
-
-      legacy_paths_for(klass).each do |legacy_path|
-        legacy_file = Pathname.new("#{output_dir}/#{legacy_path}")
-        legacy_file.dirname.mkpath
-        File.write(legacy_file, result)
+      ([output_path] | legacy_paths_for(klass)).each do |destination_path|
+        out_file = Pathname.new("#{output_dir}/#{destination_path}")
+        out_file.dirname.mkpath
+        File.write(out_file, finalize_markdown(
+          content,
+          canonical_output_path: output_path,
+          current_output_path: destination_path
+        ))
       end
     end
   end
@@ -276,7 +276,11 @@ class RDoc::Generator::Markdown
       out_file.dirname.mkpath
 
       content = markdownify(page.description)
-      File.write(out_file, finalize_markdown(content, current_output_path: page_output_path(page)))
+      File.write(out_file, finalize_markdown(
+        content,
+        canonical_output_path: page_output_path(page),
+        current_output_path: page_output_path(page)
+      ))
     end
   end
 
@@ -349,6 +353,30 @@ class RDoc::Generator::Markdown
   # @return [Array<String>] Legacy Markdown paths.
   def legacy_paths_for(code_object)
     class_doc_for(code_object).fetch(:legacy_paths)
+  end
+
+  # Renders a class or module reference, linking it when its documentation is emitted.
+  #
+  # @param target [RDoc::ClassModule, String] Resolved RDoc object or unresolved name.
+  # @param label [String] Visible reference text.
+  #
+  # @return [String] Markdown text or link.
+  def metadata_reference(target, label)
+    class_doc = @class_docs_by_name[normalized_full_name(target.full_name)] if target.respond_to?(:full_name)
+    cell = metadata_table_cell(label)
+    return cell unless class_doc
+
+    "[#{cell}](#{class_doc.fetch(:output_path)})"
+  end
+
+  # Escapes text for a Markdown table cell.
+  #
+  # @param value [String] Metadata text.
+  #
+  # @return [String] GFM table-safe Markdown text.
+  def metadata_table_cell(value)
+    value.gsub(/[[:blank:]]*\R[[:blank:]]*/, " ")
+      .gsub(/[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]/) { |character| "\\#{character}" }
   end
 
   # Converts RDoc HTML into GitHub-flavored Markdown.
@@ -589,12 +617,17 @@ class RDoc::Generator::Markdown
   # Applies final whitespace and link normalization before writing Markdown.
   #
   # @param content [String] Markdown content.
+  # @param canonical_output_path [String] Canonical output path used to resolve links.
   # @param current_output_path [String] Output path for the file being written.
   #
   # @return [String] Final Markdown ending with one newline.
-  def finalize_markdown(content, current_output_path:)
+  def finalize_markdown(content, canonical_output_path:, current_output_path:)
     output = content.lines.map(&:rstrip).join("\n")
-    output = normalize_internal_links(output, current_output_path: current_output_path)
+    output = normalize_internal_links(
+      output,
+      canonical_output_path: canonical_output_path,
+      current_output_path: current_output_path
+    )
     output = output.sub(/\n{3,}/, "\n\n")
     "#{output}\n"
   end
@@ -671,10 +704,12 @@ class RDoc::Generator::Markdown
   # Rewrites local Markdown links relative to the current output file.
   #
   # @param markdown [String] Markdown content.
+  # @param canonical_output_path [String] Canonical output path used to resolve links.
   # @param current_output_path [String] Output path for the file being written.
   #
   # @return [String] Markdown with normalized internal links.
-  def normalize_internal_links(markdown, current_output_path:)
+  def normalize_internal_links(markdown, canonical_output_path:, current_output_path:)
+    canonical_dir = Pathname.new(canonical_output_path).dirname
     current_dir = Pathname.new(current_output_path).dirname
 
     markdown.gsub(%r{\]\(([^)]+)\)}) do
@@ -682,7 +717,7 @@ class RDoc::Generator::Markdown
       path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
 
-      resolved = resolve_output_path(path, current_dir)
+      resolved = resolve_output_path(path, canonical_dir)
       rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
       "](#{rewritten}#{suffix})"
     end
@@ -854,6 +889,7 @@ class RDoc::Generator::Markdown
 
     @class_docs = build_class_docs(@store.all_classes_and_modules.sort)
     @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
+    @class_docs_by_name = @class_docs.to_h { |doc| [doc.fetch(:display_name), doc] }
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
     @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files), @base_dir, @store)

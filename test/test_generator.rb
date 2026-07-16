@@ -2,6 +2,8 @@
 
 require_relative "test_helper"
 
+require "commonmarker"
+require "nokogiri"
 require "rdoc/rdoc"
 require "rdoc/markdown"
 require "rdiscount"
@@ -9,6 +11,7 @@ require "rdiscount"
 class TestGenerator < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#main_page?"
+  cover "RDoc::Generator::Markdown#metadata_reference"
   cover "RDoc::Generator::Markdown#method_signature"
   cover "RDoc::Generator::Markdown#page_type"
   cover "RDoc::Generator::Markdown#setup"
@@ -64,7 +67,15 @@ class TestGenerator < Minitest::Test
     end
 
     duck_doc = File.read("#{dir}/Duck.md")
-    assert_includes duck_doc, "[`Waterfowl`](Waterfowl.md)"
+    assert_includes duck_doc, <<~'MARKDOWN'.strip
+      |  |  |
+      | --- | --- |
+      | **Inherits** | [Object](Object.md) |
+      | **Includes** | [Waterfowl](Waterfowl.md) |
+      | **Defined in** | example\.rb |
+    MARKDOWN
+    assert_includes duck_doc, "| **Defined in** | example\\.rb |\n\nA duck is"
+    assert_includes duck_doc, "[Waterfowl](Waterfowl.md)"
     assert_includes duck_doc, "[`Bird`](Bird.md)"
     refute_match(%r{\]\((?!https?://|mailto:|#)[^)]+\.html(?:#[^)]+)?\)}, duck_doc)
     assert_equal 1, duck_doc.scan("#### `MAX_VELOCITY`").count
@@ -74,6 +85,7 @@ class TestGenerator < Minitest::Test
     refute_includes duck_doc, "```\nbird::"
 
     bird_doc = File.read("#{dir}/Bird.md")
+    refute_includes bird_doc, "| **Includes** |"
     refute_match(/\[¶\]/, bird_doc)
     refute_match(/\[↑\]\(#top\)/, bird_doc)
     assert_includes bird_doc, "##### Example"
@@ -111,6 +123,89 @@ class TestGenerator < Minitest::Test
     ]
 
     assert_equal(expected, result)
+  end
+
+  def test_generator_renders_class_metadata_for_reopened_classes
+    _workspace, root = project_fixture(
+      "class-metadata",
+      "lib/metadata  source—one.rb" => <<~RUBY,
+        class MetadataBase; end
+        module FirstMixin; end
+        module SecondMixin; end
+
+        class MetadataExample < MetadataBase
+          include FirstMixin
+          include SecondMixin
+          include ExternalMixin
+        end
+      RUBY
+      "lib/reopened.rb" => "class MetadataExample; end\n"
+    )
+
+    files = [File.join(root, "lib/metadata  source—one.rb"), File.join(root, "lib/reopened.rb")]
+    dir = run_generator(files, "class metadata") { |options| options.root = root }
+    metadata_doc = File.read(File.join(dir, "MetadataExample.md"))
+    metadata_table = Nokogiri::HTML.fragment(Commonmarker.to_html(metadata_doc)).at_css("table")
+
+    assert_eql [
+      ["Inherits", "MetadataBase"],
+      ["Includes", "FirstMixin, SecondMixin, ExternalMixin"],
+      ["Defined in", "lib/metadata  source—one.rb, lib/reopened.rb"]
+    ], metadata_table.css("tbody tr").map { |row| row.css("td").map(&:text) }
+    assert_eql ["MetadataBase.md", "FirstMixin.md", "SecondMixin.md"],
+      metadata_table.css("a").map { |link| link["href"] }
+
+    first_mixin_doc = File.read(File.join(dir, "FirstMixin.md"))
+    first_mixin_table = Nokogiri::HTML.fragment(Commonmarker.to_html(first_mixin_doc)).at_css("table")
+
+    assert_eql [["Defined in", "lib/metadata  source—one.rb"]],
+      first_mixin_table.css("tbody tr").map { |row| row.css("td").map(&:text) }
+  end
+
+  def test_generator_links_normalized_duplicate_superclass
+    _workspace, root = project_fixture(
+      "normalized-superclass",
+      "lib/duplicates.rb" => <<~RUBY
+        module Root
+          class Thing
+            def real_one; end
+            def real_two; end
+          end
+
+          module Inner
+            module Root
+              class Thing
+                def synthetic; end
+              end
+
+              class Undocumented; end
+            end
+          end
+        end
+
+        class Child < Root::Inner::Root::Thing; end
+        class UnlinkedChild < Root::Inner::Root::Undocumented; end
+      RUBY
+    )
+
+    dir = run_generator(File.join(root, "lib/duplicates.rb"), "normalized superclass") { |options| options.root = root }
+
+    assert_path_exists File.join(dir, "Root/Thing.md")
+    assert_path_exists File.join(dir, "Root/Inner/Root/Thing.md")
+    child_table = Nokogiri::HTML.fragment(Commonmarker.to_html(File.read(File.join(dir, "Child.md")))).at_css("table")
+    child_inheritance = child_table.at_css("tbody tr")
+
+    assert_eql ["Inherits", "Root::Inner::Root::Thing"], child_inheritance.css("td").map(&:text)
+    assert_eql ["Root/Thing.md"], child_inheritance.css("a").map { |link| link["href"] }
+
+    refute_path_exists File.join(dir, "Root/Undocumented.md")
+    unlinked_child_table = Nokogiri::HTML.fragment(
+      Commonmarker.to_html(File.read(File.join(dir, "UnlinkedChild.md")))
+    ).at_css("table")
+    unlinked_child_inheritance = unlinked_child_table.at_css("tbody tr")
+
+    assert_eql ["Inherits", "Root::Inner::Root::Undocumented"], unlinked_child_inheritance.css("td").map(&:text)
+    assert_empty unlinked_child_inheritance.css("a")
   end
 
   def test_generator_marks_explicit_root_pages_and_configured_main_page
