@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Adding metadata to classes/modules
+- Fixed: cross-linking between markdown files
 
 ## 0.11.1
 

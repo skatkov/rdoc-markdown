@@ -376,7 +376,8 @@ class RDoc::Generator::Markdown
   #
   # @return [String] GFM table-safe Markdown text.
   def metadata_table_cell(value)
-    value.gsub(/[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]/) { |character| "\\#{character}" }
+    value.gsub(/[[:blank:]]*\R[[:blank:]]*/, " ")
+      .gsub(/[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]/) { |character| "\\#{character}" }
   end
 
   # Converts RDoc HTML into GitHub-flavored Markdown.

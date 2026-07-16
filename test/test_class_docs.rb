@@ -102,6 +102,22 @@ class TestClassDocs < Minitest::Test
     ], rows
   end
 
+  def test_generate_renders_filename_line_break_inside_one_table_row
+    store = rdoc_store
+    source = rdoc_file(store, name: "line\nbreak.rb")
+    klass = RDoc::NormalClass.new("SingleLineMetadata")
+    klass.store = store
+    klass.full_name = "SingleLineMetadata"
+    klass.record_location(source)
+
+    dir = generate_from_store([klass])
+    markdown = File.read(File.join(dir, "SingleLineMetadata.md"))
+    table = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).at_css("table")
+
+    assert_eql [["Defined in", "line break.rb"]],
+      table.css("tbody tr").map { |row| row.css("td").map(&:text) }
+  end
+
   def test_generate_normalizes_synthetic_class_with_multiple_middle_segments
     synthetic = build_rdoc_class(
       full_name: "Root::One::Two::Root::Thing",
