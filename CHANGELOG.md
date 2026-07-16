@@ -2,8 +2,21 @@
 
 ## Unreleased
 
+## 0.13.0
+
 - Adding metadata to classes/modules
 - Fixed: cross-linking between markdown files
+
+## 0.12.1
+
+- simplification: automatic root-page inclusion hook.
+- Explicit RDoc file lists are authoritative again; unlisted README, CHANGELOG, and similar files are not silently added.
+
+## 0.12.0
+
+- Indexing: Classifies root-level README and GUIDE pages as Readme.
+- Indexing: Classifies root-level CHANGELOG and HISTORY pages as Changelog.
+- Recognizes .rdoc, .md, and .markdown, case-insensitively by basename.
 
 ## 0.11.1
 
