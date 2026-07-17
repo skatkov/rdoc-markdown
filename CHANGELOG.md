@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.13.1
+
 - reduce metadata escape characters only to absolutely necessary (|, \)
 
 ## 0.13.0
