@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- reduce metadata escape characters only to absolutely necessary (|, \)
+
 ## 0.13.0
 
 - Adding metadata to classes/modules

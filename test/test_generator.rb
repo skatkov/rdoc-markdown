@@ -67,14 +67,14 @@ class TestGenerator < Minitest::Test
     end
 
     duck_doc = File.read("#{dir}/Duck.md")
-    assert_includes duck_doc, <<~'MARKDOWN'.strip
+    assert_includes duck_doc, <<~MARKDOWN.strip
       |  |  |
       | --- | --- |
       | **Inherits** | [Object](Object.md) |
       | **Includes** | [Waterfowl](Waterfowl.md) |
-      | **Defined in** | example\.rb |
+      | **Defined in** | example.rb |
     MARKDOWN
-    assert_includes duck_doc, "| **Defined in** | example\\.rb |\n\nA duck is"
+    assert_includes duck_doc, "| **Defined in** | example.rb |\n\nA duck is"
     assert_includes duck_doc, "[Waterfowl](Waterfowl.md)"
     assert_includes duck_doc, "[`Bird`](Bird.md)"
     refute_match(%r{\]\((?!https?://|mailto:|#)[^)]+\.html(?:#[^)]+)?\)}, duck_doc)
@@ -147,6 +147,7 @@ class TestGenerator < Minitest::Test
     metadata_doc = File.read(File.join(dir, "MetadataExample.md"))
     metadata_table = Nokogiri::HTML.fragment(Commonmarker.to_html(metadata_doc)).at_css("table")
 
+    assert_includes metadata_doc, "| **Defined in** | lib/metadata  source—one.rb, lib/reopened.rb |"
     assert_eql [
       ["Inherits", "MetadataBase"],
       ["Includes", "FirstMixin, SecondMixin, ExternalMixin"],
