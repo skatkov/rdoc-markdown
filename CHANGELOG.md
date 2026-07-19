@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.13.2
+
+- Don't add emtpy line break instead of missing metadata
+
 ## 0.13.1
 
 - reduce metadata escape characters only to absolutely necessary (|, \)
