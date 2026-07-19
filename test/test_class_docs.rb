@@ -121,8 +121,7 @@ class TestClassDocs < Minitest::Test
 
   def test_generate_does_not_add_spacing_without_metadata
     mod = RDoc::NormalModule.new("ActiveModel::API")
-    mod.full_name = "ActiveModel::API"
-    mod.add_section("Active Model API", RDoc::Comment.new(""))
+    mod.add_section("Active Model API")
 
     dir = generate_from_store([mod])
 
