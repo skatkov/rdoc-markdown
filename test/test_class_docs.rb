@@ -118,6 +118,18 @@ class TestClassDocs < Minitest::Test
       table.css("tbody tr").map { |row| row.css("td").map(&:text) }
   end
 
+  def test_generate_does_not_add_spacing_without_metadata
+    mod = RDoc::NormalModule.new("ActiveModel::API")
+    mod.add_section("Active Model API")
+
+    dir = generate_from_store([mod])
+
+    assert_eql <<~MARKDOWN, File.read(File.join(dir, "ActiveModel/API.md"))
+      # Module ActiveModel::API<a id="module-activemodel-api"></a>
+      ## Active Model API
+    MARKDOWN
+  end
+
   def test_generate_normalizes_synthetic_class_with_multiple_middle_segments
     synthetic = build_rdoc_class(
       full_name: "Root::One::Two::Root::Thing",
