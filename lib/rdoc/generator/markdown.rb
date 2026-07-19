@@ -628,6 +628,7 @@ class RDoc::Generator::Markdown
       canonical_output_path: canonical_output_path,
       current_output_path: current_output_path
     )
+    output = output.sub(/\n{3,}/, "\n\n").sub(/\A(# .+)\n\n(?=## )/, "\\1\n")
     "#{output}\n"
   end
 

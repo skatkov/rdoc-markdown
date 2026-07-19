@@ -17,28 +17,22 @@
 | **Defined in** | <%= source_files.map { |file| metadata_table_cell(file.relative_name) }.join(", ") %> |
 <%- end -%>
 <%- end -%>
+
 <%- class_description = describe(klass) -%>
 <%- unless class_description.empty? -%>
-<%- if has_metadata -%>
-
-<%- end -%>
 <%= class_description %>
 <%- end -%>
-<%- rendered_content = has_metadata || !class_description.empty? -%>
+
 <% klass.each_section do |section, constants, attributes| -%>
 <%- section_title = section.title.to_s.strip -%>
 <%- unless section_title.empty? -%>
-<%- if rendered_content -%>
 
-<%- end -%>
 ## <%= section_title %>
-<%- rendered_content = true -%>
 <%- end -%>
 <%- section_description = section_description(section, heading_level_offset: 2) -%>
 <%- unless section_description.empty? -%>
 
 <%= section_description %>
-<%- rendered_content = true -%>
 <%- end -%>
 <%- unless constants.empty? -%>
 
@@ -48,7 +42,6 @@
 #### `<%= const.name %>`<%= anchor(const.name) %>
 <%= describe(const, fallback: "Not documented.", heading_level_offset: 4) %>
 <% end -%>
-<%- rendered_content = true -%>
 <%- end -%>
 <%- unless attributes.empty? -%>
 
@@ -58,7 +51,6 @@
 #### `<%= attr.name %>` [<%= attr.rw %>]<%= anchor(attr.aref.strip) %>
 <%= describe(attr, fallback: "Not documented.", heading_level_offset: 4) %>
 <% end -%>
-<%- rendered_content = true -%>
 <%- end -%>
 <% klass.methods_by_type(section).each do |type, visibilities| -%>
 <% visibilities.each do |visibility, methods| -%>
@@ -71,7 +63,6 @@
 #### `<%= method.name %><%= method_signature(method) %>`<%= anchor(method.aref) %>
 <%= method_description(method, current_class: klass) %>
 <% end -%>
-<%- rendered_content = true -%>
 <% end -%>
 <% end -%>
 <% end -%>
