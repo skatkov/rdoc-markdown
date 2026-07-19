@@ -16,7 +16,6 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#display_name"
   cover "RDoc::Generator::Markdown#emit_classfiles"
   cover "RDoc::Generator::Markdown#emit_csv_index"
-  cover "RDoc::Generator::Markdown#finalize_markdown"
   cover "RDoc::Generator::Markdown#generate"
   cover "RDoc::Generator::Markdown#legacy_paths_for"
   cover "RDoc::Generator::Markdown#metadata_reference"
