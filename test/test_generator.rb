@@ -193,7 +193,7 @@ class TestGenerator < Minitest::Test
     dir = run_generator(File.join(root, "lib/duplicates.rb"), "normalized superclass") { |options| options.root = root }
 
     assert_path_exists File.join(dir, "Root/Thing.md")
-    assert_path_exists File.join(dir, "Root/Inner/Root/Thing.md")
+    refute_path_exists File.join(dir, "Root/Inner/Root/Thing.md")
     child_table = Nokogiri::HTML.fragment(Commonmarker.to_html(File.read(File.join(dir, "Child.md")))).at_css("table")
     child_inheritance = child_table.at_css("tbody tr")
 

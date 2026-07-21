@@ -245,16 +245,9 @@ class RDoc::Generator::Markdown
     @classes.each do |klass|
       content = template.result(binding)
       output_path = output_path_for(klass)
-
-      ([output_path] | legacy_paths_for(klass)).each do |destination_path|
-        out_file = Pathname.new("#{output_dir}/#{destination_path}")
-        out_file.dirname.mkpath
-        File.write(out_file, finalize_markdown(
-          content,
-          canonical_output_path: output_path,
-          current_output_path: destination_path
-        ))
-      end
+      out_file = Pathname.new("#{output_dir}/#{output_path}")
+      out_file.dirname.mkpath
+      File.write(out_file, finalize_markdown(content, current_output_path: output_path))
     end
   end
 
@@ -269,7 +262,6 @@ class RDoc::Generator::Markdown
       content = markdownify(render_description(page))
       File.write(out_file, finalize_markdown(
         content,
-        canonical_output_path: page_output_path(page),
         current_output_path: page_output_path(page)
       ))
     end
@@ -335,15 +327,6 @@ class RDoc::Generator::Markdown
   # @return [String] Relative Markdown path.
   def output_path_for(code_object)
     class_doc_for(code_object).fetch(:output_path)
-  end
-
-  # Returns compatibility paths that should mirror the canonical output.
-  #
-  # @param code_object [RDoc::Context] Class or module object.
-  #
-  # @return [Array<String>] Legacy Markdown paths.
-  def legacy_paths_for(code_object)
-    class_doc_for(code_object).fetch(:legacy_paths)
   end
 
   # Renders a class or module reference, linking it when its documentation is emitted.
@@ -673,17 +656,12 @@ class RDoc::Generator::Markdown
   # Applies final whitespace and link normalization before writing Markdown.
   #
   # @param content [String] Markdown content.
-  # @param canonical_output_path [String] Canonical output path used to resolve links.
   # @param current_output_path [String] Output path for the file being written.
   #
   # @return [String] Final Markdown ending with one newline.
-  def finalize_markdown(content, canonical_output_path:, current_output_path:)
+  def finalize_markdown(content, current_output_path:)
     output = content.lines.map(&:rstrip).join("\n")
-    output = normalize_internal_links(
-      output,
-      canonical_output_path: canonical_output_path,
-      current_output_path: current_output_path
-    )
+    output = normalize_internal_links(output, current_output_path: current_output_path)
     output = output.sub(/\n{3,}/, "\n\n")
     "#{output}\n"
   end
@@ -760,12 +738,10 @@ class RDoc::Generator::Markdown
   # Rewrites local Markdown links relative to the current output file.
   #
   # @param markdown [String] Markdown content.
-  # @param canonical_output_path [String] Canonical output path used to resolve links.
   # @param current_output_path [String] Output path for the file being written.
   #
   # @return [String] Markdown with normalized internal links.
-  def normalize_internal_links(markdown, canonical_output_path:, current_output_path:)
-    canonical_dir = Pathname.new(canonical_output_path).dirname
+  def normalize_internal_links(markdown, current_output_path:)
     current_dir = Pathname.new(current_output_path).dirname
 
     markdown.gsub(%r{\]\(([^)]+)\)}) do
@@ -773,7 +749,7 @@ class RDoc::Generator::Markdown
       path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
 
-      resolved = resolve_output_path(path, canonical_dir)
+      resolved = resolve_output_path(path, current_dir)
       rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
       "](#{rewritten}#{suffix})"
     end
@@ -836,14 +812,12 @@ class RDoc::Generator::Markdown
     classes.select(&:display?).each do |klass|
       display_name = normalized_full_name(klass.full_name)
       output_path = turn_to_path(display_name)
-      legacy_path = turn_to_path(klass.full_name)
       score = class_content_score(klass)
 
       candidate = {
         klass: klass,
         display_name: display_name,
         output_path: output_path,
-        legacy_paths: [legacy_path],
         score: score
       }
 
@@ -852,12 +826,7 @@ class RDoc::Generator::Markdown
       if existing.nil?
         docs_by_name[display_name] = candidate
       elsif candidate.fetch(:score) > existing.fetch(:score)
-        if existing.fetch(:score).positive?
-          candidate[:legacy_paths] |= existing.fetch(:legacy_paths)
-        end
         docs_by_name[display_name] = candidate
-      elsif candidate.fetch(:score).positive?
-        existing[:legacy_paths] |= candidate.fetch(:legacy_paths)
       end
     end
 
@@ -949,11 +918,7 @@ class RDoc::Generator::Markdown
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
     @markdown_output_object_ids = (@classes + @pages).map(&:object_id)
-    @known_output_paths = Set.new
-    @class_docs.each do |doc|
-      @known_output_paths << doc.fetch(:output_path)
-      doc.fetch(:legacy_paths).each { |path| @known_output_paths << path }
-    end
+    @known_output_paths = @class_docs.map { |doc| doc.fetch(:output_path) }
     @pages.each { |page| @known_output_paths << page_output_path(page) }
 
     @root_path_segment = Pathname.new(@options.root || ".").basename
