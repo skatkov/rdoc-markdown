@@ -40,7 +40,7 @@ rdoc-markdown uses `reverse_markdown` to convert RDoc's HTML fragments to Markdo
 rdoc --format=markdown --markdown-unknown-tags=raise
 ```
 
-Accepted values are `pass_through`, `drop`, `bypass`, and `raise`. The default is `pass_through`, which matches `reverse_markdown`'s default behavior.
+Accepted values are `pass_through`, `drop`, `bypass`, and `raise`. The default is `pass_through`.
 
 The same setting can be stored in RDoc's `.rdoc_options` file:
 
@@ -57,7 +57,6 @@ There are decent tools that offer search through structured plain-text files. Bu
 In my personal use-case, I use SQLite. All other databases seem to have a good support for CSV imports.
 
 ## Development
-Biggest issue is testing this locally, but that's not as hard to do these days.
 
 ```
 gem build rdoc-markdown.gemspec
@@ -78,8 +77,6 @@ Following command should run entire testsuit:
 ```
 rake test
 ```
-The test suite loads `minitest-strict`, so boolean and nil assertions only pass on exact `true`, `false`, and `nil` values.
-Testing is not excessive, just verifies that basic functionality is operational.
 
 To validate generated markdown against GitHub Flavored Markdown and check local links/anchors:
 
@@ -110,7 +107,7 @@ To lint markdown ERB templates:
 bundle exec rake erb:lint
 ```
 
-### Integration harness: minitest
+### Integration: minitest
 To run the integration harness against minitest (aligned with docs.seattlerb.org/minitest):
 
 ```
@@ -120,7 +117,7 @@ bundle exec rake test
 
 The harness validates markdown formatting quality, generated page files, class/module paths, and search index output.
 
-### Integration harness: rails
+### Integration: rails
 To run the rails harness (focused on Active Support + Active Record API docs with sdoc-like structure):
 
 ```
