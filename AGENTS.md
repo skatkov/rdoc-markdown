@@ -44,5 +44,5 @@ bundle exec rake test
 bundle exec mutant run --fail-fast --since origin/main
 bundle exec rake markdown:validate
 bundle exec yard-lint
-bundle exec erb:lint
+bundle exec rake erb:lint
 ```
