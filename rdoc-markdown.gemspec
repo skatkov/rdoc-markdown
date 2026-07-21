@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.summary = "RDoc plugin to generate markdown documentation  "
   spec.description = "RDoc plugin to generate markdown documentation and search index as sqlite database for entire content."
   spec.homepage = "https://poshtui.com"
-  spec.required_ruby_version = ">= 2.7.0"
+  spec.required_ruby_version = ">= 3.3.0"
 
   # spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
 
@@ -33,7 +33,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "csv"
   spec.add_dependency "erb"
-  spec.add_dependency "rdoc"
+  spec.add_dependency "rdoc", ">= 8.0"
   spec.add_dependency "reverse_markdown"
 
   spec.add_development_dependency "bundler", ">= 2.0"
@@ -41,7 +41,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "minitest-strict", "~> 1.0"
   spec.add_development_dependency "rake", "~> 13.0"
-  spec.add_development_dependency "rbs"
   spec.add_development_dependency "rdiscount", "~> 2.0"
   spec.add_development_dependency "simplecov", "~> 0.22"
 end

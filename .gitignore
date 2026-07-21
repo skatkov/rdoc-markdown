@@ -18,5 +18,4 @@ vendor/minitest/
 vendor/rails/
 vendor/jekyll-seo-tag/
 vendor/docs/
-gemfiles/*.lock
 .mutant/*

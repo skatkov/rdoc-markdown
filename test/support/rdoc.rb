@@ -105,20 +105,12 @@ module RDocTestHelpers
   end
 
   def rdoc_method(name = "run", parent: nil, comment: nil, visible: true, signature: nil, params: nil)
-    new_rdoc_method(name).tap do |method|
+    RDoc::AnyMethod.new(name).tap do |method|
       method.parent = parent if parent
       method.comment = RDoc::Comment.new(comment) unless comment.nil?
       method.done_documenting = true unless visible
       method.call_seq = (signature && signature.match?(/\S/)) ? "#{name}#{signature}" : signature unless signature.nil?
       method.params = params unless params.nil?
-    end
-  end
-
-  def new_rdoc_method(name)
-    if rdoc_constructor_has_text_argument?(RDoc::AnyMethod)
-      RDoc::AnyMethod.new("", name)
-    else
-      RDoc::AnyMethod.new(name)
     end
   end
 
@@ -129,20 +121,8 @@ module RDocTestHelpers
   end
 
   def rdoc_attribute(name, visible: true)
-    new_rdoc_attribute(name).tap do |attribute|
+    RDoc::Attr.new(name, "RW", "").tap do |attribute|
       attribute.done_documenting = true unless visible
     end
-  end
-
-  def new_rdoc_attribute(name)
-    if rdoc_constructor_has_text_argument?(RDoc::Attr)
-      RDoc::Attr.new("", name, "RW", "")
-    else
-      RDoc::Attr.new(name, "RW", "")
-    end
-  end
-
-  def rdoc_constructor_has_text_argument?(klass)
-    klass.instance_method(:initialize).parameters.first == [:req, :text]
   end
 end

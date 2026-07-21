@@ -114,7 +114,7 @@ class TestSignatureHelpers < Minitest::Test
 
   def test_method_signatures_use_rdoc_8_merged_type_signature_lines
     method = visible_method("typed", params: "(name)")
-    method.define_singleton_method(:type_signature_lines) { ["(String) -> bool"] }
+    method.type_signature_lines = ["(String) -> bool"]
 
     doc = generated_class_doc([method])
 
