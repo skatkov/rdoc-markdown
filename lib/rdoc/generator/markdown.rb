@@ -726,10 +726,6 @@ class RDoc::Generator::Markdown
       target = Regexp.last_match(1)
       path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
-      if suffix.match?(/\A#.+-label-/)
-        fragment = CGI.unescape(suffix)
-        suffix = "##{RDoc::Text.to_anchor(fragment.gsub("::", "-").sub("-label-", "-"))}"
-      end
 
       resolved = resolve_output_path(path, canonical_dir)
       rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path

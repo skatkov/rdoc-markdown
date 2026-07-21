@@ -148,7 +148,7 @@ class TestPathHelpers < Minitest::Test
 
     dir = generate_from_store(store: store)
 
-    assert_eql "# Intro\n", File.read(File.join(dir, "docs/getting_started_rdoc.md"))
+    assert_eql "<a id=\"label-Intro\"></a>\n# Intro\n", File.read(File.join(dir, "docs/getting_started_rdoc.md"))
     assert_eql "[Intro](../guides/intro_rdoc.md#top)\n", File.read(File.join(dir, "docs/links_rdoc.md"))
     assert_eql "Dot path\n", File.read(File.join(dir, "docs/dot_rdoc.md"))
     assert_eql "Absolute path\n", File.read(File.join(dir, "docs/absolute_rdoc.md"))

@@ -37,4 +37,20 @@ class ReverseMarkdown::Converters::RDocMarkdownPre < ReverseMarkdown::Converters
   end
 end
 
+# Retains the backward-compatible heading aliases emitted by RDoc.
+class ReverseMarkdown::Converters::RDocMarkdownSpan < ReverseMarkdown::Converters::Bypass
+  # Converts an RDoc legacy anchor into Markdown-compatible HTML.
+  #
+  # @param node [Nokogiri::XML::Node] HTML span node.
+  # @param _state [Hash] reverse_markdown converter state.
+  #
+  # @return [String] Converted span content or an anchor alias.
+  def convert(node, _state)
+    return %(<a id="#{node["id"]}"></a>) if node["class"] == "legacy-anchor"
+
+    super
+  end
+end
+
 ReverseMarkdown::Converters.register :pre, ReverseMarkdown::Converters::RDocMarkdownPre.new
+ReverseMarkdown::Converters.register :span, ReverseMarkdown::Converters::RDocMarkdownSpan.new

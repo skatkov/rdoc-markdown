@@ -30,6 +30,7 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#definition_list_line?"
   cover "RDoc::Generator::Markdown::CrossrefExtension#link"
   cover "ReverseMarkdown::Converters::RDocMarkdownPre*"
+  cover "ReverseMarkdown::Converters::RDocMarkdownSpan*"
 
   def generate_markdown(classes: [], pages: [], root: nil, markdown_unknown_tags: DEFAULT_MARKDOWN_UNKNOWN_TAGS)
     dir = stable_tmpdir("generated-markdown")
@@ -95,7 +96,7 @@ class TestMarkdownHelpers < Minitest::Test
 
     markdown = read_generated("linked-heading_rdoc.md", pages: [page])
 
-    assert_includes markdown, "Intro\n\n# Topic"
+    assert_includes markdown, "Intro\n\n<a id=\"label-Topic\"></a>\n# Topic"
     refute_includes markdown, "[Topic](#topic)"
   end
 
@@ -330,8 +331,10 @@ class TestMarkdownHelpers < Minitest::Test
 
     markdown = read_generated("levels_rdoc.md", pages: [page])
 
-    assert_includes markdown, "## One\n\n## Two"
-    assert_includes markdown, "### Deep\n\n### Deeper"
+    assert_includes markdown, "## One"
+    assert_includes markdown, "## Two"
+    assert_includes markdown, "### Deep"
+    assert_includes markdown, "### Deeper"
     refute_includes markdown, "== One"
     refute_includes markdown, "=== Deep"
   end
@@ -378,6 +381,13 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "```ruby\nputs :ok\n```"
   end
 
+  def test_span_converter_preserves_only_rdoc_legacy_anchors
+    assert_equal '<a id="label-Legacy+heading"></a>',
+      ReverseMarkdown.convert('<span id="label-Legacy+heading" class="legacy-anchor"></span>', github_flavored: true)
+    assert_equal "text",
+      ReverseMarkdown.convert('<span id="ordinary" class="ordinary">text</span>', github_flavored: true)
+  end
+
   def test_invalid_definition_list_blocks_remain_plain_text
     page = rdoc_page(relative_name: "invalid-definition.rdoc", comment: "= Heading\n\n  bird::\n  plain text\n")
 
@@ -404,7 +414,11 @@ class TestMarkdownHelpers < Minitest::Test
   end
 
   def test_internal_links_are_rewritten_relative_to_generated_output
-    guide = rdoc_page(relative_name: "guides/intro.rdoc", comment: "= Intro")
+    guide = rdoc_page(
+      relative_name: "guides/intro.rdoc",
+      comment: "= {Intro}[#top]\n\n" \
+               "== {Signing is not encryption}[#class-ActiveSupport::Messages::MessageVerifier-label-Signing+is+not+encryption]"
+    )
     api = rdoc_page(relative_name: "guides/api.rdoc", comment: "= API")
     sibling = rdoc_page(relative_name: "docs/sibling", comment: "= Sibling")
     simple_intro = rdoc_page(relative_name: "guides/intro", comment: "Intro")
@@ -416,25 +430,29 @@ class TestMarkdownHelpers < Minitest::Test
     readme = rdoc_page(
       relative_name: "docs/readme.rdoc",
       comment: "{Intro}[guides/intro_rdoc.html#top] {API}[guides/api_rdoc.html] " \
-                 "{Missing}[missing/path.html#part] {Secure}[https://example.com/page.md] " \
-                "{Mail}[mailto:test@example.com] {Anchor}[#topic.md] " \
-                "[Sibling](nested/../sibling.md) " \
-                "{Legacy}[guides/intro_rdoc.html#class-ActiveSupport::Messages::MessageVerifier-label-Signing%20is%20not%20encryption] " \
-                "{Query}[guides/intro_rdoc.html?tag=-label-test]"
+                 "{Missing}[missing/path.html#part] " \
+                 "{Secure}[https://example.com/page.md#class-example-label-Topic] " \
+                 "{Mail}[mailto:test@example.com] {Anchor}[#topic.md] " \
+                 "[Sibling](nested/../sibling.md) " \
+                 "{Legacy}[guides/intro_rdoc.html#class-ActiveSupport::Messages::MessageVerifier-label-Signing+is+not+encryption] " \
+                 "{Query}[guides/intro_rdoc.html?tag=-label-test]"
     )
 
     dir = generate_markdown(pages: [guide, api, sibling, simple_intro, single, empty_anchor, readme])
     markdown = File.read(File.join(dir, "docs/readme_rdoc.md"))
+    guide_markdown = File.read(File.join(dir, "guides/intro_rdoc.md"))
 
+    assert_includes guide_markdown,
+      '<a id="class-ActiveSupport::Messages::MessageVerifier-label-Signing+is+not+encryption"></a>'
     assert_includes markdown, "[Intro](../guides/intro_rdoc.md#top)"
     assert_includes markdown, "[API](../guides/api_rdoc.md)"
     assert_includes markdown, "[Missing](missing/path.md#part)"
-    assert_includes markdown, "[Secure](https://example.com/page.md)"
+    assert_includes markdown, "[Secure](https://example.com/page.md#class-example-label-Topic)"
     assert_includes markdown, "[Mail](mailto:test@example.com)"
     assert_includes markdown, "[Anchor](#topic.md)"
     assert_includes markdown, "[Sibling](sibling.md)"
     assert_includes markdown,
-      "[Legacy](../guides/intro_rdoc.md#class-activesupport-messages-messageverifier-signing-is-not-encryption)"
+      "[Legacy](../guides/intro_rdoc.md#class-ActiveSupport::Messages::MessageVerifier-label-Signing+is+not+encryption)"
     assert_includes markdown, "[Query](../guides/intro_rdoc.md?tag=-label-test)"
     assert_eql "[Intro](../guides/intro_rdoc.md#top)\n", File.read(File.join(dir, "docs/single_rdoc.md"))
     assert_eql "[EmptyAnchor](../guides/intro.md#) [RootIntro](../guides/intro.md)\n",
@@ -482,7 +500,9 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "\n# Section Topic\n"
     assert_includes markdown, "#### `run()`"
     assert_includes markdown,
-      "\n##### Method Topic<a id=\"method-i-run-method-topic\"></a>\n\n" \
+      "\n<a id=\"method-i-run-label-Method+Topic\"></a>\n" \
+      "##### Method Topic<a id=\"method-i-run-method-topic\"></a>\n" \
+      "<a id=\"method-i-run-label-Method+Detail\"></a>\n" \
       "###### Method Detail<a id=\"method-i-run-method-detail\"></a>\n"
     refute_includes markdown, "\n###### Method Topic\n"
     refute_includes markdown, "\n####### Method Detail\n"

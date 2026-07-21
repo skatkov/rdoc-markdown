@@ -2,6 +2,7 @@
 
 require "cgi"
 require "commonmarker"
+require "uri"
 
 class MarkdownValidator
   ValidationError = Class.new(StandardError)
@@ -45,7 +46,7 @@ class MarkdownValidator
     target_file = if base_target.empty?
       source_file
     else
-      File.expand_path(CGI.unescape(base_target), File.dirname(source_file))
+      File.expand_path(URI::DEFAULT_PARSER.unescape(base_target), File.dirname(source_file))
     end
 
     unless within_root?(target_file) && File.file?(target_file)
@@ -55,7 +56,7 @@ class MarkdownValidator
 
     return if fragment.nil? || fragment.empty?
 
-    anchor = CGI.unescape(fragment)
+    anchor = URI::DEFAULT_PARSER.unescape(fragment)
     anchors = anchors_for(target_file)
     return if anchors.include?(anchor)
 
