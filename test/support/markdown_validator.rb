@@ -30,17 +30,11 @@ class MarkdownValidator
       next unless node.type == :link
 
       target = node.url
+      raise ValidationError, "empty anchor link found in #{relative_path(file)}" if target == "#" && node.first_child.nil?
       next if target.match?(%r{\A(?:https?://|mailto:|#)})
 
-      if target.sub(/[?#].*\z/, "").end_with?(".html")
-        raise ValidationError, "local .html link found in #{relative_path(file)}"
-      end
-
+      raise ValidationError, "local .html link found in #{relative_path(file)}" if target.sub(/[?#].*\z/, "").end_with?(".html")
       validate_local_link!(file, target)
-    end
-
-    if document.walk.any? { |node| node.type == :link && node.url == "#" && node.first_child.nil? }
-      raise ValidationError, "empty anchor link found in #{relative_path(file)}"
     end
   end
 

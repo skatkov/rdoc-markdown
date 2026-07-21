@@ -395,10 +395,7 @@ class RDoc::Generator::Markdown
 
     # Flatten RDoc heading self-links while retaining non-GitHub anchor aliases.
     md.gsub!(/^(#+)\s\[([^\]]+)\]\(#([^)]+)\)(.*)$/) do
-      hashes = Regexp.last_match(1)
-      label = Regexp.last_match(2)
-      id = Regexp.last_match(3)
-      remainder = Regexp.last_match(4)
+      hashes, label, id, remainder = Regexp.last_match.captures
       alias_anchor = anchor(id) unless remainder.empty? && id == RDoc::Text.to_anchor(label)
       "#{hashes} #{label}#{remainder}#{alias_anchor}"
     end

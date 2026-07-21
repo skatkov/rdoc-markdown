@@ -684,7 +684,6 @@ class TestClassDocs < Minitest::Test
 
     generator.generate
 
-    assert_instance_of Set, store.options.markdown_output_object_ids
     assert_eql Set[klass.object_id, page.object_id], store.options.markdown_output_object_ids
   end
 
