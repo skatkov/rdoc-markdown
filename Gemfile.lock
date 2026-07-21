@@ -191,7 +191,6 @@ DEPENDENCIES
   minitest-strict (~> 1.0)
   mutant
   mutant-minitest
-  mutex_m
   rake (~> 13.0)
   rdiscount (~> 2.0)
   rdoc-markdown!
