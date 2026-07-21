@@ -486,10 +486,15 @@ class RDoc::Generator::Markdown
 
     formatter = code_object.formatter
     formatter.extend(CrossrefExtension)
-    context = RDoc::Context === code_object ? code_object : code_object.parent
-    formatter.markdown_cross_reference = CrossrefAdapter.new(context)
-    formatter.markdown_output_object_ids = @markdown_output_object_ids
-    code_object.description
+    begin
+      context = RDoc::Context === code_object ? code_object : code_object.parent
+      formatter.markdown_cross_reference = CrossrefAdapter.new(context)
+      formatter.markdown_output_object_ids = @markdown_output_object_ids
+      code_object.description
+    ensure
+      formatter.markdown_cross_reference = nil
+      formatter.markdown_output_object_ids = nil
+    end
   end
 
   # Renders an RDoc object's description as Markdown.
@@ -1027,6 +1032,8 @@ module RDoc::Generator::Markdown::CrossrefExtension
   #
   # @return [String] HTML link or unlinked text.
   def link(name, text, code = true, rdoc_ref: false)
+    return super unless @markdown_cross_reference
+
     ref = @markdown_cross_reference.resolve(name, text)
     return super unless RDoc::CodeObject === ref
 

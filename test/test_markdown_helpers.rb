@@ -259,6 +259,9 @@ class TestMarkdownHelpers < Minitest::Test
 
     assert_includes markdown, "`Hidden`"
     refute_includes markdown, "[`Hidden`]"
+    assert_includes page.description, '<a href="Hidden.html"><code>Hidden</code></a>'
+    assert_nil page.formatter.instance_variable_get(:@markdown_cross_reference)
+    assert_nil page.formatter.instance_variable_get(:@markdown_output_object_ids)
   end
 
   def test_crossref_adapter_supports_two_argument_resolvers
