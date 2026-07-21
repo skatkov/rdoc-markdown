@@ -12,8 +12,6 @@ gem "minitest", "~> 5.0"
 gem "standard"
 gem "yard-lint"
 
-if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.3")
-  gem "mutant"
-  gem "mutant-minitest"
-  gem "mutex_m"
-end
+gem "mutant"
+gem "mutant-minitest"
+gem "mutex_m"

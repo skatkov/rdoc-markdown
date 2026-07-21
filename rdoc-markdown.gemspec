@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.summary = "RDoc plugin to generate markdown documentation  "
   spec.description = "RDoc plugin to generate markdown documentation and search index as sqlite database for entire content."
   spec.homepage = "https://poshtui.com"
-  spec.required_ruby_version = ">= 3.2.0"
+  spec.required_ruby_version = ">= 3.3.0"
 
   # spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
 

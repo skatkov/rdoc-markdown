@@ -13,11 +13,7 @@ require "minitest/autorun"
 require "minitest/strict"
 require "tmpdir"
 
-begin
-  require "mutant/minitest/coverage"
-rescue LoadError
-  nil
-end
+require "mutant/minitest/coverage"
 
 require_relative "support/mutant"
 require_relative "support/rdoc"

@@ -13,7 +13,7 @@ It's a pitty that rdoc can't output a proper markdown file. Somebody has to try 
 
 ## Installation
 
-rdoc-markdown requires Ruby 3.2 or newer and RDoc 8 or newer.
+rdoc-markdown requires Ruby 3.3 or newer and RDoc 8 or newer.
 
 Install gem and add to application's Gemfile by executing:
 

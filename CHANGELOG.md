@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Require Ruby 3.2 and RDoc 8 or newer, removing RDoc 7 compatibility code.
+- Require Ruby 3.3 and RDoc 8 or newer, removing RDoc 7 compatibility code.
 - Remove extra spacing between method group headings and their content.
 - reworked documentation cross-linking, moving a lot of logic to converters
 
