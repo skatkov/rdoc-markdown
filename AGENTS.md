@@ -41,8 +41,8 @@ You are done when all of these are green and not reporting any issues:
 
 ```
 bundle exec rake test
-bundle exec mutant run
+bundle exec mutant run --fail-fast --since origin/main
 bundle exec rake markdown:validate
 bundle exec yard-lint
-bundle exec erb:lint
+bundle exec rake erb:lint
 ```
