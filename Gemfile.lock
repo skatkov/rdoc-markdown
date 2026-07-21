@@ -4,7 +4,7 @@ PATH
     rdoc-markdown (0.13.2)
       csv
       erb
-      rdoc
+      rdoc (>= 8.0)
       reverse_markdown
 
 GEM
@@ -49,11 +49,10 @@ GEM
     connection_pool (3.0.2)
     crass (1.0.6)
     csv (3.3.5)
-    date (3.5.1)
     diff-lcs (2.0.0)
     docile (1.4.1)
     drb (2.2.3)
-    erb (6.0.4)
+    erb (6.0.6)
     erb_lint (0.9.0)
       activesupport
       better_html (>= 2.0.1)
@@ -103,9 +102,6 @@ GEM
       prettyprint
     prettyprint (0.2.0)
     prism (1.9.0)
-    psych (5.3.1)
-      date
-      stringio
     racc (1.8.1)
     rails-dom-testing (2.3.0)
       activesupport (>= 5.0.0)
@@ -121,9 +117,10 @@ GEM
       prism (>= 1.6.0)
       tsort
     rdiscount (2.2.7.4)
-    rdoc (7.2.0)
+    rdoc (8.0.0)
       erb
-      psych (>= 4.0.0)
+      prism (>= 1.6.0)
+      rbs (>= 4.0.0)
       tsort
     regexp_parser (2.12.0)
     reline (0.6.3)
@@ -170,7 +167,6 @@ GEM
     standard-performance (1.9.0)
       lint_roller (~> 1.1)
       rubocop-performance (~> 1.26.0)
-    stringio (3.2.0)
     thor (1.5.0)
     tsort (0.2.0)
     tzinfo (2.0.6)
@@ -203,7 +199,6 @@ DEPENDENCIES
   mutant-minitest
   mutex_m
   rake (~> 13.0)
-  rbs
   rdiscount (~> 2.0)
   rdoc-markdown!
   simplecov (~> 0.22)

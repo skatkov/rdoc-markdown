@@ -55,10 +55,9 @@ class TestPathHelpers < Minitest::Test
     assert_nil generator.file_dir
   end
 
-  def test_initialize_sets_base_dir_and_leaves_classes_unset
+  def test_initialize_leaves_classes_unset
     markdown_generator = generator
 
-    assert_eql Pathname.pwd, markdown_generator.base_dir
     assert_nil markdown_generator.classes
   end
 

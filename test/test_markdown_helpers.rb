@@ -30,7 +30,6 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#convert_definition_list_block"
   cover "RDoc::Generator::Markdown#definition_list_line?"
   cover "RDoc::Generator::Markdown::CrossrefExtension#link"
-  cover "RDoc::Generator::Markdown::CrossrefAdapter*"
 
   def generate_markdown(classes: [], pages: [], root: nil, markdown_unknown_tags: DEFAULT_MARKDOWN_UNKNOWN_TAGS)
     dir = stable_tmpdir("generated-markdown")
@@ -210,13 +209,8 @@ class TestMarkdownHelpers < Minitest::Test
         "linked"
       end
     end.new
-    resolver = Struct.new(:refs, :resolved_text) do
-      def resolve(name, text)
-        self.resolved_text = text
-        refs.fetch(name)
-      end
-
-      def link_text(text) = CGI.escapeHTML(text)
+    resolver = Struct.new(:refs) do
+      def resolve(name) = refs.fetch(name)
     end.new({
       "Hidden" => hidden,
       "Hidden#run" => hidden_method,
@@ -229,10 +223,10 @@ class TestMarkdownHelpers < Minitest::Test
 
     assert_equal "<code>Hidden</code>", formatter.link("Hidden", "Hidden")
     assert_equal "Hidden", formatter.link("Hidden", "Hidden", false)
-    assert_equal "<code>Hidden&lt;T&gt;</code>", formatter.link("Hidden", "Hidden<T>")
-    assert_equal "Hidden<T>", resolver.resolved_text
-    assert_equal "Hidden&lt;T&gt;", formatter.link("Hidden", "Hidden<T>", false)
+    assert_equal "<code>Hidden&lt;T&gt;</code>", formatter.link("Hidden", "Hidden&lt;T&gt;")
+    assert_equal "Hidden&lt;T&gt;", formatter.link("Hidden", "Hidden&lt;T&gt;", false)
     assert_equal "Guide", formatter.link("guide", "Guide")
+    assert_equal "linked", formatter.link(nil, "Missing")
     assert_equal "linked", formatter.link("Missing", "Missing")
     assert_false formatter.rdoc_ref
 
@@ -250,10 +244,9 @@ class TestMarkdownHelpers < Minitest::Test
     hidden.add_method(rdoc_method("hidden_method", visible: false))
     adapter = Struct.new(:ref) do
       def resolve(*) = ref
-      def link_text(text) = CGI.escapeHTML(text)
     end.new(hidden)
 
-    markdown = RDoc::Generator::Markdown::CrossrefAdapter.stub(:new, adapter) do
+    markdown = RDoc::CrossReference.stub(:new, adapter) do
       read_generated("guide_rdoc.md", classes: [hidden], pages: [page])
     end
 
@@ -262,42 +255,6 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes page.description, '<a href="Hidden.html"><code>Hidden</code></a>'
     assert_nil page.formatter.instance_variable_get(:@markdown_cross_reference)
     assert_nil page.formatter.instance_variable_get(:@markdown_output_object_ids)
-  end
-
-  def test_crossref_adapter_supports_two_argument_resolvers
-    calls = []
-    resolver = Object.new
-    resolver.define_singleton_method(:resolve) do |name, text|
-      calls << [name, text]
-      :resolved
-    end
-
-    RDoc::CrossReference.stub(:new, resolver) do
-      adapter = RDoc::Generator::Markdown::CrossrefAdapter.new(Object.new)
-
-      assert_equal :resolved, adapter.resolve("Target", "<Target>")
-      assert_equal [["Target", "<Target>"]], calls
-      assert_equal "&lt;Target&gt;", adapter.link_text("<Target>")
-      assert_nil adapter.resolve(nil, "ignored")
-      assert_equal 1, calls.length
-    end
-  end
-
-  def test_crossref_adapter_supports_one_argument_resolvers
-    calls = []
-    resolver = Object.new
-    resolver.define_singleton_method(:resolve) do |name|
-      calls << name
-      :resolved
-    end
-
-    RDoc::CrossReference.stub(:new, resolver) do
-      adapter = RDoc::Generator::Markdown::CrossrefAdapter.new(Object.new)
-
-      assert_equal :resolved, adapter.resolve("Target", "<Target>")
-      assert_equal ["Target"], calls
-      assert_equal "<Target>", adapter.link_text("<Target>")
-    end
   end
 
   def test_markdownify_accepts_frozen_converter_output

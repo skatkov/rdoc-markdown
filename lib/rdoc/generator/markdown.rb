@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 # shareable_constant_value: literal
 
-gem "rdoc"
-
 require "erb"
 require "reverse_markdown"
 require "csv"
@@ -13,7 +11,6 @@ class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
 
   require_relative "markdown/crossref"
-  require_relative "markdown/rbs_signature_index"
 
   # Supported reverse_markdown unknown-tag modes.
   MARKDOWN_UNKNOWN_TAGS = %i[pass_through drop bypass raise]
@@ -109,11 +106,6 @@ class RDoc::Generator::Markdown
   # @return [RDoc::Store]
   attr_reader :store
 
-  # Working directory captured when the generator is created.
-  #
-  # @return [Pathname]
-  attr_reader :base_dir
-
   # Classes and modules selected for output.
   #
   # @return [Array<RDoc::Context>, nil]
@@ -142,7 +134,6 @@ class RDoc::Generator::Markdown
     @options = rdoc_options
     @markdown_unknown_tags = self.class.validate_markdown_unknown_tags(rdoc_options.markdown_unknown_tags)
 
-    @base_dir = Pathname.pwd
     @expanded_root = Pathname(@options.root.to_s).expand_path
   end
 
@@ -489,7 +480,7 @@ class RDoc::Generator::Markdown
     formatter.extend(CrossrefExtension)
     begin
       context = (RDoc::Context === code_object) ? code_object : code_object.parent
-      formatter.markdown_cross_reference = CrossrefAdapter.new(context)
+      formatter.markdown_cross_reference = RDoc::CrossReference.new(context)
       formatter.markdown_output_object_ids = @markdown_output_object_ids
       code_object.description
     ensure
@@ -528,8 +519,7 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Normalized method signature.
   def method_signature(method)
-    signatures = @rbs_method_signatures.signature_lines_for(method)
-    signatures = [method.param_seq] if signatures.empty?
+    signatures = method.type_signature_lines || @store.rbs_signature_for(method) || [method.param_seq]
 
     signatures = signatures.filter_map do |signature|
       next unless signature&.match?(/\S/)
@@ -961,8 +951,6 @@ class RDoc::Generator::Markdown
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
     @markdown_output_object_ids = (@classes + @pages).map(&:object_id)
-    @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files), @base_dir, @store)
-
     @known_output_paths = Set.new
     @class_docs.each do |doc|
       @known_output_paths << doc.fetch(:output_path)

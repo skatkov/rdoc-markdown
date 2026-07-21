@@ -390,8 +390,6 @@ class TestGenerator < Minitest::Test
   end
 
   def test_generator_uses_rbs_signatures_for_ruby_methods
-    skip "rbs is not available" unless defined?(RBS::Parser)
-
     source_dir = stable_tmpdir("rbs-signature-source")
     ruby_file = File.join(source_dir, "bird.rb")
     rbs_file = File.join(source_dir, "bird.rbs")
@@ -485,40 +483,7 @@ class TestGenerator < Minitest::Test
     refute_includes bird_doc, "#### `fly(direction)`"
   end
 
-  def test_generator_setup_resolves_relative_rbs_files_from_initialize_directory
-    skip "rbs is not available" unless defined?(RBS::Parser)
-
-    source_dir = File.expand_path(stable_tmpdir("direct-relative-rbs-signature-source"))
-    other_dir = File.expand_path(stable_tmpdir("direct-relative-rbs-signature-current"))
-    output_dir = File.join(source_dir, "out")
-
-    File.write(File.join(source_dir, "bird.rbs"), <<~RBS)
-      class Bird
-        def fly: (String) -> bool
-      end
-    RBS
-
-    klass = build_rdoc_class(full_name: "Bird", description: "Bird docs")
-    klass.add_method(rdoc_method("fly", params: "(direction)"))
-    store = rdoc_store(classes: [klass])
-    options = generator_options(op_dir: output_dir)
-    options.files = ["bird.rbs"]
-
-    Dir.chdir(source_dir) do
-      generator = RDoc::Generator::Markdown.new(store, options)
-
-      Dir.chdir(other_dir) do
-        generator.generate
-      end
-    end
-
-    bird_doc = File.read(File.join(output_dir, "Bird.md"))
-    assert_includes bird_doc, "#### `fly(direction: String) -> bool`"
-  end
-
   def test_generator_uses_rdoc_8_auto_discovered_sig_directory
-    skip "RDoc 8 auto-discovers sig directories" if Gem.loaded_specs.fetch("rdoc").version < Gem::Version.new("8.0")
-
     source_dir = stable_tmpdir("auto-discovered-rbs-source")
     FileUtils.mkdir_p(File.join(source_dir, "lib"))
     FileUtils.mkdir_p(File.join(source_dir, "sig"))
@@ -554,9 +519,7 @@ class TestGenerator < Minitest::Test
     plain_klass = build_rdoc_class(full_name: "PlainSignatureExamples", description: "Plain docs")
     plain_klass.add_method(rdoc_method("plain", params: "(name)"))
     store = rdoc_store(classes: [klass, plain_klass], pages: [])
-    store.define_singleton_method(:rbs_signature_for) do |candidate|
-      ["(String) -> bool", "(Integer) -> bool"] if candidate.equal?(method)
-    end
+    store.merge_rbs_signatures("SignatureExamples#sidecar" => ["(String) -> bool", "(Integer) -> bool"])
 
     RDoc::Generator::Markdown.new(store, generator_options(op_dir: dir)).generate
     doc = File.read(File.join(dir, "SignatureExamples.md"))
