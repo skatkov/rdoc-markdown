@@ -686,6 +686,15 @@ class TestClassDocs < Minitest::Test
     assert_includes File.read(File.join(dir, "DotRoot/Thing.md")), "[guide](../guides/rooted.md)"
   end
 
+  def test_setup_keeps_crossrefs_to_emitted_pages
+    source = rdoc_page(relative_name: "source.rdoc", comment: "{Target}[rdoc-ref:target]")
+    target = rdoc_page(relative_name: "target.rdoc", comment: "Target")
+
+    dir = generate_from_store([], pages: [source, target])
+
+    assert_includes File.read(File.join(dir, "source_rdoc.md")), "[Target](target_rdoc.md)"
+  end
+
   def test_setup_uses_root_basename_for_root_segment
     root = File.join(stable_tmpdir("root-path-segment"), "pages")
     klass = build_rdoc_class(

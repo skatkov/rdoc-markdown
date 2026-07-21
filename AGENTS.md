@@ -39,8 +39,9 @@ the user.
 
 You are done when all of these are green and not reporting any issues:
 
-```
+```bash
 bundle exec rake test
+# don't run again if fail-fast has already passed
 bundle exec mutant run --fail-fast --since origin/main
 bundle exec rake markdown:validate
 bundle exec yard-lint

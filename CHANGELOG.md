@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Remove extra spacing between method group headings and their content.
+- reworked documentation cross-linking, moving a lot of logic to converters
 
 ## 0.13.2
 

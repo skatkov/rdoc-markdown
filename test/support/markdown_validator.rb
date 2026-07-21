@@ -2,20 +2,14 @@
 
 require "cgi"
 require "commonmarker"
+require "uri"
 
 class MarkdownValidator
   ValidationError = Class.new(StandardError)
 
-  LOCAL_LINK_REGEX = %r{\]\((?!https?://|mailto:|#)([^)]+)\)}
-  LOCAL_HTML_LINK_REGEX = %r{\]\((?!https?://|mailto:|#)[^)]+\.html(?:[?#][^)]+)?\)}
-
-  attr_reader :unresolved_links
-
-  def initialize(root_dir, strict_links: true)
+  def initialize(root_dir)
     @root_dir = File.expand_path(root_dir)
     @anchors_cache = {}
-    @strict_links = strict_links
-    @unresolved_links = 0
   end
 
   def validate!
@@ -31,13 +25,16 @@ class MarkdownValidator
   def validate_file(file)
     content = File.read(file)
 
-    render_gfm!(content, file)
+    document = parse_gfm!(content, file)
 
-    raise ValidationError, "local .html link found in #{relative_path(file)}" if content.match?(LOCAL_HTML_LINK_REGEX)
+    document.walk do |node|
+      next unless node.type == :link
 
-    raise ValidationError, "empty anchor link found in #{relative_path(file)}" if content.include?("[](#")
+      target = node.url
+      raise ValidationError, "empty anchor link found in #{relative_path(file)}" if target == "#" && node.first_child.nil?
+      next if target.match?(%r{\A(?:https?://|mailto:|#)})
 
-    content.scan(LOCAL_LINK_REGEX).flatten.each do |target|
+      raise ValidationError, "local .html link found in #{relative_path(file)}" if target.sub(/[?#].*\z/, "").end_with?(".html")
       validate_local_link!(file, target)
     end
   end
@@ -49,29 +46,19 @@ class MarkdownValidator
     target_file = if base_target.empty?
       source_file
     else
-      File.expand_path(CGI.unescape(base_target), File.dirname(source_file))
+      File.expand_path(URI::DEFAULT_PARSER.unescape(base_target), File.dirname(source_file))
     end
 
     unless within_root?(target_file) && File.file?(target_file)
-      unless @strict_links
-        @unresolved_links += 1
-        return
-      end
-
       raise ValidationError,
         "broken local link in #{relative_path(source_file)} -> #{target.inspect}"
     end
 
     return if fragment.nil? || fragment.empty?
 
-    anchor = CGI.unescape(fragment)
+    anchor = URI::DEFAULT_PARSER.unescape(fragment)
     anchors = anchors_for(target_file)
     return if anchors.include?(anchor)
-
-    unless @strict_links
-      @unresolved_links += 1
-      return
-    end
 
     raise ValidationError,
       "missing anchor ##{anchor} in #{relative_path(target_file)} (from #{relative_path(source_file)})"
@@ -115,8 +102,8 @@ class MarkdownValidator
     text
   end
 
-  def render_gfm!(content, file)
-    Commonmarker.to_html(content)
+  def parse_gfm!(content, file)
+    Commonmarker.parse(content)
   rescue => e
     raise ValidationError, "GFM render failed for #{relative_path(file)}: #{e.message}"
   end
