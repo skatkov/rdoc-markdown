@@ -393,8 +393,21 @@ class RDoc::Generator::Markdown
 
     md = ReverseMarkdown.convert(input, github_flavored: true, unknown_tags: @markdown_unknown_tags).dup
 
-    # Flatten headings whose visible text is wrapped in a self-link.
-    md.gsub!(/^(#+)\s\[([^\]]+)\]\((?:#[^)]+)\)$/) { "#{Regexp.last_match(1)} #{Regexp.last_match(2)}" }
+    # Flatten RDoc heading self-links while retaining non-GitHub anchor aliases.
+    md.gsub!(/^(#+)\s\[([^\]]+)\]\(#([^)]+)\)(.*)$/) do
+      hashes = Regexp.last_match(1)
+      label = Regexp.last_match(2)
+      id = Regexp.last_match(3)
+      remainder = Regexp.last_match(4)
+      alias_anchor = anchor(id) unless remainder.empty? && id == RDoc::Text.to_anchor(label)
+      "#{hashes} #{label}#{remainder}#{alias_anchor}"
+    end
+
+    # RDoc interprets indexing expressions such as Mime[:json] as tidy links.
+    md.gsub!(/\[([A-Z][A-Za-z0-9_:]*)\]\((:[^)]+|"[^"]+")\)/) { "`#{Regexp.last_match(1)}[#{Regexp.last_match(2)}]`" }
+
+    # Scheme-less web links are relative URLs in Markdown.
+    md.gsub!(/\]\((www\.[^)]+)\)/) { "](https://#{Regexp.last_match(1)})" }
 
     # Replace .html to .md extension in all local markdown links.
     md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
@@ -716,6 +729,10 @@ class RDoc::Generator::Markdown
       target = Regexp.last_match(1)
       path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
+      if suffix.match?(/\A#.+-label-/)
+        fragment = CGI.unescape(suffix)
+        suffix = "##{RDoc::Text.to_anchor(fragment.gsub("::", "-").sub("-label-", "-"))}"
+      end
 
       resolved = resolve_output_path(path, canonical_dir)
       rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
@@ -892,6 +909,7 @@ class RDoc::Generator::Markdown
     @class_docs_by_name = @class_docs.to_h { |doc| [doc.fetch(:display_name), doc] }
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
+    @store.options.markdown_output_object_ids = Set.new((@classes + @pages).map(&:object_id))
     @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files), @base_dir, @store)
 
     @known_output_paths = Set.new
@@ -913,4 +931,36 @@ class RDoc::Options
   #
   # @return [Symbol]
   attr_accessor :markdown_unknown_tags
+
+  # Code objects emitted by the active Markdown generator run.
+  #
+  # @return [Set<Integer>, nil]
+  attr_accessor :markdown_output_object_ids
 end
+
+# Prevents RDoc from linking to code objects omitted from Markdown output.
+module RDoc::Generator::Markdown::CrossrefExtension
+  # Renders a cross-reference only when its owning object is emitted.
+  #
+  # @param name [String, nil] Cross-reference target.
+  # @param text [String] Visible link text.
+  # @param code [Boolean] Whether to format code objects as code.
+  # @param rdoc_ref [Boolean] Whether the target uses the rdoc-ref scheme.
+  #
+  # @return [String] HTML link or unlinked text.
+  def link(name, text, code = true, rdoc_ref: false)
+    ref = @cross_reference.resolve(name, text)
+    output_object_ids = @options.markdown_output_object_ids
+    return super unless output_object_ids && RDoc::CodeObject === ref
+
+    context = ref
+    context = context.parent until RDoc::ClassModule === context || RDoc::TopLevel === context
+    return super if output_object_ids.include?(context.object_id)
+
+    return CGI.escapeHTML(text) if RDoc::TopLevel === ref || !code
+
+    "<code>#{CGI.escapeHTML(text)}</code>"
+  end
+end
+
+RDoc::Markup::ToHtmlCrossref.prepend RDoc::Generator::Markdown::CrossrefExtension

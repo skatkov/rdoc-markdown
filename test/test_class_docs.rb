@@ -673,6 +673,21 @@ class TestClassDocs < Minitest::Test
     assert_false File.exist?(File.join(dir, "binary_rdoc.md"))
   end
 
+  def test_setup_records_emitted_objects_for_crossrefs
+    klass = build_rdoc_class(full_name: "Linked", description: "Linked docs")
+    page = rdoc_page(relative_name: "guide.rdoc", comment: "Guide")
+    store = rdoc_store(classes: [klass], pages: [page])
+    generator = RDoc::Generator::Markdown.new(
+      store,
+      generator_options(op_dir: stable_tmpdir("crossref-objects"))
+    )
+
+    generator.generate
+
+    assert_instance_of Set, store.options.markdown_output_object_ids
+    assert_eql Set[klass.object_id, page.object_id], store.options.markdown_output_object_ids
+  end
+
   def test_setup_uses_dot_root_segment_when_root_is_nil
     klass = build_rdoc_class(
       full_name: "DotRoot::Thing",

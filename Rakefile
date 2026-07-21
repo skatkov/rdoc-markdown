@@ -31,7 +31,6 @@ end
 namespace :markdown do
   desc "Validate generated markdown as GitHub Flavored Markdown"
   task :validate do
-    strict_vendor_links = ENV["MARKDOWN_VALIDATE_STRICT_VENDOR"] == "1"
     validation_root = File.expand_path("tmp/markdown-validate", __dir__)
     FileUtils.rm_rf(validation_root)
     FileUtils.mkdir_p(validation_root)
@@ -57,18 +56,14 @@ namespace :markdown do
       output: minitest_output,
       files: minitest_docs_files(minitest_root)
     )
-    minitest_validator = MarkdownValidator.new(minitest_output, strict_links: strict_vendor_links)
-    minitest_count = minitest_validator.validate!
+    minitest_count = MarkdownValidator.new(minitest_output).validate!
     puts "Validated #{minitest_count} markdown files in #{minitest_output}"
-    puts "Skipped #{minitest_validator.unresolved_links} unresolved local links in vendored minitest docs"
 
     Rake::Task["vendor:setup:jekyll_seo_tag"].invoke
     jekyll_seo_tag_output = File.join(validation_root, JEKYLL_SEO_TAG_NAME)
     generate_jekyll_seo_tag_docs(output: jekyll_seo_tag_output)
-    jekyll_seo_tag_validator = MarkdownValidator.new(jekyll_seo_tag_output, strict_links: strict_vendor_links)
-    jekyll_seo_tag_count = jekyll_seo_tag_validator.validate!
+    jekyll_seo_tag_count = MarkdownValidator.new(jekyll_seo_tag_output).validate!
     puts "Validated #{jekyll_seo_tag_count} markdown files in #{jekyll_seo_tag_output}"
-    puts "Skipped #{jekyll_seo_tag_validator.unresolved_links} unresolved local links in vendored jekyll-seo-tag docs"
 
     Rake::Task["vendor:setup:rails"].invoke
     rails_root = File.expand_path("vendor/rails", __dir__)
@@ -79,10 +74,8 @@ namespace :markdown do
       output: rails_output,
       files: rails_validation_files(rails_root)
     )
-    rails_validator = MarkdownValidator.new(rails_output, strict_links: strict_vendor_links)
-    rails_count = rails_validator.validate!
+    rails_count = MarkdownValidator.new(rails_output).validate!
     puts "Validated #{rails_count} markdown files in #{rails_output}"
-    puts "Skipped #{rails_validator.unresolved_links} unresolved local links in vendored rails docs"
 
     puts "Markdown validation artifacts written to #{validation_root}"
   end
@@ -181,15 +174,10 @@ def rails_validation_files(root)
   files.concat(Dir[File.join(root, "actionpack/lib/**/*.rb")])
   files.concat(Dir[File.join(root, "railties/lib/**/*.rb")])
 
-  [
-    "activerecord/README.rdoc",
-    "actionpack/README.rdoc",
-    "railties/README.rdoc",
-    "railties/RDOC_MAIN.md"
-  ].each do |relative_path|
-    file = File.join(root, relative_path)
-    files << file if File.file?(file)
-  end
+  files.concat(Dir[File.join(root, "{active*,action*,railties}/README.{rdoc,md,markdown}")])
+
+  main_page = File.join(root, "railties/RDOC_MAIN.md")
+  files << main_page if File.file?(main_page)
 
   files.uniq
 end

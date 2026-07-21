@@ -93,12 +93,6 @@ This task validates:
 - vendored rails docs (Active Support, Active Record, Action Pack, Railties slices).
 
 Validation artifacts are written to `tmp/markdown-validate/` inside this repository.
-To fail on every unresolved vendor local link/anchor, run with:
-
-```
-MARKDOWN_VALIDATE_STRICT_VENDOR=1 rake markdown:validate
-```
-
 This task is also executed in CI.
 
 To lint markdown ERB templates:

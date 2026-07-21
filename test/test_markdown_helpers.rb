@@ -28,6 +28,7 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#normalize_definition_list_code_blocks"
   cover "RDoc::Generator::Markdown#convert_definition_list_block"
   cover "RDoc::Generator::Markdown#definition_list_line?"
+  cover "RDoc::Generator::Markdown::CrossrefExtension#link"
   cover "ReverseMarkdown::Converters::RDocMarkdownPre*"
 
   def generate_markdown(classes: [], pages: [], root: nil, markdown_unknown_tags: DEFAULT_MARKDOWN_UNKNOWN_TAGS)
@@ -96,6 +97,88 @@ class TestMarkdownHelpers < Minitest::Test
 
     assert_includes markdown, "Intro\n\n# Topic"
     refute_includes markdown, "[Topic](#topic)"
+  end
+
+  def test_linked_headings_retain_rdoc_anchor_aliases
+    page = rdoc_page(
+      relative_name: "linked-heading-alias.rdoc",
+      comment: "= {Topic}[#class-example-label-Topic]"
+    )
+
+    markdown = read_generated("linked-heading-alias_rdoc.md", pages: [page])
+
+    assert_includes markdown, '# Topic<a id="class-example-label-Topic"></a>'
+  end
+
+  def test_linked_heading_alias_accounts_for_trailing_links
+    page = rdoc_page(relative_name: "linked-heading-tail.rdoc", comment: "placeholder")
+
+    ReverseMarkdown.stub(:convert, "# [Topic](#topic)[Details](Elsewhere.md)") do
+      markdown = read_generated("linked-heading-tail_rdoc.md", pages: [page])
+
+      assert_equal "# Topic[Details](Elsewhere.md)<a id=\"topic\"></a>\n", markdown
+    end
+  end
+
+  def test_rdoc_indexing_expressions_are_not_rendered_as_links
+    page = raw_html_page(
+      relative_name: "indexing.rdoc",
+      html: '<p><a href=":csv">Mime</a> <a href="&quot;REVISION&quot;">ENV</a> <a href=":id">A</a></p>'
+    )
+
+    markdown = read_generated("indexing_rdoc.md", pages: [page])
+
+    assert_includes markdown, "`Mime[:csv]`"
+    assert_includes markdown, '`ENV["REVISION"]`'
+    assert_includes markdown, "`A[:id]`"
+  end
+
+  def test_scheme_less_web_links_receive_https
+    page = raw_html_page(
+      relative_name: "web-link.rdoc",
+      html: '<p><a href="www.example.com/path">www.example.com/path</a></p>'
+    )
+
+    markdown = read_generated("web-link_rdoc.md", pages: [page])
+
+    assert_includes markdown, "[www.example.com/path](https://www.example.com/path)"
+  end
+
+  def test_crossrefs_to_omitted_objects_are_rendered_without_links
+    source = build_rdoc_class(full_name: "Source", description: "Source docs")
+    hidden = build_rdoc_class(full_name: "Hidden", description: "Hidden docs")
+    hidden_method = rdoc_method("run")
+    hidden.add_method(hidden_method)
+    guide = rdoc_page(relative_name: "guide.rdoc", comment: "Guide")
+    options = source.store.options
+    formatter = RDoc::Markup::ToHtmlCrossref.new(options, "Source.html", source)
+    resolver = Struct.new(:refs) { def resolve(name, *) = refs.fetch(name) }.new({
+      "Hidden" => hidden,
+      "Hidden#run" => hidden_method,
+      "guide" => guide,
+      "Missing" => "Missing"
+    })
+    formatter.instance_variable_set(:@cross_reference, resolver)
+
+    assert_includes formatter.link("Hidden", "Hidden"), '<a href="Hidden.html"><code>Hidden</code></a>'
+
+    options.markdown_output_object_ids = Set.new
+    assert_equal "<code>Hidden</code>", formatter.link("Hidden", "Hidden")
+    assert_equal "Hidden", formatter.link("Hidden", "Hidden", false)
+    assert_equal "<code>Hidden&lt;T&gt;</code>", formatter.link("Hidden", "Hidden<T>")
+    assert_equal "Hidden&lt;T&gt;", formatter.link("Hidden", "Hidden<T>", false)
+
+    options.markdown_output_object_ids << hidden.object_id
+    assert_includes formatter.link("Hidden", "Hidden"), '<a href="Hidden.html"><code>Hidden</code></a>'
+    assert_includes formatter.link("Hidden#run", "run"), 'href="Hidden.html#method-i-run"'
+
+    assert_equal "Guide", formatter.link("guide", "Guide")
+    options.markdown_output_object_ids << guide.object_id
+    assert_includes formatter.link("guide", "Guide"), '<a href="guide_rdoc.html">Guide</a>'
+
+    options.warn_missing_rdoc_ref = true
+    stdout, = capture_io { assert_equal "Missing", formatter.link("Missing", "Missing") }
+    assert_empty stdout
   end
 
   def test_markdownify_accepts_frozen_converter_output
@@ -333,9 +416,11 @@ class TestMarkdownHelpers < Minitest::Test
     readme = rdoc_page(
       relative_name: "docs/readme.rdoc",
       comment: "{Intro}[guides/intro_rdoc.html#top] {API}[guides/api_rdoc.html] " \
-                "{Missing}[missing/path.html#part] {Secure}[https://example.com/page.md] " \
-               "{Mail}[mailto:test@example.com] {Anchor}[#topic.md] " \
-               "[Sibling](nested/../sibling.md)"
+                 "{Missing}[missing/path.html#part] {Secure}[https://example.com/page.md] " \
+                "{Mail}[mailto:test@example.com] {Anchor}[#topic.md] " \
+                "[Sibling](nested/../sibling.md) " \
+                "{Legacy}[guides/intro_rdoc.html#class-ActiveSupport::Messages::MessageVerifier-label-Signing%20is%20not%20encryption] " \
+                "{Query}[guides/intro_rdoc.html?tag=-label-test]"
     )
 
     dir = generate_markdown(pages: [guide, api, sibling, simple_intro, single, empty_anchor, readme])
@@ -348,6 +433,9 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[Mail](mailto:test@example.com)"
     assert_includes markdown, "[Anchor](#topic.md)"
     assert_includes markdown, "[Sibling](sibling.md)"
+    assert_includes markdown,
+      "[Legacy](../guides/intro_rdoc.md#class-activesupport-messages-messageverifier-signing-is-not-encryption)"
+    assert_includes markdown, "[Query](../guides/intro_rdoc.md?tag=-label-test)"
     assert_eql "[Intro](../guides/intro_rdoc.md#top)\n", File.read(File.join(dir, "docs/single_rdoc.md"))
     assert_eql "[EmptyAnchor](../guides/intro.md#) [RootIntro](../guides/intro.md)\n",
       File.read(File.join(dir, "docs/empty-anchor_rdoc.md"))
@@ -387,13 +475,15 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "# Class Topic"
     refute_includes markdown, "## Class Topic"
     refute_includes markdown, "\n\n\n"
-    assert_includes markdown, "# Class Topic\n\n### Constants"
+    assert_includes markdown, "# Class Topic<a id=\"class-docs-thing-class-topic\"></a>\n\n### Constants"
     assert_includes markdown, "#### `VALUE`<a id=\"VALUE\"></a>\nNot documented."
     assert_includes markdown, "## Overview"
     assert_includes markdown, "### Section Topic"
     refute_includes markdown, "\n# Section Topic\n"
     assert_includes markdown, "#### `run()`"
-    assert_includes markdown, "\n##### Method Topic\n\n###### Method Detail\n"
+    assert_includes markdown,
+      "\n##### Method Topic<a id=\"method-i-run-method-topic\"></a>\n\n" \
+      "###### Method Detail<a id=\"method-i-run-method-detail\"></a>\n"
     refute_includes markdown, "\n###### Method Topic\n"
     refute_includes markdown, "\n####### Method Detail\n"
     refute_includes markdown, "\n## Method Detail\n"
