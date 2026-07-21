@@ -81,6 +81,7 @@ class TestGenerator < Minitest::Test
     assert_equal 1, duck_doc.scan("#### `MAX_VELOCITY`").count
     refute_includes duck_doc, "[](#"
     assert_includes duck_doc, "#### `useful? -> bool`"
+    refute_includes duck_doc, "### Public Instance Methods\n\n"
     assert_includes duck_doc, "bird:\n\n- speak\n- fly"
     refute_includes duck_doc, "```\nbird::"
 

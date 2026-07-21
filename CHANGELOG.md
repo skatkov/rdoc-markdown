@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove extra spacing between method group headings and their content.
+
 ## 0.13.2
 
 - Don't add emtpy line break instead of missing metadata

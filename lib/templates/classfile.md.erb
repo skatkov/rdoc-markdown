@@ -58,7 +58,6 @@
 
 ### <%= visibility.capitalize %> <%= type.capitalize %> Methods
 <% methods.each do |method| -%>
-
 #### `<%= method.name %><%= method_signature(method) %>`<%= anchor(method.aref) %>
 <%= method_description(method, current_class: klass) %>
 <% end -%>
