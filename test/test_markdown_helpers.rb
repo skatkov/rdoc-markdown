@@ -31,6 +31,8 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown::CrossrefExtension#link"
   cover "ReverseMarkdown::Converters::RDocMarkdownPre*"
   cover "ReverseMarkdown::Converters::RDocMarkdownSpan*"
+  cover "ReverseMarkdown::Converters::RDocMarkdownHeading*"
+  cover "ReverseMarkdown::Converters::RDocMarkdownAnchor*"
 
   def generate_markdown(classes: [], pages: [], root: nil, markdown_unknown_tags: DEFAULT_MARKDOWN_UNKNOWN_TAGS)
     dir = stable_tmpdir("generated-markdown")
@@ -112,19 +114,54 @@ class TestMarkdownHelpers < Minitest::Test
   end
 
   def test_linked_heading_alias_accounts_for_trailing_links
-    page = rdoc_page(relative_name: "linked-heading-tail.rdoc", comment: "placeholder")
+    page = raw_html_page(
+      relative_name: "linked-heading-tail.rdoc",
+      html: "<h1 id=\"topic-details\">\n  <a href=\"#topic\">Topic</a><a href=\"Elsewhere.md\">Details</a></h1>"
+    )
 
-    ReverseMarkdown.stub(:convert, "# [Topic](#topic)[Details](Elsewhere.md)") do
-      markdown = read_generated("linked-heading-tail_rdoc.md", pages: [page])
+    markdown = read_generated("linked-heading-tail_rdoc.md", pages: [page])
 
-      assert_equal "# Topic[Details](Elsewhere.md)<a id=\"topic\"></a>\n", markdown
-    end
+    assert_equal "# Topic[Details](Elsewhere.md)<a id=\"topic\"></a>\n", markdown
+  end
+
+  def test_heading_links_after_text_are_preserved
+    page = raw_html_page(
+      relative_name: "heading-link-after-text.rdoc",
+      html: '<h1 id="topic">See <a href="#topic">Topic</a></h1>'
+    )
+
+    markdown = read_generated("heading-link-after-text_rdoc.md", pages: [page])
+
+    assert_equal "# See [Topic](#topic)\n", markdown
+  end
+
+  def test_non_fragment_heading_links_are_preserved
+    page = raw_html_page(
+      relative_name: "external-heading-link.rdoc",
+      html: '<h1 id="site"><a href="https://example.com">Site</a></h1>' \
+            '<h2 id="topic"><a href="#topic">Topic</a></h2>'
+    )
+
+    markdown = read_generated("external-heading-link_rdoc.md", pages: [page])
+
+    assert_equal "# [Site](https://example.com)\n\n## Topic\n", markdown
+  end
+
+  def test_heading_converter_preserves_conversion_state
+    heading = Nokogiri::HTML.fragment("<h1><strong>Topic</strong></h1>").at("h1")
+    converter = ReverseMarkdown::Converters.lookup(:h1)
+
+    assert_equal "\n# **Topic**\n", converter.convert(heading)
+    assert_equal "\n# Topic\n", converter.convert(heading, already_strong: true)
   end
 
   def test_rdoc_indexing_expressions_are_not_rendered_as_links
     page = raw_html_page(
       relative_name: "indexing.rdoc",
-      html: '<p><a href=":csv">Mime</a> <a href="&quot;REVISION&quot;">ENV</a> <a href=":id">A</a></p>'
+      html: '<p><a href=":csv">Mime</a> <a href="&quot;REVISION&quot;">ENV</a> ' \
+            '<a href=":id">A</a> <a href=":value">Some_Class</a> ' \
+            '<a href=":short">Some::A</a> <a href=":nested">Some::Thing</a> ' \
+            '<a href=":invalid">mime</a></p>'
     )
 
     markdown = read_generated("indexing_rdoc.md", pages: [page])
@@ -132,6 +169,21 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "`Mime[:csv]`"
     assert_includes markdown, '`ENV["REVISION"]`'
     assert_includes markdown, "`A[:id]`"
+    assert_includes markdown, "`Some_Class[:value]`"
+    assert_includes markdown, "`Some::A[:short]`"
+    assert_includes markdown, "`Some::Thing[:nested]`"
+    assert_includes markdown, "[mime](:invalid)"
+  end
+
+  def test_markdown_examples_are_not_treated_as_generated_links
+    page = raw_html_page(
+      relative_name: "markdown-examples.rdoc",
+      html: "<pre># [Topic](#topic)\n[Mime](:csv)\n[Site](www.example.com)</pre>"
+    )
+
+    markdown = read_generated("markdown-examples_rdoc.md", pages: [page])
+
+    assert_includes markdown, "```\n# [Topic](#topic)\n[Mime](:csv)\n[Site](www.example.com)\n```"
   end
 
   def test_scheme_less_web_links_receive_https
@@ -143,6 +195,20 @@ class TestMarkdownHelpers < Minitest::Test
     markdown = read_generated("web-link_rdoc.md", pages: [page])
 
     assert_includes markdown, "[www.example.com/path](https://www.example.com/path)"
+  end
+
+  def test_anchor_converter_preserves_conversion_state
+    link = Nokogiri::HTML.fragment('<a href="https://example.com"><strong>Site</strong></a>').at("a")
+    converter = ReverseMarkdown::Converters.lookup(:a)
+
+    assert_equal "[**Site**](https://example.com)", converter.convert(link)
+    assert_equal "[Site](https://example.com)", converter.convert(link, already_strong: true)
+  end
+
+  def test_anchor_converter_handles_missing_href
+    link = Nokogiri::HTML.fragment("<a>Site</a>").at("a")
+
+    assert_equal "Site", ReverseMarkdown::Converters.lookup(:a).convert(link)
   end
 
   def test_crossrefs_to_omitted_objects_are_rendered_without_links
@@ -184,12 +250,12 @@ class TestMarkdownHelpers < Minitest::Test
 
   def test_markdownify_accepts_frozen_converter_output
     page = rdoc_page(relative_name: "frozen.rdoc", comment: "= Topic")
-    converted = (+"# [Topic](#topic)").freeze
+    converted = (+"[Guide](guide.html)").freeze
 
     ReverseMarkdown.stub(:convert, converted) do
       markdown = read_generated("frozen_rdoc.md", pages: [page])
 
-      assert_equal "# Topic\n", markdown
+      assert_equal "[Guide](guide.md)\n", markdown
     end
   end
 

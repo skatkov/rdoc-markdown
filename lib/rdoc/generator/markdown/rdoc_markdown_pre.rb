@@ -52,5 +52,60 @@ class ReverseMarkdown::Converters::RDocMarkdownSpan < ReverseMarkdown::Converter
   end
 end
 
+# Flattens RDoc heading self-links while retaining non-GitHub anchor aliases.
+class ReverseMarkdown::Converters::RDocMarkdownHeading < ReverseMarkdown::Converters::H
+  # Converts an RDoc heading into Markdown without its generated self-link.
+  #
+  # @param node [Nokogiri::XML::Node] HTML heading node.
+  # @param state [Hash] reverse_markdown converter state.
+  #
+  # @return [String] Markdown heading.
+  def convert(node, state = {})
+    link = node.xpath("./a[starts-with(@href, '#') and string-length(@href) > 1]").find do |anchor|
+      anchor.text.match?(/\S/) &&
+        anchor.xpath("preceding-sibling::node()").none? { |sibling| sibling.text.match?(/\S/) }
+    end
+    return super unless link
+
+    id = link["href"].delete_prefix("#")
+    link.replace(link.children)
+
+    unless id == RDoc::Text.to_anchor(node.text)
+      alias_anchor = node.document.create_element("span", "class" => "legacy-anchor", "id" => id)
+      node.add_child(alias_anchor)
+    end
+
+    super
+  end
+end
+
+# Converts RDoc indexing expressions and scheme-less web links structurally.
+class ReverseMarkdown::Converters::RDocMarkdownAnchor < ReverseMarkdown::Converters::A
+  # Converts an HTML anchor into Markdown or an indexing expression.
+  #
+  # @param node [Nokogiri::XML::Node] HTML anchor node.
+  # @param state [Hash] reverse_markdown converter state.
+  #
+  # @return [String] Markdown link or inline code.
+  def convert(node, state = {})
+    receiver = node.text
+    href = node["href"].to_s
+
+    if receiver.match?(/\A[A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*\z/) && href.match?(/\A(?::.+|".+")\z/)
+      "`#{receiver}[#{href}]`"
+    else
+      node["href"] = "https://#{href}" if href.start_with?("www.")
+      super
+    end
+  end
+end
+
 ReverseMarkdown::Converters.register :pre, ReverseMarkdown::Converters::RDocMarkdownPre.new
 ReverseMarkdown::Converters.register :span, ReverseMarkdown::Converters::RDocMarkdownSpan.new
+ReverseMarkdown::Converters.register :a, ReverseMarkdown::Converters::RDocMarkdownAnchor.new
+ReverseMarkdown::Converters.register :h1, ReverseMarkdown::Converters::RDocMarkdownHeading.new
+ReverseMarkdown::Converters.register :h2, ReverseMarkdown::Converters::RDocMarkdownHeading.new
+ReverseMarkdown::Converters.register :h3, ReverseMarkdown::Converters::RDocMarkdownHeading.new
+ReverseMarkdown::Converters.register :h4, ReverseMarkdown::Converters::RDocMarkdownHeading.new
+ReverseMarkdown::Converters.register :h5, ReverseMarkdown::Converters::RDocMarkdownHeading.new
+ReverseMarkdown::Converters.register :h6, ReverseMarkdown::Converters::RDocMarkdownHeading.new

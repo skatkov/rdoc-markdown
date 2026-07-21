@@ -393,19 +393,6 @@ class RDoc::Generator::Markdown
 
     md = ReverseMarkdown.convert(input, github_flavored: true, unknown_tags: @markdown_unknown_tags).dup
 
-    # Flatten RDoc heading self-links while retaining non-GitHub anchor aliases.
-    md.gsub!(/^(#+)\s\[([^\]]+)\]\(#([^)]+)\)(.*)$/) do
-      hashes, label, id, remainder = Regexp.last_match.captures
-      alias_anchor = anchor(id) unless remainder.empty? && id == RDoc::Text.to_anchor(label)
-      "#{hashes} #{label}#{remainder}#{alias_anchor}"
-    end
-
-    # RDoc interprets indexing expressions such as Mime[:json] as tidy links.
-    md.gsub!(/\[([A-Z][A-Za-z0-9_:]*)\]\((:[^)]+|"[^"]+")\)/) { "`#{Regexp.last_match(1)}[#{Regexp.last_match(2)}]`" }
-
-    # Scheme-less web links are relative URLs in Markdown.
-    md.gsub!(/\]\((www\.[^)]+)\)/) { "](https://#{Regexp.last_match(1)})" }
-
     # Replace .html to .md extension in all local markdown links.
     md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
       "](#{Regexp.last_match(1)}.md#{Regexp.last_match(2)})"
