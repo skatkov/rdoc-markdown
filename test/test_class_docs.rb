@@ -17,7 +17,6 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_classfiles"
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#generate"
-  cover "RDoc::Generator::Markdown#legacy_paths_for"
   cover "RDoc::Generator::Markdown#metadata_reference"
   cover "RDoc::Generator::Markdown#metadata_table_cell"
   cover "RDoc::Generator::Markdown#normalized_full_name"
@@ -54,7 +53,7 @@ class TestClassDocs < Minitest::Test
     child.parent = parent
   end
 
-  def test_generate_prefers_best_normalized_class_doc_and_writes_legacy_path
+  def test_generate_prefers_best_normalized_class_doc
     synthetic = build_rdoc_class(
       full_name: "VendoredPathExpander::Minitest::VendoredPathExpander::PathExpander",
       description: "Synthetic doc",
@@ -69,11 +68,10 @@ class TestClassDocs < Minitest::Test
     dir = generate_from_store([synthetic, real])
 
     canonical_path = File.join(dir, "VendoredPathExpander/PathExpander.md")
-    legacy_path = File.join(dir, "VendoredPathExpander/Minitest/VendoredPathExpander/PathExpander.md")
 
-    assert_eql File.read(canonical_path), File.read(legacy_path)
     assert_includes File.read(canonical_path), "# Class VendoredPathExpander::PathExpander"
     assert_includes File.read(canonical_path), "Real doc"
+    assert_false File.exist?(File.join(dir, "VendoredPathExpander/Minitest/VendoredPathExpander/PathExpander.md"))
 
     entries = index_entries(dir)
 
@@ -145,10 +143,8 @@ class TestClassDocs < Minitest::Test
     dir = generate_from_store([synthetic, real])
 
     canonical_path = File.join(dir, "Root/Thing.md")
-    legacy_path = File.join(dir, "Root/One/Two/Root/Thing.md")
 
     assert_includes File.read(canonical_path), "Real doc"
-    assert_eql File.read(canonical_path), File.read(legacy_path)
 
     entries = index_entries(dir)
     assert_includes entries, ["Root::Thing", "Class", "Root/Thing.md"]
@@ -161,15 +157,13 @@ class TestClassDocs < Minitest::Test
     dir = generate_from_store([collapsed])
 
     canonical_path = File.join(dir, "Pair.md")
-    legacy_path = File.join(dir, "Pair/Pair.md")
 
     assert_includes File.read(canonical_path), "# Class Pair"
     assert_includes File.read(canonical_path), "Collapsed pair"
-    assert_eql File.read(canonical_path), File.read(legacy_path)
     assert_includes index_entries(dir), ["Pair", "Class", "Pair.md"]
   end
 
-  def test_generate_preserves_legacy_path_when_lower_score_duplicate_arrives_later
+  def test_generate_keeps_higher_score_when_lower_score_duplicate_arrives_later
     real = build_rdoc_class(
       full_name: "Alpha::Thing",
       description: "Real doc",
@@ -184,13 +178,11 @@ class TestClassDocs < Minitest::Test
     dir = generate_from_store([real, synthetic])
 
     canonical_path = File.join(dir, "Alpha/Thing.md")
-    legacy_path = File.join(dir, "Alpha/Z/Alpha/Thing.md")
 
     assert_includes File.read(canonical_path), "Real doc"
-    assert_eql File.read(canonical_path), File.read(legacy_path)
   end
 
-  def test_generate_does_not_preserve_legacy_path_from_zero_score_replaced_candidate
+  def test_generate_replaces_zero_score_candidate
     empty = build_rdoc_class(full_name: "Ghost::Ghost::Thing")
     real = build_rdoc_class(
       full_name: "Ghost::Thing",
@@ -204,7 +196,7 @@ class TestClassDocs < Minitest::Test
     assert_false File.exist?(File.join(dir, "Ghost/Ghost/Thing.md"))
   end
 
-  def test_generate_does_not_preserve_legacy_path_from_zero_score_later_duplicate
+  def test_generate_ignores_zero_score_later_duplicate
     real = build_rdoc_class(
       full_name: "Later::Thing",
       description: "Real doc",
@@ -219,7 +211,7 @@ class TestClassDocs < Minitest::Test
     assert_eql 1, index_entries(dir).count { |entry| entry == ["Later::Thing", "Class", "Later/Thing.md"] }
   end
 
-  def test_generate_writes_legacy_path_for_positive_score_synthetic_class
+  def test_generate_writes_only_canonical_path_for_positive_score_synthetic_class
     synthetic = build_rdoc_class(
       full_name: "Solo::Inner::Solo::Thing",
       description: "Synthetic doc",
@@ -229,9 +221,9 @@ class TestClassDocs < Minitest::Test
     dir = generate_from_store([synthetic])
 
     canonical_path = File.join(dir, "Solo/Thing.md")
-    legacy_path = File.join(dir, "Solo/Inner/Solo/Thing.md")
 
-    assert_eql File.read(canonical_path), File.read(legacy_path)
+    assert_true File.exist?(canonical_path)
+    assert_false File.exist?(File.join(dir, "Solo/Inner/Solo/Thing.md"))
     assert_includes index_entries(dir), ["Solo::Thing", "Class", "Solo/Thing.md"]
   end
 
@@ -650,8 +642,7 @@ class TestClassDocs < Minitest::Test
   def test_generate_populates_known_output_paths_for_link_normalization
     klass = build_rdoc_class(
       full_name: "Solo::Inner::Solo::Thing",
-      description: "See {alpha}[alpha_rdoc.html], {canonical}[Solo/Thing.html], " \
-                   "{legacy}[Solo/Inner/Solo/Thing.html], and {sibling}[Sibling.html].",
+      description: "See {alpha}[alpha_rdoc.html], {canonical}[Solo/Thing.html], and {sibling}[Sibling.html].",
       methods: 1
     )
     sibling = build_rdoc_class(full_name: "Solo::Sibling", description: "Sibling docs")
@@ -666,9 +657,7 @@ class TestClassDocs < Minitest::Test
     markdown = File.read(File.join(dir, "Solo/Thing.md"))
     assert_includes markdown, "[alpha](../alpha_rdoc.md)"
     assert_includes markdown, "[canonical](Thing.md)"
-    assert_includes markdown, "[legacy](Inner/Solo/Thing.md)"
     assert_includes markdown, "[sibling](Sibling.md)"
-    assert_includes File.read(File.join(dir, "Solo/Inner/Solo/Thing.md")), "[sibling](../../Sibling.md)"
     assert_false File.exist?(File.join(dir, "hidden_rdoc.md"))
     assert_false File.exist?(File.join(dir, "binary_rdoc.md"))
   end
