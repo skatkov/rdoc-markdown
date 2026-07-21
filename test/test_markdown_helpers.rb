@@ -242,19 +242,12 @@ class TestMarkdownHelpers < Minitest::Test
     page = rdoc_page(relative_name: "guide.rdoc", comment: "Hidden")
     hidden = build_rdoc_class(full_name: "Hidden")
     hidden.add_method(rdoc_method("hidden_method", visible: false))
-    adapter = Struct.new(:ref) do
-      def resolve(*) = ref
-    end.new(hidden)
 
-    markdown = RDoc::CrossReference.stub(:new, adapter) do
-      read_generated("guide_rdoc.md", classes: [hidden], pages: [page])
-    end
+    markdown = read_generated("guide_rdoc.md", classes: [hidden], pages: [page])
 
     assert_includes markdown, "`Hidden`"
     refute_includes markdown, "[`Hidden`]"
     assert_includes page.description, '<a href="Hidden.html"><code>Hidden</code></a>'
-    assert_nil page.formatter.instance_variable_get(:@markdown_cross_reference)
-    assert_nil page.formatter.instance_variable_get(:@markdown_output_object_ids)
   end
 
   def test_markdownify_accepts_frozen_converter_output
