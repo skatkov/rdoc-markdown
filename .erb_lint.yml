@@ -30,10 +30,6 @@ linters:
       - Lint/EmptyExpression
       - Lint/SelfAssignment
       - Security/Eval
-    rubocop_config:
-      AllCops:
-        TargetRubyVersion: 3.3
-        NewCops: enable
   SpaceAroundErbTag:
     enabled: true
   TrailingWhitespace:
