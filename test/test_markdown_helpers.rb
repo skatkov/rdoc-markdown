@@ -58,8 +58,9 @@ class TestMarkdownHelpers < Minitest::Test
     page = rdoc_page(
       relative_name: "guide.rdoc",
       comment: "= Heading\n\n{Guide}[guide.html] {Upper}[UPPER.HTML] {Mail}[mailto:test@example.com] {Anchor}[#topic]\n" \
-               "{RootGuide}[/docs/root.html?x=1] {RootPlain}[/docs/plain.html] " \
+               "{RootGuide}[/docs/root.html?x=1] {RootPlain}[/docs/plain.html] {RootText}[/docs/plain.txt] " \
                "{Secure}[https://example.com/page.html] {PlainHttp}[http://example.com/page.html] " \
+               "{UpperSecure}[HTTPS://example.com/PAGE.HTML] " \
                "{MailHtml}[mailto:test.html] {AnchorHtml}[#topic.html]\n" \
                "{FilePath}[files/README.html] {ParentFile}[../files/README.html#top] " \
                "{ClassPath}[classes/Foo.html] {ParentClass}[../classes/Foo.html#top] " \
@@ -76,8 +77,10 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[Upper](UPPER.md)"
     assert_includes markdown, "[RootGuide](docs/root.md?x=1)"
     assert_includes markdown, "[RootPlain](docs/plain.md)"
+    assert_includes markdown, "[RootText](/docs/plain.txt)"
     assert_includes markdown, "[Secure](https://example.com/page.html)"
     assert_includes markdown, "[PlainHttp](http://example.com/page.html)"
+    assert_includes markdown, "[UpperSecure](HTTPS://example.com/PAGE.HTML)"
     assert_includes markdown, "[MailHtml](mailto:test.html)"
     assert_includes markdown, "[AnchorHtml](#topic.html)"
     assert_includes markdown, "[FilePath](README.md)"
@@ -170,12 +173,14 @@ class TestMarkdownHelpers < Minitest::Test
   def test_markdown_examples_are_not_treated_as_generated_links
     page = raw_html_page(
       relative_name: "markdown-examples.rdoc",
-      html: "<pre># [Topic](#topic)\n[Mime](:csv)\n[Site](www.example.com)</pre>"
+      html: "<pre># [Topic](#topic)\n[Mime](:csv)\n[Site](www.example.com)\n" \
+            "[Guide](guide.html)\n[Root](/docs/root.md)</pre>"
     )
 
     markdown = read_generated("markdown-examples_rdoc.md", pages: [page])
 
-    assert_includes markdown, "```\n# [Topic](#topic)\n[Mime](:csv)\n[Site](www.example.com)\n```"
+    assert_includes markdown, "```\n# [Topic](#topic)\n[Mime](:csv)\n[Site](www.example.com)\n" \
+      "[Guide](guide.html)\n[Root](/docs/root.md)\n```"
   end
 
   def test_scheme_less_web_links_receive_https
@@ -251,13 +256,16 @@ class TestMarkdownHelpers < Minitest::Test
   end
 
   def test_markdownify_accepts_frozen_converter_output
-    page = rdoc_page(relative_name: "frozen.rdoc", comment: "= Topic")
-    converted = (+"[Guide](guide.html)").freeze
+    page = raw_html_page(
+      relative_name: "frozen.rdoc",
+      html: '<span id="label-Topic" class="legacy-anchor"></span>'
+    )
+    converted = (+"RDocMarkdownAnchor0End").freeze
 
     ReverseMarkdown.stub(:convert, converted) do
       markdown = read_generated("frozen_rdoc.md", pages: [page])
 
-      assert_equal "[Guide](guide.md)\n", markdown
+      assert_equal '<a id="label-Topic"></a>' + "\n", markdown
     end
   end
 
@@ -549,7 +557,7 @@ class TestMarkdownHelpers < Minitest::Test
       "[Legacy](../guides/intro_rdoc.md#class-ActiveSupport::Messages::MessageVerifier-label-Signing+is+not+encryption)"
     assert_includes markdown, "[Query](../guides/intro_rdoc.md?tag=-label-test)"
     assert_eql "[Intro](../guides/intro_rdoc.md#top)\n", File.read(File.join(dir, "docs/single_rdoc.md"))
-    assert_eql "[EmptyAnchor](../guides/intro.md#) [RootIntro](../guides/intro.md)\n",
+    assert_eql "[EmptyAnchor](../guides/intro.md#) [RootIntro](/guides/intro.md)\n",
       File.read(File.join(dir, "docs/empty-anchor_rdoc.md"))
   end
 

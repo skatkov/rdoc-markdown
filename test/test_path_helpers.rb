@@ -6,7 +6,6 @@ require "rdoc/rdoc"
 require "rdoc/markdown"
 
 class TestPathHelpers < Minitest::Test
-  cover "RDoc::Generator::Markdown#class_dir"
   cover "RDoc::Generator::Markdown#emit_pagefiles"
   cover "RDoc::Generator::Markdown#initialize"
   cover "RDoc::Generator::Markdown#normalize_input_path_for_output"
@@ -48,11 +47,6 @@ class TestPathHelpers < Minitest::Test
     generator = RDoc::Generator::Markdown.new(store, generator_options(op_dir: dir, root: root))
     generator.generate
     dir
-  end
-
-  def test_class_dir_and_file_dir_are_nil
-    assert_nil generator.class_dir
-    assert_nil generator.file_dir
   end
 
   def test_initialize_leaves_classes_unset

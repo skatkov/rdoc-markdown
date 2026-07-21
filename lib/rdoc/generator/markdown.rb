@@ -116,15 +116,6 @@ class RDoc::Generator::Markdown
   # @return [Array<RDoc::TopLevel>, nil]
   attr_reader :pages
 
-  # Required by RDoc's generator interface; markdown output has no class subdirectory.
-  #
-  # @return [nil]
-  def class_dir
-  end
-
-  # this alias is required for rdoc to work
-  alias_method :file_dir, :class_dir
-
   # Creates a generator for an RDoc store and options.
   #
   # @param store [RDoc::Store] Source documentation store.
@@ -403,6 +394,11 @@ class RDoc::Generator::Markdown
         link.replace(fragment.document.create_element("code") { |code| code.content = "#{receiver}[#{href}]" })
       elsif href.start_with?("www.")
         link["href"] = "https://#{href}"
+      elsif !href.match?(/\A(?:https?:\/\/|mailto:|#)/i)
+        href = href.sub(/\.html(?=[?#]|\z)/i, ".md")
+        href = href.sub(%r{\A/(?=.+\.md(?:[?#]|\z))}, "")
+        href = href.sub(%r{\A((?:\.\./)*)(?:files|classes|modules)/(?=.+\.md(?:[?#]|\z))}, '\1')
+        link["href"] = href
       end
     end
 
@@ -415,25 +411,6 @@ class RDoc::Generator::Markdown
       anchor = %(<a id="#{id}"></a>)
       md.gsub!("#{token}\n\n#", "#{anchor}\n#")
       md.gsub!(token, anchor)
-    end
-
-    # Replace .html to .md extension in all local markdown links.
-    md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
-      "](#{Regexp.last_match(1)}.md#{Regexp.last_match(2)})"
-    end
-
-    # Turn site-root markdown links into relative links.
-    md.gsub!(%r{\]\(/([^)]+?\.md(?:[?#][^)]+)?)\)}) { "](#{Regexp.last_match(1)})" }
-
-    # Strip RDoc structural path segments from internal links.
-    md.gsub!(%r{\]\(((?:\.\./)*)files/([^)]+?\.md(?:[?#][^)]+)?)\)}) do
-      "](#{Regexp.last_match(1)}#{Regexp.last_match(2)})"
-    end
-    md.gsub!(%r{\]\(((?:\.\./)*)classes/([^)]+?\.md(?:[?#][^)]+)?)\)}) do
-      "](#{Regexp.last_match(1)}#{Regexp.last_match(2)})"
-    end
-    md.gsub!(%r{\]\(((?:\.\./)*)modules/([^)]+?\.md(?:[?#][^)]+)?)\)}) do
-      "](#{Regexp.last_match(1)}#{Regexp.last_match(2)})"
     end
 
     normalize_definition_list_code_blocks(md).rstrip
