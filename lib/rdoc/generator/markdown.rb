@@ -7,7 +7,6 @@ require "erb"
 require "reverse_markdown"
 require "csv"
 require "optparse"
-require_relative "markdown/rdoc_markdown_pre"
 
 # Generates Markdown output and a CSV search index from an RDoc store.
 class RDoc::Generator::Markdown
@@ -275,7 +274,7 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{page_output_path(page)}")
       out_file.dirname.mkpath
 
-      content = markdownify(page.description)
+      content = markdownify(render_description(page))
       File.write(out_file, finalize_markdown(
         content,
         canonical_output_path: page_output_path(page),
@@ -391,7 +390,57 @@ class RDoc::Generator::Markdown
     # - bypass - Ignore the unknown tag but try to convert its content
     # - raise - Raise an error to let you know
 
-    md = ReverseMarkdown.convert(input, github_flavored: true, unknown_tags: @markdown_unknown_tags).dup
+    fragment = Nokogiri::HTML.fragment(input)
+
+    fragment.css("pre").each do |pre|
+      language = pre["class"].to_s[/\A(?!highlight\z)[A-Za-z][A-Za-z0-9_+-]*\z/]
+      pre["class"] = "brush: #{language};" if language
+      pre.inner_html = pre.text
+    end
+
+    fragment.css("h1, h2, h3, h4, h5, h6").each do |heading|
+      link = heading.xpath("./a[starts-with(@href, '#') and string-length(@href) > 1]").find do |anchor|
+        anchor.text.match?(/\S/) &&
+          anchor.xpath("preceding-sibling::node()").none? { |sibling| sibling.text.match?(/\S/) }
+      end
+      next unless link
+
+      id = link["href"].delete_prefix("#")
+      link.replace(link.children)
+      next if id == RDoc::Text.to_anchor(heading.text)
+
+      heading.add_child(fragment.document.create_element("span", "class" => "legacy-anchor", "id" => id))
+    end
+
+    anchor_aliases = fragment.css("span.legacy-anchor[id]").map.with_index do |span, index|
+      token = "RDocMarkdownAnchor#{index}End"
+      id = span["id"]
+      span.replace(token)
+      [token, id]
+    end
+
+    fragment.css("a").each do |link|
+      receiver = link.text
+      href = link["href"].to_s
+
+      if receiver.match?(/\A(?:[A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*|[a-z_][A-Za-z0-9_]*)\z/) &&
+          href.match?(/\A(?::.+|".+")\z/)
+        link.replace(fragment.document.create_element("code") { |code| code.content = "#{receiver}[#{href}]" })
+      elsif href.start_with?("www.")
+        link["href"] = "https://#{href}"
+      end
+    end
+
+    md = ReverseMarkdown.convert(
+      fragment,
+      github_flavored: true,
+      unknown_tags: @markdown_unknown_tags
+    ).dup
+    anchor_aliases.each do |token, id|
+      anchor = %(<a id="#{id}"></a>)
+      md.gsub!("#{token}\n\n#", "#{anchor}\n#")
+      md.gsub!(token, anchor)
+    end
 
     # Replace .html to .md extension in all local markdown links.
     md.gsub!(%r{\]\((?!https?://|mailto:|#)([^)]+?)\.html((?:[?#][^)]+)?)\)}i) do
@@ -427,6 +476,22 @@ class RDoc::Generator::Markdown
     %(<a id="#{id}"></a>)
   end
 
+  # Renders an RDoc description with links limited to emitted objects.
+  #
+  # @param code_object [RDoc::CodeObject, RDoc::Context::Section] Object whose description is rendered.
+  #
+  # @return [String, nil] HTML description, or nil for an empty section.
+  def render_description(code_object)
+    return if RDoc::Context::Section === code_object && code_object.comments.empty?
+
+    formatter = code_object.formatter
+    formatter.extend(CrossrefExtension)
+    context = RDoc::Context === code_object ? code_object : code_object.parent
+    formatter.markdown_cross_reference = CrossrefAdapter.new(context)
+    formatter.markdown_output_object_ids = @markdown_output_object_ids
+    code_object.description
+  end
+
   # Renders an RDoc object's description as Markdown.
   #
   # @param code_object [RDoc::CodeObject] Object with an RDoc description.
@@ -435,7 +500,7 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Rendered description or fallback text.
   def describe(code_object, fallback: nil, heading_level_offset: 0)
-    description = code_object.description
+    description = render_description(code_object)
     return fallback.to_s if description.empty?
 
     shift_headings(markdownify(description), heading_level_offset)
@@ -448,7 +513,7 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Rendered section description.
   def section_description(section, heading_level_offset:)
-    shift_headings(markdownify(section.description), heading_level_offset)
+    shift_headings(markdownify(render_description(section)), heading_level_offset)
   end
 
   # Builds the visible method signature used in headings.
@@ -889,7 +954,7 @@ class RDoc::Generator::Markdown
     @class_docs_by_name = @class_docs.to_h { |doc| [doc.fetch(:display_name), doc] }
     @classes = @class_docs.map { |doc| doc.fetch(:klass) }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
-    @store.options.markdown_output_object_ids = Set.new((@classes + @pages).map(&:object_id))
+    @markdown_output_object_ids = (@classes + @pages).map(&:object_id)
     @rbs_method_signatures = RbsSignatureIndex.build(Array(@options.files), @base_dir, @store)
 
     @known_output_paths = Set.new
@@ -911,15 +976,48 @@ class RDoc::Options
   #
   # @return [Symbol]
   attr_accessor :markdown_unknown_tags
+end
 
-  # Code objects emitted by the active Markdown generator run.
+# Adapts RDoc 7 and 8 cross-reference resolver and link-text APIs.
+class RDoc::Generator::Markdown::CrossrefAdapter
+  # Creates an adapter for cross-references in the given context.
   #
-  # @return [Set<Integer>, nil]
-  attr_accessor :markdown_output_object_ids
+  # @param context [RDoc::Context] Context used to resolve references.
+  def initialize(context)
+    @resolver = RDoc::CrossReference.new(context)
+    @resolve_with_text = @resolver.public_method(:resolve).arity == 2
+  end
+
+  # Resolves a cross-reference across supported RDoc versions.
+  #
+  # @param name [String, nil] Cross-reference target.
+  # @param text [String] Visible link text.
+  #
+  # @return [RDoc::CodeObject, String, nil] Resolved object or fallback.
+  def resolve(name, text)
+    return unless name
+
+    @resolve_with_text ? @resolver.resolve(name, text) : @resolver.resolve(name)
+  end
+
+  # Normalizes link text to escaped HTML across supported RDoc versions.
+  #
+  # @param text [String] Link text supplied by RDoc.
+  #
+  # @return [String] HTML-safe link text.
+  def link_text(text)
+    @resolve_with_text ? CGI.escapeHTML(text) : text
+  end
 end
 
 # Prevents RDoc from linking to code objects omitted from Markdown output.
 module RDoc::Generator::Markdown::CrossrefExtension
+  # Cross-reference adapter scoped to this formatter instance.
+  attr_writer :markdown_cross_reference
+
+  # Object IDs emitted by the active Markdown generator.
+  attr_writer :markdown_output_object_ids
+
   # Renders a cross-reference only when its owning object is emitted.
   #
   # @param name [String, nil] Cross-reference target.
@@ -929,18 +1027,17 @@ module RDoc::Generator::Markdown::CrossrefExtension
   #
   # @return [String] HTML link or unlinked text.
   def link(name, text, code = true, rdoc_ref: false)
-    ref = @cross_reference.resolve(name, text)
-    output_object_ids = @options.markdown_output_object_ids
-    return super unless output_object_ids && RDoc::CodeObject === ref
+    ref = @markdown_cross_reference.resolve(name, text)
+    return super unless RDoc::CodeObject === ref
 
     context = ref
     context = context.parent until RDoc::ClassModule === context || RDoc::TopLevel === context
-    return super if output_object_ids.include?(context.object_id)
+    return super if @markdown_output_object_ids.include?(context.object_id)
 
-    return CGI.escapeHTML(text) if RDoc::TopLevel === ref || !code
+    text = @markdown_cross_reference.link_text(text)
 
-    "<code>#{CGI.escapeHTML(text)}</code>"
+    return text if RDoc::TopLevel === ref || !code
+
+    "<code>#{text}</code>"
   end
 end
-
-RDoc::Markup::ToHtmlCrossref.prepend RDoc::Generator::Markdown::CrossrefExtension

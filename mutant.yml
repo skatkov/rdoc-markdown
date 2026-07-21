@@ -13,7 +13,3 @@ requires:
 matcher:
   subjects:
     - RDoc::Generator::Markdown*
-    - ReverseMarkdown::Converters::RDocMarkdownPre*
-    - ReverseMarkdown::Converters::RDocMarkdownSpan*
-    - ReverseMarkdown::Converters::RDocMarkdownHeading*
-    - ReverseMarkdown::Converters::RDocMarkdownAnchor*
