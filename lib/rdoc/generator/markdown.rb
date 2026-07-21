@@ -484,7 +484,6 @@ class RDoc::Generator::Markdown
       code_object.description
     ensure
       formatter.markdown_cross_reference = nil
-      formatter.markdown_output_object_ids = nil
     end
   end
 
