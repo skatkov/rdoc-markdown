@@ -1,10 +1,13 @@
 # Changelog
 
+
 ## Unreleased
 
-- Require Ruby 3.3 and RDoc 8 or newer, removing RDoc 7 compatibility code.
-- Remove extra spacing between method group headings and their content.
-- reworked documentation cross-linking, moving a lot of logic to converters
+## 0.14.0
+
+- BREAKING: Removing RDoc 7 compatibility code. Support RDoc 8 only.
+- Remove extra spacing between method group headings and  content.
+- Reworked documentation cross-linking. Tests will fail, if cross-linked document can't be found.
 
 ## 0.13.2
 
