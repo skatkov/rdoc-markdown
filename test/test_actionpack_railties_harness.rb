@@ -62,8 +62,8 @@ class TestActionpackRailtiesHarness < Minitest::Test
     rows = CSV.parse(File.read(File.join(out_dir, "index.csv")), headers: true)
     entries = rows.map { |row| [row["name"], row["type"], row["path"]] }
 
-    assert_includes entries, ["README", "Page", "actionpack/README_rdoc.md"]
-    assert_includes entries, ["README", "Page", "railties/README_rdoc.md"]
-    assert_includes entries, ["RDOC_MAIN", "Page", "railties/RDOC_MAIN_md.md"]
+    assert_includes entries, ["README", "File", "actionpack/README_rdoc.md"]
+    assert_includes entries, ["README", "File", "railties/README_rdoc.md"]
+    assert_includes entries, ["RDOC_MAIN", "File", "railties/RDOC_MAIN_md.md"]
   end
 end

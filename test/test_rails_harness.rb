@@ -54,7 +54,7 @@ class TestRailsHarness < Minitest::Test
 
     assert_includes entries,
       ["ActiveSupport::HashWithIndifferentAccess", "Class", "ActiveSupport/HashWithIndifferentAccess.md"]
-    assert_includes entries, ["README", "Page", "activerecord/README_rdoc.md"]
+    assert_includes entries, ["README", "File", "activerecord/README_rdoc.md"]
 
     refute(entries.any? { |name, _type, _path| name.match?(/([A-Za-z_][A-Za-z0-9_]*)::.*::\1::/) })
   end

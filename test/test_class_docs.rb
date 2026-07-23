@@ -633,10 +633,10 @@ class TestClassDocs < Minitest::Test
     assert_false File.exist?(File.join(dir, "hidden_rdoc.md"))
     assert_false File.exist?(File.join(dir, "binary_rdoc.md"))
 
-    page_entries = index_entries(dir).select { |_name, type, _path| type == "Page" }
+    file_entries = index_entries(dir).select { |_name, type, _path| type == "File" }
 
-    assert_eql ["alpha", "Page", "alpha_rdoc.md"], page_entries.fetch(0)
-    assert_eql ["zeta", "Page", "zeta_rdoc.md"], page_entries.fetch(1)
+    assert_eql ["alpha", "File", "alpha_rdoc.md"], file_entries.fetch(0)
+    assert_eql ["zeta", "File", "zeta_rdoc.md"], file_entries.fetch(1)
   end
 
   def test_generate_populates_known_output_paths_for_link_normalization
@@ -717,7 +717,7 @@ class TestClassDocs < Minitest::Test
     assert_includes entries, ["Csv::Thing", "Class", "Csv/Thing.md"]
     assert_includes entries, ["Csv::Thing.run", "Method", "Csv/Thing.md#method-i-run"]
     refute_includes entries, ["Csv::Thing.hidden", "Method", "Csv/Thing.md#method-i-hidden"]
-    assert_includes entries, ["guide", "Page", "guide_rdoc.md"]
+    assert_includes entries, ["guide", "File", "guide_rdoc.md"]
 
     assert_eql [
       ["Csv::Thing.ALPHA", "Constant", "Csv/Thing.md#ALPHA"],
