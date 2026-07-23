@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.16.0
+
 - Don't convert markdown files from source folder. Just copy them.
 
 ## 0.15.0
