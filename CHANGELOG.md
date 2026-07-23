@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- remove special files types (changelog, readme), just label everything 'file'
+
 ## 0.14.0
 
 - BREAKING: Removing RDoc 7 compatibility code. Support RDoc 8 only.
