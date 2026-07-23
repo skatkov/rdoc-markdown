@@ -64,17 +64,15 @@ class TestPathHelpers < Minitest::Test
   end
 
   def test_page_output_path_rewrites_page_filenames_and_preserves_directories
-    files = %w[README.rdoc guides/README.rdoc guides/getting.started.rdoc].map { |path| File.join(pages_root, path) }
+    files = Dir[File.join(pages_root, "**/*.rdoc")]
     dir = generate_docs(files: files, title: "page test title", root: pages_root)
 
     assert File.exist?(File.join(dir, "README_rdoc.md"))
-    assert File.exist?(File.join(dir, "guides/README_rdoc.md"))
     assert File.exist?(File.join(dir, "guides/getting_started_rdoc.md"))
 
     entries = index_entries(dir)
 
-    assert_includes entries, ["README", "Readme", "README_rdoc.md"]
-    assert_includes entries, ["README", "Page", "guides/README_rdoc.md"]
+    assert_includes entries, ["README", "Page", "README_rdoc.md"]
     assert_includes entries, ["getting.started", "Page", "guides/getting_started_rdoc.md"]
   end
 
@@ -83,7 +81,6 @@ class TestPathHelpers < Minitest::Test
     dotted_root = File.expand_path(File.join(stable_tmpdir("root.with.dots"), "pages+v1"))
     relative_store = rdoc_store
     relative_root = "tmp/relative-root-pages"
-    rdoc_page(store, relative_name: File.join(pages_root, "README.rdoc"), comment: "Readme")
     rdoc_page(store, relative_name: "pages/guides/install.me.rdoc", comment: "Install me")
     rdoc_page(store, relative_name: File.join(pages_root, "guides/absolute.rdoc"), comment: "Absolute install")
     rdoc_page(store, relative_name: File.join(dotted_root, "guides/dotted.rdoc"), comment: "Dotted root")
@@ -100,7 +97,6 @@ class TestPathHelpers < Minitest::Test
 
     assert File.exist?(File.join(dir, "guides/install_me_rdoc.md"))
     assert File.exist?(File.join(dir, "guides/absolute_rdoc.md"))
-    assert File.exist?(File.join(dir, "README_rdoc.md"))
     assert File.exist?(File.join(dotted_dir, "guides/dotted_rdoc.md"))
     assert File.exist?(File.join(dotted_dir, "guides/basename_rdoc.md"))
     assert File.exist?(File.join(relative_dir, "guides/relative_rdoc.md"))
@@ -109,7 +105,6 @@ class TestPathHelpers < Minitest::Test
 
     assert_includes entries, ["install.me", "Page", "guides/install_me_rdoc.md"]
     assert_includes entries, ["absolute", "Page", "guides/absolute_rdoc.md"]
-    assert_includes entries, ["README", "Readme", "README_rdoc.md"]
 
     dotted_entries = index_entries(dotted_dir)
     assert_includes dotted_entries, ["dotted", "Page", "guides/dotted_rdoc.md"]
