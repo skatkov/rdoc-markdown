@@ -94,8 +94,8 @@ class TestPathHelpers < Minitest::Test
       "docs/links.rdoc" => "{Readme}[README_md.html] {Guide}[GUIDE_markdown.html]"
     )
 
-    files = %w[README.md GUIDE.markdown links.rdoc].map { |name| File.join(root, "docs", name) }
-    dir = generate_docs(files: files, title: "raw markdown", root: root)
+    files = %w[README.md GUIDE.markdown links.rdoc].map { |name| File.join("docs", name) }
+    dir = Dir.chdir(root) { generate_docs(files: files, title: "raw markdown", root: ".") }
 
     assert_equal source, File.binread(File.join(dir, "docs/README.md"))
     assert_equal guide, File.binread(File.join(dir, "docs/GUIDE.markdown"))

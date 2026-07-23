@@ -98,6 +98,7 @@ class RDoc::Generator::Markdown
   def initialize(store, rdoc_options)
     @store = store
     @options = rdoc_options
+    @source_dir = File.expand_path(rdoc_options.root.to_s)
     @markdown_unknown_tags = self.class.validate_markdown_unknown_tags(rdoc_options.markdown_unknown_tags)
   end
 
@@ -223,7 +224,7 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{page_output_path(page)}")
       out_file.dirname.mkpath
 
-      next FileUtils.cp(page.absolute_name, out_file) if page.relative_name.end_with?(".md", ".markdown")
+      next FileUtils.cp(File.expand_path(page.absolute_name, @source_dir), out_file) if page.relative_name.end_with?(".md", ".markdown")
 
       content = markdownify(render_description(page))
       File.write(out_file, finalize_markdown(
@@ -719,7 +720,7 @@ class RDoc::Generator::Markdown
   def normalize_input_path_for_output(path)
     normalized = path.tr("\\", "/").sub(%r{\A\./}, "")
 
-    root = File.expand_path(@options.root.to_s)
+    root = @source_dir
     normalized = normalized.sub(%r{\A#{Regexp.escape(root)}/}, "")
     normalized = normalized.sub(%r{\A/}, "")
 
