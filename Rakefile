@@ -59,6 +59,18 @@ namespace :markdown do
     minitest_count = MarkdownValidator.new(minitest_output).validate!
     puts "Validated #{minitest_count} markdown files in #{minitest_output}"
 
+    Rake::Task["vendor:setup:reverse_markdown"].invoke
+    reverse_markdown_root = File.expand_path("vendor/reverse_markdown", __dir__)
+    reverse_markdown_output = File.join(validation_root, "reverse_markdown")
+    generate_markdown_docs(
+      title: "reverse_markdown",
+      root: reverse_markdown_root,
+      output: reverse_markdown_output,
+      files: reverse_markdown_docs_files(reverse_markdown_root)
+    )
+    reverse_markdown_count = MarkdownValidator.new(reverse_markdown_output).validate!
+    puts "Validated #{reverse_markdown_count} markdown files in #{reverse_markdown_output}"
+
     Rake::Task["vendor:setup:jekyll_seo_tag"].invoke
     jekyll_seo_tag_output = File.join(validation_root, JEKYLL_SEO_TAG_NAME)
     generate_jekyll_seo_tag_docs(output: jekyll_seo_tag_output)
@@ -168,6 +180,10 @@ def minitest_docs_files(root)
   files.uniq
 end
 
+def reverse_markdown_docs_files(root)
+  Dir[File.join(root, "lib/**/*.rb")] + Dir[File.join(root, "*.md")]
+end
+
 def rails_validation_files(root)
   files = Dir[File.join(root, "activesupport/lib/**/*.rb")]
   files.concat(Dir[File.join(root, "activerecord/lib/**/*.rb")])
@@ -183,6 +199,7 @@ namespace :vendor do
   namespace :setup do
     minitest_ref = "v6.0.1"
     rails_ref = ENV.fetch("RAILS_REF", "main")
+    reverse_markdown_ref = "v3.0.2"
 
     desc "Clone/update vendor/jekyll-seo-tag and checkout docs-aligned tag"
     task :jekyll_seo_tag do
@@ -207,10 +224,20 @@ namespace :vendor do
     task :rails do
       ensure_git_checkout(path: "vendor/rails", url: "https://github.com/rails/rails.git", ref: rails_ref)
     end
+
+    desc "Clone/update vendor/reverse_markdown and checkout dependency-aligned tag"
+    task :reverse_markdown do
+      ensure_git_checkout(
+        path: "vendor/reverse_markdown",
+        url: "https://github.com/xijo/reverse_markdown.git",
+        ref: reverse_markdown_ref
+      )
+      Dir.chdir("vendor/reverse_markdown") { sh "git checkout #{reverse_markdown_ref}" }
+    end
   end
 
   desc "Prepare all vendored repositories"
-  task setup: ["vendor:setup:jekyll_seo_tag", "vendor:setup:minitest", "vendor:setup:rails"]
+  task setup: ["vendor:setup:jekyll_seo_tag", "vendor:setup:minitest", "vendor:setup:rails", "vendor:setup:reverse_markdown"]
 
   namespace :docs do
     desc "Generate markdown docs for vendored jekyll-seo-tag"
@@ -230,6 +257,21 @@ namespace :vendor do
       puts "Generated minitest markdown docs in #{output}"
     end
 
+    desc "Generate markdown docs for vendored reverse_markdown"
+    task :reverse_markdown do
+      root = File.expand_path("vendor/reverse_markdown", __dir__)
+      raise "Missing vendor/reverse_markdown. Run `rake vendor:setup:reverse_markdown` first." unless Dir.exist?(root)
+
+      output = File.expand_path("vendor/docs/reverse_markdown", __dir__)
+      generate_markdown_docs(
+        title: "reverse_markdown",
+        root: root,
+        output: output,
+        files: reverse_markdown_docs_files(root)
+      )
+      puts "Generated reverse_markdown markdown docs in #{output}"
+    end
+
     desc "Generate markdown docs for vendored rails"
     task :rails do
       root = File.expand_path("vendor/rails", __dir__)
@@ -246,7 +288,7 @@ namespace :vendor do
     end
 
     desc "Generate markdown docs for all vendored repositories"
-    task all: [:jekyll_seo_tag, :minitest, :rails]
+    task all: [:jekyll_seo_tag, :minitest, :reverse_markdown, :rails]
   end
 
   desc "Generate markdown docs for all vendored repositories"
