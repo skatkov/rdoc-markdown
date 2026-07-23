@@ -206,6 +206,7 @@ class TestGenerator < Minitest::Test
     assert_eql ["Inherits", "Root::Inner::Root::Undocumented"], unlinked_child_inheritance.css("td").map(&:text)
     assert_empty unlinked_child_inheritance.css("a")
   end
+
   def test_generator_with_private_visibility
     dir = run_generator(source_file, "test title") do |options|
       options.visibility = :private
