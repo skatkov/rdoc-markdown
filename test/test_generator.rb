@@ -398,6 +398,9 @@ class TestGenerator < Minitest::Test
 
       module HiddenModule # :nodoc:
       end
+
+      class ExternalNamespace::HiddenClass # :nodoc:
+      end
     RUBY
 
     dir = run_generator(source, "visibility test title")
@@ -408,6 +411,7 @@ class TestGenerator < Minitest::Test
     assert_true File.exist?(File.join(dir, "Visible.md"))
     assert_false File.exist?(File.join(dir, "HiddenClass.md"))
     assert_false File.exist?(File.join(dir, "HiddenModule.md"))
+    assert_false File.exist?(File.join(dir, "ExternalNamespace.md"))
     assert_includes visible_doc, "#### `public_method()`"
     refute_includes visible_doc, "hidden_method"
     refute_includes visible_doc, "private_method"
