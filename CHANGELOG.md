@@ -3,7 +3,9 @@
 
 ## Unreleased
 
-- remove special files types (changelog, readme), just label everything 'file'
+- remove special files types (changelog, readme), just label everything 'File'
+- change "Page" file type to just "File"
+
 
 ## 0.14.0
 

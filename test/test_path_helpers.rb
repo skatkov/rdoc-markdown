@@ -72,8 +72,8 @@ class TestPathHelpers < Minitest::Test
 
     entries = index_entries(dir)
 
-    assert_includes entries, ["README", "Page", "README_rdoc.md"]
-    assert_includes entries, ["getting.started", "Page", "guides/getting_started_rdoc.md"]
+    assert_includes entries, ["README", "File", "README_rdoc.md"]
+    assert_includes entries, ["getting.started", "File", "guides/getting_started_rdoc.md"]
   end
 
   def test_page_output_path_strips_root_basename_prefix_from_page_paths
@@ -103,15 +103,15 @@ class TestPathHelpers < Minitest::Test
 
     entries = index_entries(dir)
 
-    assert_includes entries, ["install.me", "Page", "guides/install_me_rdoc.md"]
-    assert_includes entries, ["absolute", "Page", "guides/absolute_rdoc.md"]
+    assert_includes entries, ["install.me", "File", "guides/install_me_rdoc.md"]
+    assert_includes entries, ["absolute", "File", "guides/absolute_rdoc.md"]
 
     dotted_entries = index_entries(dotted_dir)
-    assert_includes dotted_entries, ["dotted", "Page", "guides/dotted_rdoc.md"]
-    assert_includes dotted_entries, ["basename", "Page", "guides/basename_rdoc.md"]
+    assert_includes dotted_entries, ["dotted", "File", "guides/dotted_rdoc.md"]
+    assert_includes dotted_entries, ["basename", "File", "guides/basename_rdoc.md"]
 
     relative_entries = index_entries(relative_dir)
-    assert_includes relative_entries, ["relative", "Page", "guides/relative_rdoc.md"]
+    assert_includes relative_entries, ["relative", "File", "guides/relative_rdoc.md"]
   end
 
   def test_anchor_writes_method_anchor_tags_into_generated_docs
@@ -143,8 +143,8 @@ class TestPathHelpers < Minitest::Test
     assert_eql "Windows path\n", File.read(File.join(dir, "docs/windows_rdoc.md"))
 
     entries = index_entries(dir)
-    assert_includes entries, ["dot", "Page", "docs/dot_rdoc.md"]
-    assert_includes entries, ["absolute", "Page", "docs/absolute_rdoc.md"]
+    assert_includes entries, ["dot", "File", "docs/dot_rdoc.md"]
+    assert_includes entries, ["absolute", "File", "docs/absolute_rdoc.md"]
     assert_includes entries.map(&:last), "docs/windows_rdoc.md"
   end
 end

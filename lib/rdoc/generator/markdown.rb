@@ -191,7 +191,7 @@ class RDoc::Generator::Markdown
       @pages.each do |page|
         csv << [
           page.page_name,
-          "Page",
+          "File",
           page_output_path(page)
         ]
       end
