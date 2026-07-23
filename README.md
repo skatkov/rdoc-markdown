@@ -132,15 +132,19 @@ Use rake tasks to generate markdown output for vendored projects:
 rake vendor:setup
 rake vendor:docs:jekyll_seo_tag
 rake vendor:docs:minitest
+rake vendor:docs:reverse_markdown
 rake vendor:docs:rails
 # or generate all
 rake vendor:docs
 ```
 
+`rake vendor:setup` also checks out the dependency-aligned `reverse_markdown` source in `vendor/reverse_markdown`.
+
 Output is written to:
 
 - `vendor/docs/minitest`
 - `vendor/docs/jekyll-seo-tag`
+- `vendor/docs/reverse_markdown`
 - `vendor/docs/rails`
 
 ## Release

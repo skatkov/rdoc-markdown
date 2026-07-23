@@ -17,5 +17,6 @@ source_ruby/*
 vendor/minitest/
 vendor/rails/
 vendor/jekyll-seo-tag/
+vendor/reverse_markdown/
 vendor/docs/
 .mutant/*
