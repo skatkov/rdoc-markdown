@@ -3,6 +3,7 @@
 require "erb"
 require "reverse_markdown"
 require "csv"
+require "fileutils"
 require "optparse"
 
 # Generates Markdown output and a CSV search index from an RDoc store.
@@ -222,6 +223,8 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{page_output_path(page)}")
       out_file.dirname.mkpath
 
+      next FileUtils.cp(page.absolute_name, out_file) if page.relative_name.end_with?(".md", ".markdown")
+
       content = markdownify(render_description(page))
       File.write(out_file, finalize_markdown(
         content,
@@ -246,6 +249,8 @@ class RDoc::Generator::Markdown
   # @return [String] Relative Markdown path.
   def page_output_path(page)
     source_path = normalize_input_path_for_output(page.relative_name)
+    return source_path if page.relative_name.match?(/\.(?:md|markdown)\z/)
+
     dirname = File.dirname(source_path)
     basename = "#{File.basename(source_path).tr(".", "_")}.md"
 
@@ -692,6 +697,7 @@ class RDoc::Generator::Markdown
   # @return [String, nil] Resolved output path, or nil when unresolved.
   def resolve_output_path(path, current_dir)
     candidates = [path, path.delete_prefix("#{@root_path_segment}/")]
+    candidates += candidates.map { |candidate| candidate.sub(/_(md|markdown)\.md\z/, '.\1') }
 
     candidates.each do |candidate|
       return candidate if @known_output_paths.include?(candidate)
