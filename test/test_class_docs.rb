@@ -317,6 +317,15 @@ class TestClassDocs < Minitest::Test
     assert_includes index_entries(dir), ["Alpha::Another", "Class", "Alpha/Another.md"]
   end
 
+  def test_generate_skips_zero_score_classes_without_source_files
+    external = RDoc::NormalModule.new("External")
+
+    dir = generate_from_store([external])
+
+    assert_false File.exist?(File.join(dir, "External.md"))
+    assert_predicate index_entries(dir), :empty?
+  end
+
   def test_generate_keeps_empty_namespace_modules_that_contain_documented_children
     namespace = build_rdoc_module(full_name: "Jekyll")
     child = build_rdoc_class(full_name: "Jekyll::SeoTag", methods: 1)
