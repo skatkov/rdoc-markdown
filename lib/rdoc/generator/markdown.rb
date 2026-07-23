@@ -771,7 +771,7 @@ class RDoc::Generator::Markdown
         klass = doc.fetch(:klass)
 
         doc.fetch(:score).positive? ||
-          (!class_has_raw_members?(klass) && !synthetic_full_name?(klass.full_name))
+          (klass.in_files.any? && !class_has_raw_members?(klass) && !synthetic_full_name?(klass.full_name))
       end
       .sort_by { |doc| doc.fetch(:display_name) }
   end
@@ -806,6 +806,7 @@ class RDoc::Generator::Markdown
   # @return [Integer] Content score used to choose duplicate docs.
   def class_content_score(klass)
     score = class_member_count(klass)
+    score += klass.sections.count { |section| section.title }
     score += 1 unless klass.description.empty?
     score
   end

@@ -75,6 +75,7 @@ module RDocTestHelpers
     RDoc::NormalClass.new(full_name).tap do |klass|
       klass.store = store
       klass.full_name = full_name
+      klass.record_location(location)
       klass.add_comment(RDoc::Comment.new(description), location) unless description.nil?
 
       Array.new(methods) { |index| klass.add_method(rdoc_method("method_#{index}")) }
@@ -91,6 +92,7 @@ module RDocTestHelpers
     RDoc::NormalModule.new(full_name).tap do |mod|
       mod.store = store
       mod.full_name = full_name
+      mod.record_location(location)
       mod.add_comment(RDoc::Comment.new(description), location) unless description.nil?
 
       Array.new(methods) { |index| mod.add_method(rdoc_method("method_#{index}")) }

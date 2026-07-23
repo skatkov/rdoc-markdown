@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Remove external namespaces from documentation
+
 ## 0.16.1
 
 - Fix copying Markdown pages when RDoc receives relative input paths.
