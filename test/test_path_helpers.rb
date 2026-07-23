@@ -9,6 +9,7 @@ class TestPathHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_pagefiles"
   cover "RDoc::Generator::Markdown#initialize"
   cover "RDoc::Generator::Markdown#normalize_input_path_for_output"
+  cover "RDoc::Generator::Markdown#resolve_output_path"
   cover "RDoc::Generator::Markdown#turn_to_path"
   cover "RDoc::Generator::Markdown#page_output_path"
   cover "RDoc::Generator::Markdown#anchor"
@@ -74,6 +75,33 @@ class TestPathHelpers < Minitest::Test
 
     assert_includes entries, ["README", "File", "README_rdoc.md"]
     assert_includes entries, ["getting.started", "File", "guides/getting_started_rdoc.md"]
+  end
+
+  def test_generator_copies_markdown_pages_unchanged
+    source = <<~MARKDOWN.chomp
+      # Commandline
+
+      ```sh
+      $ reverse_markdown file.html > file.md
+      $ cat file.html | reverse_markdown > file.md
+      ````
+    MARKDOWN
+    guide = "# Guide\n\nPreserved exactly.\n"
+    _workspace, root = project_fixture(
+      "raw-markdown-page",
+      "docs/README.md" => source,
+      "docs/GUIDE.markdown" => guide,
+      "docs/links.rdoc" => "{Readme}[README_md.html] {Guide}[GUIDE_markdown.html]"
+    )
+
+    files = %w[README.md GUIDE.markdown links.rdoc].map { |name| File.join(root, "docs", name) }
+    dir = generate_docs(files: files, title: "raw markdown", root: root)
+
+    assert_equal source, File.binread(File.join(dir, "docs/README.md"))
+    assert_equal guide, File.binread(File.join(dir, "docs/GUIDE.markdown"))
+    assert_equal "[Readme](README.md) [Guide](GUIDE.markdown)\n",
+      File.read(File.join(dir, "docs/links_rdoc.md"))
+    assert_includes index_entries(dir), ["README", "File", "docs/README.md"]
   end
 
   def test_page_output_path_strips_root_basename_prefix_from_page_paths

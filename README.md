@@ -35,6 +35,8 @@ Run following command in directory with ruby source code:
 
 This will produce a tree of markdown documents and search index in `/doc` folder. Every class in library will have it's own markdown file.
 
+Input `.md` and `.markdown` pages are copied unchanged to the same relative path. RDoc pages and Ruby documentation are converted to Markdown.
+
 ### Unknown HTML tags
 rdoc-markdown uses `reverse_markdown` to convert RDoc's HTML fragments to Markdown. You can configure how unknown HTML tags are handled with:
 

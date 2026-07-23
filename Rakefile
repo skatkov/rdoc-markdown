@@ -176,9 +176,6 @@ def rails_validation_files(root)
 
   files.concat(Dir[File.join(root, "{active*,action*,railties}/README.{rdoc,md,markdown}")])
 
-  main_page = File.join(root, "railties/RDOC_MAIN.md")
-  files << main_page if File.file?(main_page)
-
   files.uniq
 end
 
