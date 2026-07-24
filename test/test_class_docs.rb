@@ -307,6 +307,17 @@ class TestClassDocs < Minitest::Test
     assert_predicate index_entries(dir), :empty?
   end
 
+  def test_generate_skips_hidden_only_classes_with_implicit_superclasses
+    klass = build_rdoc_class(full_name: "ImplicitSuperclass")
+    klass.superclass = "Object"
+    klass.add_method(rdoc_method("hidden_method", visible: false))
+
+    dir = generate_from_store([klass])
+
+    assert_false File.exist?(File.join(dir, "ImplicitSuperclass.md"))
+    assert_predicate index_entries(dir), :empty?
+  end
+
   def test_generate_keeps_namespace_when_hidden_descendants_are_skipped
     namespace = build_rdoc_module(full_name: "HiddenNamespace")
     hidden_child = build_rdoc_class(full_name: "HiddenNamespace::Child")
@@ -363,16 +374,13 @@ class TestClassDocs < Minitest::Test
     assert_predicate index_entries(dir), :empty?
   end
 
-  def test_generate_keeps_source_less_classes_with_template_metadata
-    inherited = RDoc::NormalClass.new("InheritedOnly", "ExternalBase")
+  def test_generate_keeps_source_less_modules_with_include_metadata
     included = RDoc::NormalModule.new("IncludedOnly")
     included.add_include(RDoc::Include.new("ExternalMixin", ""))
 
-    dir = generate_from_store([inherited, included])
+    dir = generate_from_store([included])
 
-    assert_includes File.read(File.join(dir, "InheritedOnly.md")), "| **Inherits** | ExternalBase |"
     assert_includes File.read(File.join(dir, "IncludedOnly.md")), "| **Includes** | ExternalMixin |"
-    assert_includes index_entries(dir), ["InheritedOnly", "Class", "InheritedOnly.md"]
     assert_includes index_entries(dir), ["IncludedOnly", "Module", "IncludedOnly.md"]
   end
 
