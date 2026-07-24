@@ -129,6 +129,16 @@ class TestClassDocs < Minitest::Test
     MARKDOWN
   end
 
+  def test_generate_keeps_title_only_sections
+    mod = RDoc::NormalModule.new("TitleOnly")
+    mod.add_section("Overview")
+
+    dir = generate_from_store([mod])
+
+    assert_includes File.read(File.join(dir, "TitleOnly.md")), "## Overview"
+    assert_includes index_entries(dir), ["TitleOnly", "Module", "TitleOnly.md"]
+  end
+
   def test_generate_normalizes_synthetic_class_with_multiple_middle_segments
     synthetic = build_rdoc_class(
       full_name: "Root::One::Two::Root::Thing",
@@ -181,6 +191,18 @@ class TestClassDocs < Minitest::Test
     canonical_path = File.join(dir, "Alpha/Thing.md")
 
     assert_includes File.read(canonical_path), "Real doc"
+  end
+
+  def test_generate_ignores_section_titles_when_selecting_duplicates
+    titled = build_rdoc_class(full_name: "TitleScore::Inner::TitleScore::Thing", methods: 1)
+    titled.add_section("Synthetic category")
+    membered = build_rdoc_class(full_name: "TitleScore::Thing", methods: 2)
+
+    dir = generate_from_store([titled, membered])
+    markdown = File.read(File.join(dir, "TitleScore/Thing.md"))
+
+    assert_includes markdown, "#### `method_1()`"
+    refute_includes markdown, "## Synthetic category"
   end
 
   def test_generate_replaces_zero_score_candidate

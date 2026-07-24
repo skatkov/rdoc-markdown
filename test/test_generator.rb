@@ -176,7 +176,6 @@ class TestGenerator < Minitest::Test
           module Inner
             module Root
               class Thing
-                # :category: Synthetic category
                 def synthetic; end
               end
 
@@ -194,15 +193,6 @@ class TestGenerator < Minitest::Test
 
     assert_path_exists File.join(dir, "Root/Thing.md")
     refute_path_exists File.join(dir, "Root/Inner/Root/Thing.md")
-    thing_doc = File.read(File.join(dir, "Root/Thing.md"))
-    entries = index_entries(dir)
-
-    %w[real_one real_two].each do |method|
-      assert_includes thing_doc, "#### `#{method}()`"
-      assert_includes entries, ["Root::Thing.#{method}", "Method", "Root/Thing.md#method-i-#{method}"]
-    end
-
-    refute_includes thing_doc, "#### `synthetic()`"
     child_table = Nokogiri::HTML.fragment(Commonmarker.to_html(File.read(File.join(dir, "Child.md")))).at_css("table")
     child_inheritance = child_table.at_css("tbody tr")
 
