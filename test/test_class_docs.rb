@@ -11,6 +11,7 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#build_class_docs"
   cover "RDoc::Generator::Markdown#class_member_count"
   cover "RDoc::Generator::Markdown#class_has_raw_members?"
+  cover "RDoc::Generator::Markdown#class_renderable?"
   cover "RDoc::Generator::Markdown#class_content_score"
   cover "RDoc::Generator::Markdown#class_doc_for"
   cover "RDoc::Generator::Markdown#display_name"
@@ -338,6 +339,19 @@ class TestClassDocs < Minitest::Test
 
     assert_false File.exist?(File.join(dir, "External.md"))
     assert_predicate index_entries(dir), :empty?
+  end
+
+  def test_generate_keeps_source_less_classes_with_template_metadata
+    inherited = RDoc::NormalClass.new("InheritedOnly", "ExternalBase")
+    included = RDoc::NormalModule.new("IncludedOnly")
+    included.add_include(RDoc::Include.new("ExternalMixin", ""))
+
+    dir = generate_from_store([inherited, included])
+
+    assert_includes File.read(File.join(dir, "InheritedOnly.md")), "| **Inherits** | ExternalBase |"
+    assert_includes File.read(File.join(dir, "IncludedOnly.md")), "| **Includes** | ExternalMixin |"
+    assert_includes index_entries(dir), ["InheritedOnly", "Class", "InheritedOnly.md"]
+    assert_includes index_entries(dir), ["IncludedOnly", "Module", "IncludedOnly.md"]
   end
 
   def test_generate_keeps_empty_namespace_modules_that_contain_documented_children
