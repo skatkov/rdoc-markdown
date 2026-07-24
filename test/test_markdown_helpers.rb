@@ -588,9 +588,11 @@ class TestMarkdownHelpers < Minitest::Test
     klass.add_method(constructor)
     klass.add_method(method)
     klass.add_method(rdoc_method("plain", visible: true))
+    class_formatter = klass.formatter
 
     markdown = read_generated("Docs/Thing.md", classes: [klass])
 
+    assert_same klass, class_formatter.code_object
     assert_includes markdown, "# Class Docs::Thing"
     assert_includes markdown, "# Class Topic"
     refute_includes markdown, "## Class Topic"
@@ -598,6 +600,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "# Class Topic<a id=\"class-docs-thing-class-topic\"></a>\n\n### Constants"
     assert_includes markdown, "#### `VALUE`<a id=\"VALUE\"></a>\nNot documented."
     assert_includes markdown, "## Overview"
+    assert_includes markdown, '<a id="Overview-label-Section+Topic"></a>'
     assert_includes markdown, "### Section Topic"
     refute_includes markdown, "\n# Section Topic\n"
     assert_includes markdown, "#### `run()`"

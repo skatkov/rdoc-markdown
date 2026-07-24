@@ -9,8 +9,10 @@ require "rdoc/markdown"
 require "rdiscount"
 
 class TestGenerator < Minitest::Test
+  cover "RDoc::Generator::Markdown#class_renderable?"
   cover "RDoc::Generator::Markdown#metadata_reference"
   cover "RDoc::Generator::Markdown#method_signature"
+  cover "RDoc::Generator::Markdown#render_description"
   cover "RDoc::Generator::Markdown#setup"
 
   def source_file
@@ -215,6 +217,24 @@ class TestGenerator < Minitest::Test
 
     assert_eql ["Inherits", "Root::Inner::Root::Undocumented"], unlinked_child_inheritance.css("td").map(&:text)
     assert_empty unlinked_child_inheritance.css("a")
+  end
+
+  def test_generator_renders_untitled_sections_for_external_namespaces
+    _workspace, root = project_fixture(
+      "external-namespace-section",
+      "lib/external.rb" => <<~RUBY
+        class << External::Namespace
+          # :section:
+          # Untitled section body.
+        end
+      RUBY
+    )
+
+    dir = run_generator(File.join(root, "lib/external.rb"), "external namespace") { |options| options.root = root }
+
+    markdown = File.read(File.join(dir, "External/Namespace.md"))
+    assert_includes markdown, "Untitled section body."
+    assert_includes index_entries(dir), ["External::Namespace", "Module", "External/Namespace.md"]
   end
 
   def test_generator_with_private_visibility
