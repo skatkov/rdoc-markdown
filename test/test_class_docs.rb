@@ -11,6 +11,7 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#build_class_docs"
   cover "RDoc::Generator::Markdown#class_member_count"
   cover "RDoc::Generator::Markdown#class_has_raw_members?"
+  cover "RDoc::Generator::Markdown#class_renderable?"
   cover "RDoc::Generator::Markdown#class_content_score"
   cover "RDoc::Generator::Markdown#class_doc_for"
   cover "RDoc::Generator::Markdown#display_name"
@@ -118,14 +119,24 @@ class TestClassDocs < Minitest::Test
 
   def test_generate_does_not_add_spacing_without_metadata
     mod = RDoc::NormalModule.new("ActiveModel::API")
-    mod.add_section("Active Model API")
+    mod.add_section("Overview")
 
     dir = generate_from_store([mod])
 
     assert_eql <<~MARKDOWN, File.read(File.join(dir, "ActiveModel/API.md"))
       # Module ActiveModel::API<a id="module-activemodel-api"></a>
-      ## Active Model API
+      ## Overview
     MARKDOWN
+  end
+
+  def test_generate_keeps_title_only_sections
+    mod = RDoc::NormalModule.new("TitleOnly")
+    mod.add_section("Overview")
+
+    dir = generate_from_store([mod])
+
+    assert_includes File.read(File.join(dir, "TitleOnly.md")), "## Overview"
+    assert_includes index_entries(dir), ["TitleOnly", "Module", "TitleOnly.md"]
   end
 
   def test_generate_normalizes_synthetic_class_with_multiple_middle_segments
@@ -182,6 +193,18 @@ class TestClassDocs < Minitest::Test
     assert_includes File.read(canonical_path), "Real doc"
   end
 
+  def test_generate_ignores_section_titles_when_selecting_duplicates
+    titled = build_rdoc_class(full_name: "TitleScore::Inner::TitleScore::Thing", methods: 1)
+    titled.add_section("Synthetic category")
+    membered = build_rdoc_class(full_name: "TitleScore::Thing", methods: 2)
+
+    dir = generate_from_store([titled, membered])
+    markdown = File.read(File.join(dir, "TitleScore/Thing.md"))
+
+    assert_includes markdown, "#### `method_1()`"
+    refute_includes markdown, "## Synthetic category"
+  end
+
   def test_generate_replaces_zero_score_candidate
     empty = build_rdoc_class(full_name: "Ghost::Ghost::Thing")
     real = build_rdoc_class(
@@ -194,6 +217,20 @@ class TestClassDocs < Minitest::Test
 
     assert_true File.exist?(File.join(dir, "Ghost/Thing.md"))
     assert_false File.exist?(File.join(dir, "Ghost/Ghost/Thing.md"))
+  end
+
+  def test_generate_ignores_unrenderable_candidate_before_resolving_duplicate_docs
+    synthetic = build_rdoc_class(full_name: "Root::Inner::Root::Thing")
+    real = build_rdoc_class(full_name: "Root::Thing")
+    real.add_section("Overview")
+
+    dir = generate_from_store([synthetic, real])
+    canonical_path = File.join(dir, "Root/Thing.md")
+
+    assert_true File.exist?(canonical_path)
+    assert_includes File.read(canonical_path), "## Overview"
+    assert_includes index_entries(dir), ["Root::Thing", "Class", "Root/Thing.md"]
+    assert_false File.exist?(File.join(dir, "Root/Inner/Root/Thing.md"))
   end
 
   def test_generate_ignores_zero_score_later_duplicate
@@ -270,6 +307,17 @@ class TestClassDocs < Minitest::Test
     assert_predicate index_entries(dir), :empty?
   end
 
+  def test_generate_skips_hidden_only_classes_with_implicit_superclasses
+    klass = build_rdoc_class(full_name: "ImplicitSuperclass")
+    klass.superclass = "Object"
+    klass.add_method(rdoc_method("hidden_method", visible: false))
+
+    dir = generate_from_store([klass])
+
+    assert_false File.exist?(File.join(dir, "ImplicitSuperclass.md"))
+    assert_predicate index_entries(dir), :empty?
+  end
+
   def test_generate_keeps_namespace_when_hidden_descendants_are_skipped
     namespace = build_rdoc_module(full_name: "HiddenNamespace")
     hidden_child = build_rdoc_class(full_name: "HiddenNamespace::Child")
@@ -315,6 +363,25 @@ class TestClassDocs < Minitest::Test
     assert_true File.exist?(File.join(dir, "Alpha/Another.md"))
     assert_includes index_entries(dir), ["Shell", "Class", "Shell.md"]
     assert_includes index_entries(dir), ["Alpha::Another", "Class", "Alpha/Another.md"]
+  end
+
+  def test_generate_skips_zero_score_classes_without_source_files
+    external = RDoc::NormalModule.new("External")
+
+    dir = generate_from_store([external])
+
+    assert_false File.exist?(File.join(dir, "External.md"))
+    assert_predicate index_entries(dir), :empty?
+  end
+
+  def test_generate_keeps_source_less_modules_with_include_metadata
+    included = RDoc::NormalModule.new("IncludedOnly")
+    included.add_include(RDoc::Include.new("ExternalMixin", ""))
+
+    dir = generate_from_store([included])
+
+    assert_includes File.read(File.join(dir, "IncludedOnly.md")), "| **Includes** | ExternalMixin |"
+    assert_includes index_entries(dir), ["IncludedOnly", "Module", "IncludedOnly.md"]
   end
 
   def test_generate_keeps_empty_namespace_modules_that_contain_documented_children
@@ -572,12 +639,13 @@ class TestClassDocs < Minitest::Test
 
   def test_whitespace_only_description_does_not_create_positive_score
     duplicate = build_rdoc_class(full_name: "Blank::A::Blank::Winner")
+    duplicate.add_section("Synthetic")
     whitespace = build_rdoc_class(full_name: "Blank::Winner", description: " \n\t")
 
     dir = generate_from_store([duplicate, whitespace])
 
-    assert_false File.exist?(File.join(dir, "Blank/Winner.md"))
-    assert_predicate index_entries(dir), :empty?
+    assert_includes File.read(File.join(dir, "Blank/Winner.md")), "## Synthetic"
+    assert_includes index_entries(dir), ["Blank::Winner", "Class", "Blank/Winner.md"]
   end
 
   def test_generate_sorts_class_docs_by_normalized_display_name

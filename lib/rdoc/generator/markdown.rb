@@ -390,16 +390,19 @@ class RDoc::Generator::Markdown
   #
   # @param code_object [RDoc::CodeObject, RDoc::Context::Section] Object whose description is rendered.
   #
-  # @return [String, nil] HTML description, or nil for an empty section.
+  # @return [String] HTML description.
   def render_description(code_object)
-    return if RDoc::Context::Section === code_object && code_object.comments.empty?
-
-    formatter = code_object.formatter
+    section = RDoc::Context::Section === code_object
+    formatter = if section
+      code_object.parent.formatter.dup.tap { |copy| copy.code_object = code_object }
+    else
+      code_object.formatter
+    end
     formatter.extend(CrossrefExtension)
     begin
       formatter.markdown_cross_reference = RDoc::CrossReference.new(formatter.context)
       formatter.markdown_output_object_ids = @markdown_output_object_ids
-      code_object.description
+      section ? code_object.to_document.accept(formatter) : code_object.description
     ensure
       formatter.markdown_cross_reference = nil
     end
@@ -746,9 +749,11 @@ class RDoc::Generator::Markdown
     docs_by_name = {}
 
     classes.select(&:display?).each do |klass|
+      score = class_content_score(klass)
+      next unless class_renderable?(klass, score)
+
       display_name = normalized_full_name(klass.full_name)
       output_path = turn_to_path(display_name)
-      score = class_content_score(klass)
 
       candidate = {
         klass: klass,
@@ -767,13 +772,21 @@ class RDoc::Generator::Markdown
     end
 
     docs_by_name.values
-      .select do |doc|
-        klass = doc.fetch(:klass)
-
-        doc.fetch(:score).positive? ||
-          (!class_has_raw_members?(klass) && !synthetic_full_name?(klass.full_name))
-      end
       .sort_by { |doc| doc.fetch(:display_name) }
+  end
+
+  # Checks whether the class template has meaningful output for an object.
+  #
+  # @param klass [RDoc::Context] Class or module object.
+  # @param score [Integer] Visible content score used for duplicate ranking.
+  #
+  # @return [Boolean] True when the object should have a generated page.
+  def class_renderable?(klass, score)
+    score.positive? ||
+      klass.sections.any? { |section| section.title.to_s.match?(/\S/) || section.comments.any? } ||
+      (!synthetic_full_name?(klass.full_name) &&
+        (klass.includes.any? ||
+          (klass.in_files.any? && !class_has_raw_members?(klass))))
   end
 
   # Collapses repeated namespace segments from synthetic vendored names.

@@ -9,8 +9,10 @@ require "rdoc/markdown"
 require "rdiscount"
 
 class TestGenerator < Minitest::Test
+  cover "RDoc::Generator::Markdown#class_renderable?"
   cover "RDoc::Generator::Markdown#metadata_reference"
   cover "RDoc::Generator::Markdown#method_signature"
+  cover "RDoc::Generator::Markdown#render_description"
   cover "RDoc::Generator::Markdown#setup"
 
   def source_file
@@ -174,6 +176,7 @@ class TestGenerator < Minitest::Test
           module Inner
             module Root
               class Thing
+                # :category: Synthetic category
                 def synthetic; end
               end
 
@@ -191,6 +194,15 @@ class TestGenerator < Minitest::Test
 
     assert_path_exists File.join(dir, "Root/Thing.md")
     refute_path_exists File.join(dir, "Root/Inner/Root/Thing.md")
+    thing_doc = File.read(File.join(dir, "Root/Thing.md"))
+    entries = index_entries(dir)
+
+    %w[real_one real_two].each do |method|
+      assert_includes thing_doc, "#### `#{method}()`"
+      assert_includes entries, ["Root::Thing.#{method}", "Method", "Root/Thing.md#method-i-#{method}"]
+    end
+
+    refute_includes thing_doc, "#### `synthetic()`"
     child_table = Nokogiri::HTML.fragment(Commonmarker.to_html(File.read(File.join(dir, "Child.md")))).at_css("table")
     child_inheritance = child_table.at_css("tbody tr")
 
@@ -205,6 +217,25 @@ class TestGenerator < Minitest::Test
 
     assert_eql ["Inherits", "Root::Inner::Root::Undocumented"], unlinked_child_inheritance.css("td").map(&:text)
     assert_empty unlinked_child_inheritance.css("a")
+  end
+
+  def test_generator_renders_untitled_sections_for_external_namespaces
+    _workspace, root = project_fixture(
+      "external-namespace-section",
+      "lib/external.rb" => <<~RUBY
+        class << External::Namespace
+          # :section:
+          # Untitled section body.
+        end
+      RUBY
+    )
+
+    dir = run_generator(File.join(root, "lib/external.rb"), "external namespace") { |options| options.root = root }
+
+    markdown = File.read(File.join(dir, "External/Namespace.md"))
+    assert_includes markdown, "Untitled section body."
+    assert_includes index_entries(dir), ["External::Namespace", "Module", "External/Namespace.md"]
+    refute_path_exists File.join(dir, "External.md")
   end
 
   def test_generator_with_private_visibility
@@ -398,6 +429,9 @@ class TestGenerator < Minitest::Test
 
       module HiddenModule # :nodoc:
       end
+
+      class ExternalNamespace::HiddenClass # :nodoc:
+      end
     RUBY
 
     dir = run_generator(source, "visibility test title")
@@ -408,6 +442,7 @@ class TestGenerator < Minitest::Test
     assert_true File.exist?(File.join(dir, "Visible.md"))
     assert_false File.exist?(File.join(dir, "HiddenClass.md"))
     assert_false File.exist?(File.join(dir, "HiddenModule.md"))
+    assert_false File.exist?(File.join(dir, "ExternalNamespace.md"))
     assert_includes visible_doc, "#### `public_method()`"
     refute_includes visible_doc, "hidden_method"
     refute_includes visible_doc, "private_method"
