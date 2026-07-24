@@ -196,6 +196,20 @@ class TestClassDocs < Minitest::Test
     assert_false File.exist?(File.join(dir, "Ghost/Ghost/Thing.md"))
   end
 
+  def test_generate_ignores_unrenderable_candidate_before_resolving_duplicate_docs
+    synthetic = build_rdoc_class(full_name: "Root::Inner::Root::Thing")
+    real = build_rdoc_class(full_name: "Root::Thing")
+    real.add_section("Overview")
+
+    dir = generate_from_store([synthetic, real])
+    canonical_path = File.join(dir, "Root/Thing.md")
+
+    assert_true File.exist?(canonical_path)
+    assert_includes File.read(canonical_path), "## Overview"
+    assert_includes index_entries(dir), ["Root::Thing", "Class", "Root/Thing.md"]
+    assert_false File.exist?(File.join(dir, "Root/Inner/Root/Thing.md"))
+  end
+
   def test_generate_ignores_zero_score_later_duplicate
     real = build_rdoc_class(
       full_name: "Later::Thing",
@@ -581,12 +595,13 @@ class TestClassDocs < Minitest::Test
 
   def test_whitespace_only_description_does_not_create_positive_score
     duplicate = build_rdoc_class(full_name: "Blank::A::Blank::Winner")
+    duplicate.add_section("Synthetic")
     whitespace = build_rdoc_class(full_name: "Blank::Winner", description: " \n\t")
 
     dir = generate_from_store([duplicate, whitespace])
 
-    assert_false File.exist?(File.join(dir, "Blank/Winner.md"))
-    assert_predicate index_entries(dir), :empty?
+    assert_includes File.read(File.join(dir, "Blank/Winner.md")), "## Synthetic"
+    assert_includes index_entries(dir), ["Blank::Winner", "Class", "Blank/Winner.md"]
   end
 
   def test_generate_sorts_class_docs_by_normalized_display_name
