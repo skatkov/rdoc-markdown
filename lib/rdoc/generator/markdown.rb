@@ -746,9 +746,14 @@ class RDoc::Generator::Markdown
     docs_by_name = {}
 
     classes.select(&:display?).each do |klass|
+      score = class_content_score(klass)
+      renderable = score.positive? ||
+        klass.sections.any? { |section| section.title.to_s.match?(/\S/) } ||
+        (klass.in_files.any? && !class_has_raw_members?(klass) && !synthetic_full_name?(klass.full_name))
+      next unless renderable
+
       display_name = normalized_full_name(klass.full_name)
       output_path = turn_to_path(display_name)
-      score = class_content_score(klass)
 
       candidate = {
         klass: klass,
@@ -767,13 +772,6 @@ class RDoc::Generator::Markdown
     end
 
     docs_by_name.values
-      .select do |doc|
-        klass = doc.fetch(:klass)
-
-        doc.fetch(:score).positive? ||
-          klass.sections.any? { |section| section.title.to_s.match?(/\S/) } ||
-          (klass.in_files.any? && !class_has_raw_members?(klass) && !synthetic_full_name?(klass.full_name))
-      end
       .sort_by { |doc| doc.fetch(:display_name) }
   end
 
