@@ -785,8 +785,7 @@ class RDoc::Generator::Markdown
     score.positive? ||
       klass.sections.any? { |section| section.title.to_s.match?(/\S/) || section.comments.any? } ||
       (!synthetic_full_name?(klass.full_name) &&
-        ((klass.type == "class" && !klass.superclass.nil?) ||
-          klass.includes.any? ||
+        (klass.includes.any? ||
           (klass.in_files.any? && !class_has_raw_members?(klass))))
   end
 
