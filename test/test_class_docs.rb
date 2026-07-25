@@ -8,22 +8,15 @@ require "rdoc/rdoc"
 require "rdoc/markdown"
 
 class TestClassDocs < Minitest::Test
-  cover "RDoc::Generator::Markdown#build_class_docs"
-  cover "RDoc::Generator::Markdown#class_member_count"
-  cover "RDoc::Generator::Markdown#class_has_raw_members?"
   cover "RDoc::Generator::Markdown#class_renderable?"
-  cover "RDoc::Generator::Markdown#class_content_score"
-  cover "RDoc::Generator::Markdown#class_doc_for"
   cover "RDoc::Generator::Markdown#display_name"
   cover "RDoc::Generator::Markdown#emit_classfiles"
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#generate"
   cover "RDoc::Generator::Markdown#metadata_reference"
   cover "RDoc::Generator::Markdown#metadata_table_cell"
-  cover "RDoc::Generator::Markdown#normalized_full_name"
   cover "RDoc::Generator::Markdown#output_path_for"
   cover "RDoc::Generator::Markdown#setup"
-  cover "RDoc::Generator::Markdown#synthetic_full_name?"
 
   def generate_from_store(classes, pages: nil, dir: stable_tmpdir("generate-from-store"), root: nil)
     generator = RDoc::Generator::Markdown.new(
@@ -32,16 +25,6 @@ class TestClassDocs < Minitest::Test
     )
     generator.generate
     dir
-  end
-
-  def assert_positive_score_beats_zero_score_duplicate(primary)
-    duplicate = build_rdoc_class(full_name: "#{primary.full_name}::#{primary.full_name}")
-
-    dir = generate_from_store([primary, duplicate])
-    canonical_path = File.join(dir, "#{primary.full_name.tr(":", "/").gsub("//", "/")}.md")
-
-    assert_true File.exist?(canonical_path)
-    assert_eql 1, index_entries(dir).count { |entry| entry == [primary.full_name, "Class", "#{primary.full_name.tr(":", "/")}.md"] }
   end
 
   def nest_class(parent, child)
@@ -54,31 +37,40 @@ class TestClassDocs < Minitest::Test
     child.parent = parent
   end
 
-  def test_generate_prefers_best_normalized_class_doc
-    synthetic = build_rdoc_class(
+  def test_generate_preserves_distinct_repeated_namespaces
+    nested = build_rdoc_class(
       full_name: "VendoredPathExpander::Minitest::VendoredPathExpander::PathExpander",
-      description: "Synthetic doc",
+      description: "Nested doc",
       methods: 1
     )
-    real = build_rdoc_class(
+    canonical = build_rdoc_class(
       full_name: "VendoredPathExpander::PathExpander",
-      description: "Real doc",
+      description: "Canonical doc",
       methods: 2
     )
 
-    dir = generate_from_store([synthetic, real])
+    dir = generate_from_store([nested, canonical])
 
-    canonical_path = File.join(dir, "VendoredPathExpander/PathExpander.md")
+    assert_includes File.read(File.join(dir, "VendoredPathExpander/PathExpander.md")), "Canonical doc"
+    assert_includes File.read(File.join(dir, "VendoredPathExpander/Minitest/VendoredPathExpander/PathExpander.md")), "Nested doc"
+    assert_includes index_entries(dir),
+      ["VendoredPathExpander::Minitest::VendoredPathExpander::PathExpander", "Class",
+        "VendoredPathExpander/Minitest/VendoredPathExpander/PathExpander.md"]
+  end
 
-    assert_includes File.read(canonical_path), "# Class VendoredPathExpander::PathExpander"
-    assert_includes File.read(canonical_path), "Real doc"
-    assert_false File.exist?(File.join(dir, "VendoredPathExpander/Minitest/VendoredPathExpander/PathExpander.md"))
+  def test_generate_uses_unique_store_objects
+    klass = build_rdoc_class(full_name: "Canonical", description: "Canonical doc")
+    options = generator_options(op_dir: stable_tmpdir("unique-store-objects"))
+    store = RDoc::Store.new(options)
+    klass.store = store
+    store.classes_hash[klass.full_name] = klass
+    store.classes_hash["Alias"] = klass
+    store.complete(:public)
 
-    entries = index_entries(dir)
+    RDoc::Generator::Markdown.new(store, options).generate
 
-    assert_includes entries, ["VendoredPathExpander::PathExpander", "Class", "VendoredPathExpander/PathExpander.md"]
-    assert_eql 1, entries.count { |entry| entry == ["VendoredPathExpander::PathExpander", "Class", "VendoredPathExpander/PathExpander.md"] }
-    refute(entries.any? { |name, _type, _path| name.include?("VendoredPathExpander::Minitest::VendoredPathExpander") })
+    assert_eql 1, index_entries(options.op_dir).count { |name, type, _path| name == "Canonical" && type == "Class" }
+    assert_false File.exist?(File.join(options.op_dir, "Alias.md"))
   end
 
   def test_generate_renders_metadata_as_table_cells
@@ -139,221 +131,7 @@ class TestClassDocs < Minitest::Test
     assert_includes index_entries(dir), ["TitleOnly", "Module", "TitleOnly.md"]
   end
 
-  def test_generate_normalizes_synthetic_class_with_multiple_middle_segments
-    synthetic = build_rdoc_class(
-      full_name: "Root::One::Two::Root::Thing",
-      description: "Synthetic doc",
-      methods: 1
-    )
-    real = build_rdoc_class(
-      full_name: "Root::Thing",
-      description: "Real doc",
-      methods: 2
-    )
-
-    dir = generate_from_store([synthetic, real])
-
-    canonical_path = File.join(dir, "Root/Thing.md")
-
-    assert_includes File.read(canonical_path), "Real doc"
-
-    entries = index_entries(dir)
-    assert_includes entries, ["Root::Thing", "Class", "Root/Thing.md"]
-    refute(entries.any? { |name, _type, _path| name.include?("Root::One::Two::Root") })
-  end
-
-  def test_generate_normalizes_repeated_two_part_class_with_content
-    collapsed = build_rdoc_class(full_name: "Pair::Pair", description: "Collapsed pair")
-
-    dir = generate_from_store([collapsed])
-
-    canonical_path = File.join(dir, "Pair.md")
-
-    assert_includes File.read(canonical_path), "# Class Pair"
-    assert_includes File.read(canonical_path), "Collapsed pair"
-    assert_includes index_entries(dir), ["Pair", "Class", "Pair.md"]
-  end
-
-  def test_generate_keeps_higher_score_when_lower_score_duplicate_arrives_later
-    real = build_rdoc_class(
-      full_name: "Alpha::Thing",
-      description: "Real doc",
-      methods: 2
-    )
-    synthetic = build_rdoc_class(
-      full_name: "Alpha::Z::Alpha::Thing",
-      description: "Synthetic doc",
-      methods: 1
-    )
-
-    dir = generate_from_store([real, synthetic])
-
-    canonical_path = File.join(dir, "Alpha/Thing.md")
-
-    assert_includes File.read(canonical_path), "Real doc"
-  end
-
-  def test_generate_ignores_section_titles_when_selecting_duplicates
-    titled = build_rdoc_class(full_name: "TitleScore::Inner::TitleScore::Thing", methods: 1)
-    titled.add_section("Synthetic category")
-    membered = build_rdoc_class(full_name: "TitleScore::Thing", methods: 2)
-
-    dir = generate_from_store([titled, membered])
-    markdown = File.read(File.join(dir, "TitleScore/Thing.md"))
-
-    assert_includes markdown, "#### `method_1()`"
-    refute_includes markdown, "## Synthetic category"
-  end
-
-  def test_generate_replaces_zero_score_candidate
-    empty = build_rdoc_class(full_name: "Ghost::Ghost::Thing")
-    real = build_rdoc_class(
-      full_name: "Ghost::Thing",
-      description: "Real doc",
-      methods: 1
-    )
-
-    dir = generate_from_store([empty, real])
-
-    assert_true File.exist?(File.join(dir, "Ghost/Thing.md"))
-    assert_false File.exist?(File.join(dir, "Ghost/Ghost/Thing.md"))
-  end
-
-  def test_generate_ignores_unrenderable_candidate_before_resolving_duplicate_docs
-    synthetic = build_rdoc_class(full_name: "Root::Inner::Root::Thing")
-    real = build_rdoc_class(full_name: "Root::Thing")
-    real.add_section("Overview")
-
-    dir = generate_from_store([synthetic, real])
-    canonical_path = File.join(dir, "Root/Thing.md")
-
-    assert_true File.exist?(canonical_path)
-    assert_includes File.read(canonical_path), "## Overview"
-    assert_includes index_entries(dir), ["Root::Thing", "Class", "Root/Thing.md"]
-    assert_false File.exist?(File.join(dir, "Root/Inner/Root/Thing.md"))
-  end
-
-  def test_generate_ignores_zero_score_later_duplicate
-    real = build_rdoc_class(
-      full_name: "Later::Thing",
-      description: "Real doc",
-      methods: 1
-    )
-    empty = build_rdoc_class(full_name: "Later::Z::Later::Thing")
-
-    dir = generate_from_store([real, empty])
-
-    assert_true File.exist?(File.join(dir, "Later/Thing.md"))
-    assert_false File.exist?(File.join(dir, "Later/Z/Later/Thing.md"))
-    assert_eql 1, index_entries(dir).count { |entry| entry == ["Later::Thing", "Class", "Later/Thing.md"] }
-  end
-
-  def test_generate_writes_only_canonical_path_for_positive_score_synthetic_class
-    synthetic = build_rdoc_class(
-      full_name: "Solo::Inner::Solo::Thing",
-      description: "Synthetic doc",
-      methods: 1
-    )
-
-    dir = generate_from_store([synthetic])
-
-    canonical_path = File.join(dir, "Solo/Thing.md")
-
-    assert_true File.exist?(canonical_path)
-    assert_false File.exist?(File.join(dir, "Solo/Inner/Solo/Thing.md"))
-    assert_includes index_entries(dir), ["Solo::Thing", "Class", "Solo/Thing.md"]
-  end
-
-  def test_generate_skips_zero_score_synthetic_classes
-    synthetic = build_rdoc_class(full_name: "Root::Inner::Root::Thing")
-
-    dir = generate_from_store([synthetic])
-
-    refute File.exist?(File.join(dir, "Root/Thing.md"))
-    assert_predicate index_entries(dir), :empty?
-  end
-
-  def test_generate_skips_zero_score_classes_that_only_collapse_by_normalization
-    collapsed = build_rdoc_class(full_name: "Alpha::Alpha")
-
-    dir = generate_from_store([collapsed])
-
-    assert_false File.exist?(File.join(dir, "Alpha.md"))
-    assert_predicate index_entries(dir), :empty?
-  end
-
-  def test_generate_skips_zero_score_classes_with_synthetic_full_names
-    synthetic = build_rdoc_class(full_name: "Root::Thing::Root")
-
-    dir = generate_from_store([synthetic])
-
-    assert_false File.exist?(File.join(dir, "Root/Thing/Root.md"))
-    assert_predicate index_entries(dir), :empty?
-  end
-
-  def test_generate_skips_hidden_only_member_declarations
-    hidden_method = build_rdoc_class(full_name: "HiddenMethodOnly")
-    hidden_method.add_method(rdoc_method("hidden_method", visible: false))
-    hidden_constant = build_rdoc_class(full_name: "HiddenConstantOnly")
-    hidden_constant.add_constant(rdoc_constant("HIDDEN", visible: false))
-    hidden_attribute = build_rdoc_class(full_name: "HiddenAttributeOnly")
-    hidden_attribute.add_attribute(rdoc_attribute("hidden_attribute", visible: false))
-
-    dir = generate_from_store([hidden_method, hidden_constant, hidden_attribute])
-
-    assert_false File.exist?(File.join(dir, "HiddenMethodOnly.md"))
-    assert_false File.exist?(File.join(dir, "HiddenConstantOnly.md"))
-    assert_false File.exist?(File.join(dir, "HiddenAttributeOnly.md"))
-    assert_predicate index_entries(dir), :empty?
-  end
-
-  def test_generate_skips_hidden_only_classes_with_implicit_superclasses
-    klass = build_rdoc_class(full_name: "ImplicitSuperclass")
-    klass.superclass = "Object"
-    klass.add_method(rdoc_method("hidden_method", visible: false))
-
-    dir = generate_from_store([klass])
-
-    assert_false File.exist?(File.join(dir, "ImplicitSuperclass.md"))
-    assert_predicate index_entries(dir), :empty?
-  end
-
-  def test_generate_keeps_namespace_when_hidden_descendants_are_skipped
-    namespace = build_rdoc_module(full_name: "HiddenNamespace")
-    hidden_child = build_rdoc_class(full_name: "HiddenNamespace::Child")
-    hidden_child.add_method(rdoc_method("hidden_method", visible: false))
-    nest_class(namespace, hidden_child)
-
-    dir = generate_from_store([namespace, hidden_child])
-
-    assert_true File.exist?(File.join(dir, "HiddenNamespace.md"))
-    assert_false File.exist?(File.join(dir, "HiddenNamespace/Child.md"))
-    assert_includes index_entries(dir), ["HiddenNamespace", "Module", "HiddenNamespace.md"]
-  end
-
-  def test_generate_skips_hidden_class_before_resolving_duplicate_docs
-    hidden = build_rdoc_class(
-      full_name: "VisibleDupe::Hidden::VisibleDupe::Thing",
-      description: "Hidden duplicate",
-      methods: 2
-    )
-    hidden.done_documenting = true
-    visible = build_rdoc_class(
-      full_name: "VisibleDupe::Thing",
-      description: "Visible duplicate",
-      methods: 1
-    )
-
-    dir = generate_from_store([hidden, visible])
-
-    markdown = File.read(File.join(dir, "VisibleDupe/Thing.md"))
-    assert_includes markdown, "Visible duplicate"
-    refute_includes markdown, "Hidden duplicate"
-    assert_false File.exist?(File.join(dir, "VisibleDupe/Hidden/VisibleDupe/Thing.md"))
-    assert_includes index_entries(dir), ["VisibleDupe::Thing", "Class", "VisibleDupe/Thing.md"]
-  end
-
-  def test_generate_keeps_zero_score_real_classes
+  def test_generate_keeps_source_backed_empty_classes
     real = build_rdoc_class(full_name: "Shell")
     nested = build_rdoc_class(full_name: "Alpha::Another")
 
@@ -365,7 +143,17 @@ class TestClassDocs < Minitest::Test
     assert_includes index_entries(dir), ["Alpha::Another", "Class", "Alpha/Another.md"]
   end
 
-  def test_generate_skips_zero_score_classes_without_source_files
+  def test_generate_skips_non_displayed_classes
+    hidden = build_rdoc_class(full_name: "Hidden", description: "Hidden docs")
+    hidden.done_documenting = true
+
+    dir = generate_from_store([hidden])
+
+    assert_false File.exist?(File.join(dir, "Hidden.md"))
+    assert_predicate index_entries(dir), :empty?
+  end
+
+  def test_generate_skips_empty_classes_without_source_files
     external = RDoc::NormalModule.new("External")
 
     dir = generate_from_store([external])
@@ -374,13 +162,21 @@ class TestClassDocs < Minitest::Test
     assert_predicate index_entries(dir), :empty?
   end
 
-  def test_generate_keeps_source_less_classes_with_inheritance_metadata
-    inherited = RDoc::NormalClass.new("InheritedOnly", "ExternalBase")
+  def test_generate_keeps_source_less_modules_with_content
+    included = RDoc::NormalModule.new("IncludedOnly")
+    included.add_include(RDoc::Include.new("ExternalMixin", ""))
+    omitted = RDoc::NormalClass.new("ExternalBase")
+    child = build_rdoc_class(full_name: "Child")
+    child.superclass = omitted
 
-    dir = generate_from_store([inherited])
+    dir = generate_from_store([included, omitted, child])
+    markdown = File.read(File.join(dir, "IncludedOnly.md"))
+    child_markdown = File.read(File.join(dir, "Child.md"))
 
-    assert_includes File.read(File.join(dir, "InheritedOnly.md")), "| **Inherits** | ExternalBase |"
-    assert_includes index_entries(dir), ["InheritedOnly", "Class", "InheritedOnly.md"]
+    assert_includes markdown, "| **Includes** | ExternalMixin |"
+    assert_includes child_markdown, "| **Inherits** | ExternalBase |"
+    refute_includes child_markdown, "[ExternalBase]"
+    assert_false File.exist?(File.join(dir, "ExternalBase.md"))
   end
 
   def test_generate_skips_source_less_modules_with_whitespace_only_section_comments
@@ -557,20 +353,6 @@ class TestClassDocs < Minitest::Test
     assert_includes index_entries(dir), ["AttributeOnly", "Class", "AttributeOnly.md"]
   end
 
-  def test_attribute_only_score_beats_zero_score_duplicate
-    assert_positive_score_beats_zero_score_duplicate(build_rdoc_class(full_name: "AttributeWinner", attributes: 1))
-  end
-
-  def test_attribute_only_score_replaces_earlier_zero_score_duplicate
-    duplicate = build_rdoc_class(full_name: "Attr::A::Attr::Winner")
-    primary = build_rdoc_class(full_name: "Attr::Winner", attributes: 1)
-
-    dir = generate_from_store([duplicate, primary])
-
-    assert_false File.exist?(File.join(dir, "Attr/A/Attr/Winner.md"))
-    assert_includes File.read(File.join(dir, "Attr/Winner.md")), "# Class Attr::Winner"
-  end
-
   def test_generate_keeps_classes_with_constant_only_content
     constant_only = build_rdoc_class(full_name: "ConstantOnly", constants: 1)
 
@@ -578,20 +360,6 @@ class TestClassDocs < Minitest::Test
 
     assert_true File.exist?(File.join(dir, "ConstantOnly.md"))
     assert_includes index_entries(dir), ["ConstantOnly", "Class", "ConstantOnly.md"]
-  end
-
-  def test_constant_only_score_beats_zero_score_duplicate
-    assert_positive_score_beats_zero_score_duplicate(build_rdoc_class(full_name: "ConstantWinner", constants: 1))
-  end
-
-  def test_constant_only_score_replaces_earlier_zero_score_duplicate
-    duplicate = build_rdoc_class(full_name: "Const::A::Const::Winner")
-    primary = build_rdoc_class(full_name: "Const::Winner", constants: 1)
-
-    dir = generate_from_store([duplicate, primary])
-
-    assert_false File.exist?(File.join(dir, "Const/A/Const/Winner.md"))
-    assert_includes File.read(File.join(dir, "Const/Winner.md")), "# Class Const::Winner"
   end
 
   def test_generate_keeps_classes_with_description_only_content
@@ -612,87 +380,16 @@ class TestClassDocs < Minitest::Test
     assert_includes index_entries(dir), ["NilDescription", "Class", "NilDescription.md"]
   end
 
-  def test_description_only_score_beats_zero_score_duplicate
-    assert_positive_score_beats_zero_score_duplicate(build_rdoc_class(full_name: "DescriptionWinner", description: "Only docs"))
-  end
+  def test_generate_sorts_classes_by_full_name
+    later = build_rdoc_class(full_name: "Zoo::Bee", description: "Bee doc")
+    earlier = build_rdoc_class(full_name: "Zoo::Ant", description: "Ant doc")
 
-  def test_description_only_score_replaces_earlier_zero_score_duplicate
-    duplicate = build_rdoc_class(full_name: "Desc::A::Desc::Winner")
-    primary = build_rdoc_class(full_name: "Desc::Winner", description: "Only docs")
-
-    dir = generate_from_store([duplicate, primary])
-
-    assert_false File.exist?(File.join(dir, "Desc/A/Desc/Winner.md"))
-    assert_includes File.read(File.join(dir, "Desc/Winner.md")), "Only docs"
-  end
-
-  def test_description_only_score_ties_other_single_signal_scores
-    winner = build_rdoc_class(full_name: "DescTie::Winner", description: "Method winner", methods: 1)
-    challenger = build_rdoc_class(full_name: "DescTie::Winner::DescTie::Winner", description: "Description challenger")
-
-    dir = generate_from_store([winner, challenger])
-
-    assert_includes File.read(File.join(dir, "DescTie/Winner.md")), "Method winner"
-    refute_includes File.read(File.join(dir, "DescTie/Winner.md")), "Description challenger"
-  end
-
-  def test_description_only_score_ties_method_only_score
-    winner = build_rdoc_class(full_name: "MethodTie::Winner", description: nil, methods: 1)
-    challenger = build_rdoc_class(full_name: "MethodTie::Winner::MethodTie::Winner", description: "Description challenger")
-
-    dir = generate_from_store([winner, challenger])
-
-    assert_includes index_entries(dir), ["MethodTie::Winner", "Class", "MethodTie/Winner.md"]
-    refute_includes File.read(File.join(dir, "MethodTie/Winner.md")), "Description challenger"
-  end
-
-  def test_whitespace_only_description_does_not_create_positive_score
-    duplicate = build_rdoc_class(full_name: "Blank::A::Blank::Winner")
-    duplicate.add_section("Synthetic")
-    whitespace = build_rdoc_class(full_name: "Blank::Winner", description: " \n\t")
-
-    dir = generate_from_store([duplicate, whitespace])
-
-    assert_includes File.read(File.join(dir, "Blank/Winner.md")), "## Synthetic"
-    assert_includes index_entries(dir), ["Blank::Winner", "Class", "Blank/Winner.md"]
-  end
-
-  def test_generate_sorts_class_docs_by_normalized_display_name
-    later_full_name = build_rdoc_class(
-      full_name: "Zoo::M::Zoo::Ant",
-      description: "Ant doc",
-      methods: 1
-    )
-    earlier_full_name = build_rdoc_class(
-      full_name: "Zoo::Bee",
-      description: "Bee doc",
-      methods: 1
-    )
-
-    dir = generate_from_store([later_full_name, earlier_full_name])
+    dir = generate_from_store([later, earlier])
 
     class_entries = index_entries(dir).select { |name, type, _path| type == "Class" }
 
     assert_eql ["Zoo::Ant", "Class", "Zoo/Ant.md"], class_entries.fetch(0)
     assert_eql ["Zoo::Bee", "Class", "Zoo/Bee.md"], class_entries.fetch(1)
-  end
-
-  def test_setup_sorts_store_classes_before_resolving_equal_score_duplicates
-    sorted_winner = build_rdoc_class(
-      full_name: "Order::A::Order::Thing",
-      description: "Sorted winner",
-      methods: 1
-    )
-    unsorted_first = build_rdoc_class(
-      full_name: "Order::Thing",
-      description: "Unsorted loser",
-      methods: 1
-    )
-
-    dir = generate_from_store([unsorted_first, sorted_winner])
-
-    assert_includes File.read(File.join(dir, "Order/Thing.md")), "Sorted winner"
-    refute_includes File.read(File.join(dir, "Order/Thing.md")), "Unsorted loser"
   end
 
   def test_setup_keeps_only_displayed_pages_and_sorts_them_by_base_name
@@ -718,7 +415,7 @@ class TestClassDocs < Minitest::Test
 
   def test_generate_populates_known_output_paths_for_link_normalization
     klass = build_rdoc_class(
-      full_name: "Solo::Inner::Solo::Thing",
+      full_name: "Solo::Thing",
       description: "See {alpha}[alpha_rdoc.html], {canonical}[Solo/Thing.html], and {sibling}[Sibling.html].",
       methods: 1
     )
