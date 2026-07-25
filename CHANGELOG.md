@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.16.1
+
 - Fix copying Markdown pages when RDoc receives relative input paths.
 
 ## 0.16.0
