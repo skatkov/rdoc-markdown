@@ -123,7 +123,7 @@ rake vendor:setup:rails
 bundle exec rake test
 ```
 
-The rails harness validates alias rendering, preserved code blocks, file/page links rewritten to markdown, and index stability (no synthetic nested class names).
+The rails harness validates alias rendering, preserved code blocks, file/page links rewritten to markdown, and unique index entries.
 
 ### Generate vendored docs
 Use rake tasks to generate markdown output for vendored projects:

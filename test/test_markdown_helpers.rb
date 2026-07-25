@@ -245,14 +245,37 @@ class TestMarkdownHelpers < Minitest::Test
 
   def test_generator_applies_crossref_policy_only_while_rendering
     page = rdoc_page(relative_name: "guide.rdoc", comment: "Hidden")
-    hidden = build_rdoc_class(full_name: "Hidden")
-    hidden.add_method(rdoc_method("hidden_method", visible: false))
+    hidden = RDoc::NormalModule.new("Hidden")
 
     markdown = read_generated("guide_rdoc.md", classes: [hidden], pages: [page])
 
     assert_includes markdown, "`Hidden`"
     refute_includes markdown, "[`Hidden`]"
     assert_includes page.description, '<a href="Hidden.html"><code>Hidden</code></a>'
+  end
+
+  def test_section_descriptions_use_the_configured_locale
+    locale = Object.new
+    locale.define_singleton_method(:translate) do |text|
+      {"Class body" => "Translated introduction", "Section body" => "Translated details"}.fetch(text, text)
+    end
+    options = generator_options(op_dir: stable_tmpdir("localized-sections"))
+    options.locale = locale
+    store = RDoc::Store.new(options)
+    source = store.add_file("localized.rb")
+    klass = RDoc::NormalClass.new("Localized")
+    klass.store = store
+    klass.record_location(source)
+    klass.add_comment(RDoc::Comment.new("Class body"), source)
+    klass.add_section("Details", RDoc::Comment.new("Section body"))
+    store.classes_hash[klass.full_name] = klass
+    store.complete(:public)
+
+    RDoc::Generator::Markdown.new(store, options).generate
+    markdown = File.read(File.join(options.op_dir, "Localized.md"))
+
+    assert_includes markdown, "Translated introduction"
+    assert_includes markdown, "Translated details"
   end
 
   def test_markdownify_accepts_frozen_converter_output
@@ -638,7 +661,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "Alias for: [`find`](../OtherAliases.md#method-i-find)"
   end
 
-  def test_method_alias_cannot_link_to_discarded_duplicate
+  def test_method_alias_links_to_distinct_repeated_namespace
     selected = build_rdoc_class(full_name: "Real::Thing", description: "Selected", methods: 2)
     discarded = build_rdoc_class(full_name: "Real::Inner::Real::Thing", description: "Discarded")
     aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
@@ -648,7 +671,9 @@ class TestMarkdownHelpers < Minitest::Test
     discarded.add_method(ghost)
     aliases.add_method(alias_method)
 
-    assert_raises(KeyError) { generate_markdown(classes: [selected, discarded, aliases]) }
+    markdown = read_generated("Aliases.md", classes: [selected, discarded, aliases])
+
+    assert_includes markdown, "Alias for: [`ghost`](Real/Inner/Real/Thing.md#method-i-ghost)"
   end
 
   def test_generated_markdown_collapses_blank_lines_and_strips_line_endings

@@ -42,6 +42,8 @@ module RDocTestHelpers
         page.store = store
         store.files_hash[page.relative_name] = page
       end
+
+      store.complete(:public)
     end
   end
 

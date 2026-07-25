@@ -163,7 +163,7 @@ class TestGenerator < Minitest::Test
       first_mixin_table.css("tbody tr").map { |row| row.css("td").map(&:text) }
   end
 
-  def test_generator_links_normalized_duplicate_superclass
+  def test_generator_preserves_distinct_repeated_namespaces
     _workspace, root = project_fixture(
       "normalized-superclass",
       "lib/duplicates.rb" => <<~RUBY
@@ -190,11 +190,13 @@ class TestGenerator < Minitest::Test
       RUBY
     )
 
-    dir = run_generator(File.join(root, "lib/duplicates.rb"), "normalized superclass") { |options| options.root = root }
+    dir = run_generator(File.join(root, "lib/duplicates.rb"), "distinct namespaces") { |options| options.root = root }
 
     assert_path_exists File.join(dir, "Root/Thing.md")
-    refute_path_exists File.join(dir, "Root/Inner/Root/Thing.md")
+    assert_path_exists File.join(dir, "Root/Inner/Root/Thing.md")
+    assert_path_exists File.join(dir, "Root/Inner/Root/Undocumented.md")
     thing_doc = File.read(File.join(dir, "Root/Thing.md"))
+    nested_thing_doc = File.read(File.join(dir, "Root/Inner/Root/Thing.md"))
     entries = index_entries(dir)
 
     %w[real_one real_two].each do |method|
@@ -202,21 +204,23 @@ class TestGenerator < Minitest::Test
       assert_includes entries, ["Root::Thing.#{method}", "Method", "Root/Thing.md#method-i-#{method}"]
     end
 
-    refute_includes thing_doc, "#### `synthetic()`"
+    assert_includes nested_thing_doc, "#### `synthetic()`"
+    assert_includes nested_thing_doc, "## Synthetic category"
+    assert_includes entries,
+      ["Root::Inner::Root::Thing.synthetic", "Method", "Root/Inner/Root/Thing.md#method-i-synthetic"]
     child_table = Nokogiri::HTML.fragment(Commonmarker.to_html(File.read(File.join(dir, "Child.md")))).at_css("table")
     child_inheritance = child_table.at_css("tbody tr")
 
     assert_eql ["Inherits", "Root::Inner::Root::Thing"], child_inheritance.css("td").map(&:text)
-    assert_eql ["Root/Thing.md"], child_inheritance.css("a").map { |link| link["href"] }
+    assert_eql ["Root/Inner/Root/Thing.md"], child_inheritance.css("a").map { |link| link["href"] }
 
-    refute_path_exists File.join(dir, "Root/Undocumented.md")
     unlinked_child_table = Nokogiri::HTML.fragment(
       Commonmarker.to_html(File.read(File.join(dir, "UnlinkedChild.md")))
     ).at_css("table")
     unlinked_child_inheritance = unlinked_child_table.at_css("tbody tr")
 
     assert_eql ["Inherits", "Root::Inner::Root::Undocumented"], unlinked_child_inheritance.css("td").map(&:text)
-    assert_empty unlinked_child_inheritance.css("a")
+    assert_eql ["Root/Inner/Root/Undocumented.md"], unlinked_child_inheritance.css("a").map { |link| link["href"] }
   end
 
   def test_generator_renders_untitled_sections_for_external_namespaces

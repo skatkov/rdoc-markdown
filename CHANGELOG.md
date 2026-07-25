@@ -3,7 +3,7 @@
 
 ## Unreleased
 
-- Remove external namespaces from documentation
+- Remove fabricated external namespaces and preserve exact class and module paths.
 
 ## 0.16.1
 

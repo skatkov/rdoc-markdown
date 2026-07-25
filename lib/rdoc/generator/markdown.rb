@@ -266,7 +266,7 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Display name used in headings and the index.
   def display_name(code_object)
-    class_doc_for(code_object).fetch(:display_name)
+    code_object.full_name
   end
 
   # Returns the canonical Markdown path for a class or module.
@@ -275,7 +275,7 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Relative Markdown path.
   def output_path_for(code_object)
-    class_doc_for(code_object).fetch(:output_path)
+    turn_to_path(code_object.full_name)
   end
 
   # Renders a class or module reference, linking it when its documentation is emitted.
@@ -285,11 +285,11 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Markdown text or link.
   def metadata_reference(target, label)
-    class_doc = @class_docs_by_name[normalized_full_name(target.full_name)] if target.respond_to?(:full_name)
+    output_path = @class_output_paths[target.full_name] if target.respond_to?(:full_name)
     cell = metadata_table_cell(label)
-    return cell unless class_doc
+    return cell unless output_path
 
-    "[#{cell}](#{class_doc.fetch(:output_path)})"
+    "[#{cell}](#{output_path})"
   end
 
   # Escapes text for a Markdown table cell.
@@ -402,7 +402,16 @@ class RDoc::Generator::Markdown
     begin
       formatter.markdown_cross_reference = RDoc::CrossReference.new(formatter.context)
       formatter.markdown_output_object_ids = @markdown_output_object_ids
-      section ? code_object.to_document.accept(formatter) : code_object.description
+      if section
+        locale = options.locale
+        documents = code_object.comments.map do |comment|
+          comment = RDoc::I18n::Text.new(comment).translate(locale) if locale
+          code_object.parse(comment)
+        end
+        RDoc::Markup::Document.new(*documents).accept(formatter)
+      else
+        code_object.description
+      end
     ensure
       formatter.markdown_cross_reference = nil
     end
@@ -731,127 +740,15 @@ class RDoc::Generator::Markdown
     normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, "")
   end
 
-  # Looks up resolved class documentation metadata.
-  #
-  # @param code_object [RDoc::Context] Class or module object.
-  #
-  # @return [Hash{Symbol => Object}] Metadata for rendering the object.
-  def class_doc_for(code_object)
-    @class_docs_by_object_id.fetch(code_object.object_id)
-  end
-
-  # Builds canonical class documentation metadata from RDoc objects.
-  #
-  # @param classes [Array<RDoc::Context>] Classes and modules to normalize.
-  #
-  # @return [Array<Hash{Symbol => Object}>] Metadata ordered by display name.
-  def build_class_docs(classes)
-    docs_by_name = {}
-
-    classes.select(&:display?).each do |klass|
-      score = class_content_score(klass)
-      next unless class_renderable?(klass, score)
-
-      display_name = normalized_full_name(klass.full_name)
-      output_path = turn_to_path(display_name)
-
-      candidate = {
-        klass: klass,
-        display_name: display_name,
-        output_path: output_path,
-        score: score
-      }
-
-      existing = docs_by_name[display_name]
-
-      if existing.nil?
-        docs_by_name[display_name] = candidate
-      elsif candidate.fetch(:score) > existing.fetch(:score)
-        docs_by_name[display_name] = candidate
-      end
-    end
-
-    docs_by_name.values
-      .sort_by { |doc| doc.fetch(:display_name) }
-  end
-
   # Checks whether an object is more than a fabricated external namespace.
   #
   # @param klass [RDoc::Context] Class or module object.
-  # @param score [Integer] Visible content score used for duplicate ranking.
   #
   # @return [Boolean] True when the object should have a generated page.
-  def class_renderable?(klass, score)
-    score.positive? ||
-      klass.sections.any? do |section|
-        section.title.to_s.match?(/\S/) || section.comments.any? { |comment| comment.text.match?(/\S/) }
-      end ||
-      (!class_has_raw_members?(klass) &&
-        !synthetic_full_name?(klass.full_name) &&
-        (klass.type == "class" || klass.in_files.any?))
-  end
-
-  # Collapses repeated namespace segments from synthetic vendored names.
-  #
-  # @param full_name [String] Full RDoc object name.
-  #
-  # @return [String] Normalized object name.
-  def normalized_full_name(full_name)
-    normalized = full_name
-
-    loop do
-      if normalized =~ /\A([^:]+)(?:::[^:]+)+::\1::(.+)\z/
-        normalized = "#{Regexp.last_match(1)}::#{Regexp.last_match(2)}"
-      end
-
-      if normalized =~ /\A(.+?)::\1\z/
-        normalized = Regexp.last_match(1)
-      end
-
-      break
-    end
-
-    normalized
-  end
-
-  # Scores how much owned content a class or module has.
-  #
-  # @param klass [RDoc::Context] Class or module object.
-  #
-  # @return [Integer] Content score used to choose duplicate docs.
-  def class_content_score(klass)
-    score = class_member_count(klass)
-    score += 1 unless klass.description.empty?
-    score
-  end
-
-  # Counts methods, constants, and attributes owned by a class or module.
-  #
-  # @param klass [RDoc::Context] Class or module object.
-  #
-  # @return [Integer] Number of owned members.
-  def class_member_count(klass)
-    klass.method_list.count(&:display?) + klass.constants.count(&:display?) + klass.attributes.count(&:display?)
-  end
-
-  # Checks whether a class or module owns any members before display filtering.
-  #
-  # @param klass [RDoc::Context] Class or module object.
-  #
-  # @return [Boolean] True when any owned member exists before display filtering.
-  def class_has_raw_members?(klass)
-    klass.method_list.any? || klass.constants.any? || klass.attributes.any?
-  end
-
-  # Checks whether a name appears to contain duplicated root namespaces.
-  #
-  # @param full_name [String] Full RDoc object name.
-  #
-  # @return [Boolean] True when the root namespace appears more than once.
-  def synthetic_full_name?(full_name)
-    parts = full_name.split("::")
-    root = parts.first
-    parts.count(root) > 1
+  def class_renderable?(klass)
+    klass.in_files.any? ||
+      klass.any_content ||
+      klass.sections.any? { |section| section.title.to_s.match?(/\S/) || !section.to_document.empty? }
   end
 
   # Prepares sorted objects and link lookup state for generation.
@@ -863,13 +760,11 @@ class RDoc::Generator::Markdown
       raise TypeError, "RDoc markdown output directory must be a String"
     end
 
-    @class_docs = build_class_docs(@store.all_classes_and_modules.sort)
-    @class_docs_by_object_id = @class_docs.to_h { |doc| [doc.fetch(:klass).object_id, doc] }
-    @class_docs_by_name = @class_docs.to_h { |doc| [doc.fetch(:display_name), doc] }
-    @classes = @class_docs.map { |doc| doc.fetch(:klass) }
+    @classes = @store.unique_classes_and_modules.select(&:display?).select { |klass| class_renderable?(klass) }.sort
+    @class_output_paths = @classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
     @markdown_output_object_ids = (@classes + @pages).map(&:object_id)
-    @known_output_paths = @class_docs.map { |doc| doc.fetch(:output_path) }
+    @known_output_paths = @class_output_paths.values
     @pages.each { |page| @known_output_paths << page_output_path(page) }
 
     @root_path_segment = Pathname.new(@options.root || ".").basename
