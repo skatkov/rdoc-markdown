@@ -374,14 +374,23 @@ class TestClassDocs < Minitest::Test
     assert_predicate index_entries(dir), :empty?
   end
 
-  def test_generate_keeps_source_less_modules_with_include_metadata
-    included = RDoc::NormalModule.new("IncludedOnly")
-    included.add_include(RDoc::Include.new("ExternalMixin", ""))
+  def test_generate_keeps_source_less_classes_with_inheritance_metadata
+    inherited = RDoc::NormalClass.new("InheritedOnly", "ExternalBase")
 
-    dir = generate_from_store([included])
+    dir = generate_from_store([inherited])
 
-    assert_includes File.read(File.join(dir, "IncludedOnly.md")), "| **Includes** | ExternalMixin |"
-    assert_includes index_entries(dir), ["IncludedOnly", "Module", "IncludedOnly.md"]
+    assert_includes File.read(File.join(dir, "InheritedOnly.md")), "| **Inherits** | ExternalBase |"
+    assert_includes index_entries(dir), ["InheritedOnly", "Class", "InheritedOnly.md"]
+  end
+
+  def test_generate_skips_source_less_modules_with_whitespace_only_section_comments
+    mod = RDoc::NormalModule.new("WhitespaceOnly")
+    mod.add_section(nil, RDoc::Comment.new(" \n\t"))
+
+    dir = generate_from_store([mod])
+
+    assert_false File.exist?(File.join(dir, "WhitespaceOnly.md"))
+    assert_predicate index_entries(dir), :empty?
   end
 
   def test_generate_keeps_empty_namespace_modules_that_contain_documented_children
