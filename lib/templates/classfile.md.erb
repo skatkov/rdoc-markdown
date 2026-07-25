@@ -1,4 +1,4 @@
-# <%= klass.type.capitalize %> <%= display_name(klass) %><%= anchor(klass.aref.strip) %>
+# <%= klass.type.capitalize %> <%= klass.full_name %><%= anchor(klass.aref.strip) %>
 <%- superclass = klass.superclass if klass.type == "class" -%>
 <%- includes = klass.includes -%>
 <%- source_files = klass.in_files -%>
