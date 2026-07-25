@@ -262,11 +262,7 @@ class TestMarkdownHelpers < Minitest::Test
     options = generator_options(op_dir: stable_tmpdir("localized-sections"))
     options.locale = locale
     store = RDoc::Store.new(options)
-    source = store.add_file("localized.rb")
-    klass = RDoc::NormalClass.new("Localized")
-    klass.store = store
-    klass.record_location(source)
-    klass.add_comment(RDoc::Comment.new("Class body"), source)
+    klass = rdoc_class("Localized", comment: "Class body", store: store)
     klass.add_section("Details", RDoc::Comment.new("Section body"))
     store.classes_hash[klass.full_name] = klass
     store.complete(:public)
@@ -662,7 +658,6 @@ class TestMarkdownHelpers < Minitest::Test
   end
 
   def test_method_alias_links_to_distinct_repeated_namespace
-    selected = build_rdoc_class(full_name: "Real::Thing", description: "Selected", methods: 2)
     discarded = build_rdoc_class(full_name: "Real::Inner::Real::Thing", description: "Discarded")
     aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
     ghost = rdoc_method("ghost", visible: true)
@@ -671,7 +666,7 @@ class TestMarkdownHelpers < Minitest::Test
     discarded.add_method(ghost)
     aliases.add_method(alias_method)
 
-    markdown = read_generated("Aliases.md", classes: [selected, discarded, aliases])
+    markdown = read_generated("Aliases.md", classes: [discarded, aliases])
 
     assert_includes markdown, "Alias for: [`ghost`](Real/Inner/Real/Thing.md#method-i-ghost)"
   end
