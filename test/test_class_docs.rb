@@ -8,8 +8,6 @@ require "rdoc/rdoc"
 require "rdoc/markdown"
 
 class TestClassDocs < Minitest::Test
-  cover "RDoc::Generator::Markdown#class_renderable?"
-  cover "RDoc::Generator::Markdown#display_name"
   cover "RDoc::Generator::Markdown#emit_classfiles"
   cover "RDoc::Generator::Markdown#emit_csv_index"
   cover "RDoc::Generator::Markdown#generate"

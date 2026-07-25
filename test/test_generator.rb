@@ -9,7 +9,6 @@ require "rdoc/markdown"
 require "rdiscount"
 
 class TestGenerator < Minitest::Test
-  cover "RDoc::Generator::Markdown#class_renderable?"
   cover "RDoc::Generator::Markdown#metadata_reference"
   cover "RDoc::Generator::Markdown#method_signature"
   cover "RDoc::Generator::Markdown#render_description"

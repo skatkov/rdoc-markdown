@@ -152,14 +152,14 @@ class RDoc::Generator::Markdown
 
       @classes.each do |klass|
         csv << [
-          display_name(klass),
+          klass.full_name,
           klass.type.capitalize,
           output_path_for(klass)
         ]
 
         klass.method_list.select(&:display?).each do |method|
           csv << [
-            "#{display_name(klass)}.#{method.name}",
+            "#{klass.full_name}.#{method.name}",
             "Method",
             "#{output_path_for(klass)}##{method.aref}"
           ]
@@ -171,7 +171,7 @@ class RDoc::Generator::Markdown
           .sort
           .each do |const|
             csv << [
-              "#{display_name(klass)}.#{const.name}",
+              "#{klass.full_name}.#{const.name}",
               "Constant",
               "#{output_path_for(klass)}##{const.name}"
             ]
@@ -183,7 +183,7 @@ class RDoc::Generator::Markdown
           .sort
           .each do |attr|
             csv << [
-              "#{display_name(klass)}.#{attr.name}",
+              "#{klass.full_name}.#{attr.name}",
               "Attribute",
               "#{output_path_for(klass)}##{attr.aref}"
             ]
@@ -258,15 +258,6 @@ class RDoc::Generator::Markdown
     return basename if dirname == "."
 
     "#{dirname}/#{basename}"
-  end
-
-  # Returns the normalized display name for a class or module.
-  #
-  # @param code_object [RDoc::Context] Class or module object.
-  #
-  # @return [String] Display name used in headings and the index.
-  def display_name(code_object)
-    code_object.full_name
   end
 
   # Returns the canonical Markdown path for a class or module.
@@ -740,17 +731,6 @@ class RDoc::Generator::Markdown
     normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, "")
   end
 
-  # Checks whether an object is more than a fabricated external namespace.
-  #
-  # @param klass [RDoc::Context] Class or module object.
-  #
-  # @return [Boolean] True when the object should have a generated page.
-  def class_renderable?(klass)
-    klass.in_files.any? ||
-      klass.any_content ||
-      klass.sections.any? { |section| section.title.to_s.match?(/\S/) || !section.to_document.empty? }
-  end
-
   # Prepares sorted objects and link lookup state for generation.
   #
   # @return [void]
@@ -760,7 +740,11 @@ class RDoc::Generator::Markdown
       raise TypeError, "RDoc markdown output directory must be a String"
     end
 
-    @classes = @store.unique_classes_and_modules.select(&:display?).select { |klass| class_renderable?(klass) }.sort
+    @classes = @store.unique_classes_and_modules.select(&:display?).select do |klass|
+      klass.in_files.any? ||
+        klass.any_content ||
+        klass.sections.any? { |section| section.title.to_s.match?(/\S/) || !section.to_document.empty? }
+    end.sort
     @class_output_paths = @classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
     @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
     @markdown_output_object_ids = (@classes + @pages).map(&:object_id)
