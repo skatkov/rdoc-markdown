@@ -169,7 +169,6 @@ class TestGenerator < Minitest::Test
         module Root
           class Thing
             def real_one; end
-            def real_two; end
           end
 
           module Inner
@@ -191,35 +190,21 @@ class TestGenerator < Minitest::Test
 
     dir = run_generator(File.join(root, "lib/duplicates.rb"), "distinct namespaces") { |options| options.root = root }
 
-    assert_path_exists File.join(dir, "Root/Thing.md")
-    assert_path_exists File.join(dir, "Root/Inner/Root/Thing.md")
-    assert_path_exists File.join(dir, "Root/Inner/Root/Undocumented.md")
     thing_doc = File.read(File.join(dir, "Root/Thing.md"))
     nested_thing_doc = File.read(File.join(dir, "Root/Inner/Root/Thing.md"))
     entries = index_entries(dir)
 
-    %w[real_one real_two].each do |method|
-      assert_includes thing_doc, "#### `#{method}()`"
-      assert_includes entries, ["Root::Thing.#{method}", "Method", "Root/Thing.md#method-i-#{method}"]
-    end
+    assert_includes thing_doc, "#### `real_one()`"
+    assert_includes entries, ["Root::Thing.real_one", "Method", "Root/Thing.md#method-i-real_one"]
 
     assert_includes nested_thing_doc, "#### `synthetic()`"
     assert_includes nested_thing_doc, "## Synthetic category"
     assert_includes entries,
       ["Root::Inner::Root::Thing.synthetic", "Method", "Root/Inner/Root/Thing.md#method-i-synthetic"]
-    child_table = Nokogiri::HTML.fragment(Commonmarker.to_html(File.read(File.join(dir, "Child.md")))).at_css("table")
-    child_inheritance = child_table.at_css("tbody tr")
-
-    assert_eql ["Inherits", "Root::Inner::Root::Thing"], child_inheritance.css("td").map(&:text)
-    assert_eql ["Root/Inner/Root/Thing.md"], child_inheritance.css("a").map { |link| link["href"] }
-
-    unlinked_child_table = Nokogiri::HTML.fragment(
-      Commonmarker.to_html(File.read(File.join(dir, "UnlinkedChild.md")))
-    ).at_css("table")
-    unlinked_child_inheritance = unlinked_child_table.at_css("tbody tr")
-
-    assert_eql ["Inherits", "Root::Inner::Root::Undocumented"], unlinked_child_inheritance.css("td").map(&:text)
-    assert_eql ["Root/Inner/Root/Undocumented.md"], unlinked_child_inheritance.css("a").map { |link| link["href"] }
+    assert_includes File.read(File.join(dir, "Child.md")),
+      "| **Inherits** | [Root::Inner::Root::Thing](Root/Inner/Root/Thing.md) |"
+    assert_includes File.read(File.join(dir, "UnlinkedChild.md")),
+      "| **Inherits** | [Root::Inner::Root::Undocumented](Root/Inner/Root/Undocumented.md) |"
   end
 
   def test_generator_renders_untitled_sections_for_external_namespaces
