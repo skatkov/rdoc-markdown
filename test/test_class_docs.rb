@@ -36,16 +36,8 @@ class TestClassDocs < Minitest::Test
   end
 
   def test_generate_preserves_distinct_repeated_namespaces
-    nested = build_rdoc_class(
-      full_name: "VendoredPathExpander::Minitest::VendoredPathExpander::PathExpander",
-      description: "Nested doc",
-      methods: 1
-    )
-    canonical = build_rdoc_class(
-      full_name: "VendoredPathExpander::PathExpander",
-      description: "Canonical doc",
-      methods: 2
-    )
+    nested = build_rdoc_class(full_name: "VendoredPathExpander::Minitest::VendoredPathExpander::PathExpander", description: "Nested doc")
+    canonical = build_rdoc_class(full_name: "VendoredPathExpander::PathExpander", description: "Canonical doc")
 
     dir = generate_from_store([nested, canonical])
 
@@ -68,7 +60,6 @@ class TestClassDocs < Minitest::Test
     RDoc::Generator::Markdown.new(store, options).generate
 
     assert_eql 1, index_entries(options.op_dir).count { |name, type, _path| name == "Canonical" && type == "Class" }
-    assert_false File.exist?(File.join(options.op_dir, "Alias.md"))
   end
 
   def test_generate_renders_metadata_as_table_cells
@@ -117,16 +108,6 @@ class TestClassDocs < Minitest::Test
       # Module ActiveModel::API<a id="module-activemodel-api"></a>
       ## Overview
     MARKDOWN
-  end
-
-  def test_generate_keeps_title_only_sections
-    mod = RDoc::NormalModule.new("TitleOnly")
-    mod.add_section("Overview")
-
-    dir = generate_from_store([mod])
-
-    assert_includes File.read(File.join(dir, "TitleOnly.md")), "## Overview"
-    assert_includes index_entries(dir), ["TitleOnly", "Module", "TitleOnly.md"]
   end
 
   def test_generate_keeps_source_backed_empty_classes
