@@ -775,7 +775,7 @@ class RDoc::Generator::Markdown
       .sort_by { |doc| doc.fetch(:display_name) }
   end
 
-  # Checks whether the class template has meaningful output for an object.
+  # Checks whether an object is more than a fabricated external namespace.
   #
   # @param klass [RDoc::Context] Class or module object.
   # @param score [Integer] Visible content score used for duplicate ranking.
@@ -783,10 +783,12 @@ class RDoc::Generator::Markdown
   # @return [Boolean] True when the object should have a generated page.
   def class_renderable?(klass, score)
     score.positive? ||
-      klass.sections.any? { |section| section.title.to_s.match?(/\S/) || section.comments.any? } ||
-      (!synthetic_full_name?(klass.full_name) &&
-        (klass.includes.any? ||
-          (klass.in_files.any? && !class_has_raw_members?(klass))))
+      klass.sections.any? do |section|
+        section.title.to_s.match?(/\S/) || section.comments.any? { |comment| comment.text.match?(/\S/) }
+      end ||
+      (!class_has_raw_members?(klass) &&
+        !synthetic_full_name?(klass.full_name) &&
+        (klass.type == "class" || klass.in_files.any?))
   end
 
   # Collapses repeated namespace segments from synthetic vendored names.
