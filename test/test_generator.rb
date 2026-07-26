@@ -441,6 +441,22 @@ class TestGenerator < Minitest::Test
     refute(entries.any? { |name, _type, _path| name.include?("private_method") })
   end
 
+  def test_generator_omits_external_namespaces_created_for_nodoc_classes
+    source = File.join(__dir__, "data/external_namespaces.rb")
+    dir = run_generator(source, "external namespaces")
+    entries = index_entries(dir)
+
+    [
+      ["Process", "Module", "Process.md"],
+      ["Thread", "Module", "Thread.md"],
+      ["Thread::Backtrace", "Module", "Thread/Backtrace.md"],
+      ["URI", "Module", "URI.md"]
+    ].each do |entry|
+      refute_path_exists File.join(dir, entry.last)
+      refute_includes entries, entry
+    end
+  end
+
   def test_generator_writes_nested_namespaces_to_nested_paths
     dir = run_generator(File.join(__dir__, "data/namespaced_example.rb"), "namespaced test title")
 
