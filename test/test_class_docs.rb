@@ -141,21 +141,45 @@ class TestClassDocs < Minitest::Test
     assert_predicate index_entries(dir), :empty?
   end
 
-  def test_generate_keeps_source_less_modules_with_content
+  def test_generate_keeps_source_less_modules_with_rendered_content
     included = RDoc::NormalModule.new("IncludedOnly")
     included.add_include(RDoc::Include.new("ExternalMixin", ""))
+    described = RDoc::NormalModule.new("DescribedOnly")
+    described.add_comment(RDoc::Comment.new("Only docs"), RDoc::TopLevel.new("external.rb"))
+    methoded = RDoc::NormalModule.new("MethodOnly")
+    methoded.add_method(rdoc_method("run"))
+    constant = RDoc::NormalModule.new("ConstantOnly")
+    constant.add_constant(rdoc_constant("VALUE"))
+    attributed = RDoc::NormalModule.new("AttributeOnly")
+    attributed.add_attribute(rdoc_attribute("name"))
     omitted = RDoc::NormalClass.new("ExternalBase")
     child = build_rdoc_class(full_name: "Child")
     child.superclass = omitted
 
-    dir = generate_from_store([included, omitted, child])
+    dir = generate_from_store([included, described, methoded, constant, attributed, omitted, child])
     markdown = File.read(File.join(dir, "IncludedOnly.md"))
     child_markdown = File.read(File.join(dir, "Child.md"))
 
     assert_includes markdown, "| **Includes** | ExternalMixin |"
+    assert_includes File.read(File.join(dir, "DescribedOnly.md")), "Only docs"
+    assert_includes File.read(File.join(dir, "MethodOnly.md")), "#### `run()`"
+    assert_includes File.read(File.join(dir, "ConstantOnly.md")), "#### `VALUE`"
+    assert_includes File.read(File.join(dir, "AttributeOnly.md")), "#### `name`"
     assert_includes child_markdown, "| **Inherits** | ExternalBase |"
     refute_includes child_markdown, "[ExternalBase]"
     assert_false File.exist?(File.join(dir, "ExternalBase.md"))
+  end
+
+  def test_generate_skips_source_less_modules_with_only_hidden_members
+    mod = RDoc::NormalModule.new("HiddenOnly")
+    mod.add_method(rdoc_method("hidden", visible: false))
+    mod.add_constant(rdoc_constant("HIDDEN", visible: false))
+    mod.add_attribute(rdoc_attribute("hidden", visible: false))
+
+    dir = generate_from_store([mod])
+
+    assert_false File.exist?(File.join(dir, "HiddenOnly.md"))
+    assert_predicate index_entries(dir), :empty?
   end
 
   def test_generate_skips_source_less_modules_with_whitespace_only_section_comments

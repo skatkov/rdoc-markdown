@@ -742,7 +742,11 @@ class RDoc::Generator::Markdown
 
     @classes = @store.unique_classes_and_modules.select(&:display?).select do |klass|
       klass.in_files.any? ||
-        klass.any_content ||
+        !klass.description.empty? ||
+        klass.includes.any? ||
+        klass.method_list.any?(&:display?) ||
+        klass.constants.any?(&:display?) ||
+        klass.attributes.any?(&:display?) ||
         klass.sections.any? { |section| section.title.to_s.match?(/\S/) || !section.to_document.empty? }
     end.sort
     @class_output_paths = @classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
