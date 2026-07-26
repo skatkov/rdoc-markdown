@@ -35,7 +35,7 @@ module RDocTestHelpers
     RDoc::Store.new(RDoc::Options.new).tap do |store|
       classes.each do |klass|
         klass.store = store
-        store.classes_hash[klass.full_name] = klass
+        (klass.module? ? store.modules_hash : store.classes_hash)[klass.full_name] = klass
       end
 
       Array(pages).each do |page|
@@ -69,7 +69,7 @@ module RDocTestHelpers
     end
   end
 
-  def build_rdoc_class(full_name:, description: "", methods: 0, constants: 0, attributes: 0)
+  def build_rdoc_class(full_name:, description: "", methods: 0, constants: 0, attributes: 0, source_backed: false)
     store = rdoc_store
     location = RDoc::TopLevel.new("#{full_name.tr(":", "_")}.rb")
     location.store = store
@@ -77,7 +77,7 @@ module RDocTestHelpers
     RDoc::NormalClass.new(full_name).tap do |klass|
       klass.store = store
       klass.full_name = full_name
-      klass.record_location(location)
+      klass.record_location(location) if source_backed
       klass.add_comment(RDoc::Comment.new(description), location) unless description.nil?
 
       Array.new(methods) { |index| klass.add_method(rdoc_method("method_#{index}")) }
@@ -86,7 +86,7 @@ module RDocTestHelpers
     end
   end
 
-  def build_rdoc_module(full_name:, description: "", methods: 0, constants: 0, attributes: 0)
+  def build_rdoc_module(full_name:, description: "", methods: 0, constants: 0, attributes: 0, source_backed: false)
     store = rdoc_store
     location = RDoc::TopLevel.new("#{full_name.tr(":", "_")}.rb")
     location.store = store
@@ -94,7 +94,7 @@ module RDocTestHelpers
     RDoc::NormalModule.new(full_name).tap do |mod|
       mod.store = store
       mod.full_name = full_name
-      mod.record_location(location)
+      mod.record_location(location) if source_backed
       mod.add_comment(RDoc::Comment.new(description), location) unless description.nil?
 
       Array.new(methods) { |index| mod.add_method(rdoc_method("method_#{index}")) }
