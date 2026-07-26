@@ -37,7 +37,7 @@ class TestMarkdownHelpers < Minitest::Test
     options.markdown_unknown_tags = markdown_unknown_tags unless markdown_unknown_tags.equal?(DEFAULT_MARKDOWN_UNKNOWN_TAGS)
 
     RDoc::Generator::Markdown.new(
-      rdoc_store(classes: classes, pages: pages),
+      rdoc_store(classes: classes, pages: pages, options: options),
       options
     ).generate
     dir
