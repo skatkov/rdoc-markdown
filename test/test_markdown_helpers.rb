@@ -295,6 +295,25 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "## Details\n\nA [link](https://example.test)\n"
   end
 
+  def test_localized_sections_preserve_document_backed_comments
+    options = generator_options(op_dir: stable_tmpdir("localized-document-section"))
+    options.locale = Object.new.tap { |locale| locale.define_singleton_method(:translate) { |text| text } }
+    store = RDoc::Store.new(options)
+    klass = rdoc_class("LocalizedDocument", store: store)
+    document = RDoc::Markup::Document.new(RDoc::Markup::Paragraph.new("Section body"))
+    klass.add_section("Details", RDoc::Comment.from_document(document))
+    document = RDoc::Markup::Document.new(RDoc::Markup::Paragraph.new("More details"))
+    klass.add_section("Details", RDoc::Comment.from_document(document))
+    store.classes_hash[klass.full_name] = klass
+    store.complete(:public)
+
+    RDoc::Generator::Markdown.new(store, options).generate
+    markdown = File.read(File.join(options.op_dir, "LocalizedDocument.md"))
+
+    assert_includes markdown, "## Details\n\nSection body\n"
+    assert_includes markdown, "More details"
+  end
+
   def test_markdownify_accepts_frozen_converter_output
     page = raw_html_page(
       relative_name: "frozen.rdoc",
