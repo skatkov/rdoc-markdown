@@ -17,9 +17,10 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#setup"
 
   def generate_from_store(classes, pages: nil, dir: stable_tmpdir("generate-from-store"), root: nil)
+    options = generator_options(op_dir: dir, root: root)
     generator = RDoc::Generator::Markdown.new(
-      rdoc_store(classes: classes, pages: pages),
-      generator_options(op_dir: dir, root: root)
+      rdoc_store(classes: classes, pages: pages, options: options),
+      options
     )
     generator.generate
     dir

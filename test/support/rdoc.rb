@@ -31,8 +31,8 @@ module RDocTestHelpers
     end
   end
 
-  def rdoc_store(classes: [], pages: nil)
-    RDoc::Store.new(RDoc::Options.new).tap do |store|
+  def rdoc_store(classes: [], pages: nil, options: RDoc::Options.new)
+    RDoc::Store.new(options).tap do |store|
       classes.each do |klass|
         klass.store = store
         (klass.module? ? store.modules_hash : store.classes_hash)[klass.full_name] = klass
@@ -43,7 +43,7 @@ module RDocTestHelpers
         store.files_hash[page.relative_name] = page
       end
 
-      store.complete(:public)
+      store.complete(options.visibility)
     end
   end
 
