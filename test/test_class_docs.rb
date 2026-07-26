@@ -165,6 +165,17 @@ class TestClassDocs < Minitest::Test
     assert_false File.exist?(File.join(dir, "ExternalBase.md"))
   end
 
+  def test_generate_formats_source_less_descriptions_once
+    mod = build_rdoc_module(
+      full_name: "Documented",
+      description: "See {Missing}[rdoc-ref:Missing]."
+    )
+
+    stdout, = capture_io { generate_from_store([mod]) }
+
+    assert_eql 1, stdout.scan("can't be resolved").length
+  end
+
   def test_generate_skips_source_less_modules_with_only_hidden_members
     mod = RDoc::NormalModule.new("HiddenOnly")
     mod.add_method(rdoc_method("hidden", visible: false))
