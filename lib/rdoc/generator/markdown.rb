@@ -752,7 +752,7 @@ class RDoc::Generator::Markdown
 
     @classes = @store.unique_classes_and_modules.select(&:display?).select do |klass|
       klass.in_files.any? ||
-        !klass.description.empty? ||
+        klass.documented? ||
         klass.includes.any? ||
         klass.method_list.any?(&:display?) ||
         klass.constants.any?(&:display?) ||
