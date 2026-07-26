@@ -589,7 +589,10 @@ class RDoc::Generator::Markdown
     aliased_method = method.is_alias_for
     return "Not documented." unless aliased_method
 
-    "Alias for: [`#{aliased_method.name}`](#{method_link(aliased_method, current_class: current_class)})"
+    link = method_link(aliased_method, current_class: current_class)
+    return "Alias for: `#{aliased_method.name}`" unless link
+
+    "Alias for: [`#{aliased_method.name}`](#{link})"
   end
 
   # Applies final whitespace and link normalization before writing Markdown.
@@ -666,12 +669,14 @@ class RDoc::Generator::Markdown
   # @param method [RDoc::AnyMethod] Target method.
   # @param current_class [RDoc::Context] Class or module currently being rendered.
   #
-  # @return [String] Anchor or relative Markdown link target.
+  # @return [String, nil] Anchor or relative Markdown link target, or nil when the target page is omitted.
   def method_link(method, current_class:)
     target_parent = method.parent
+    target_path = @class_output_paths[target_parent.full_name]
+    return unless target_path
     return "##{method.aref}" if target_parent == current_class
 
-    "#{output_path_for(target_parent)}##{method.aref}"
+    "#{target_path}##{method.aref}"
   end
 
   # Rewrites local Markdown links relative to the current output file.
