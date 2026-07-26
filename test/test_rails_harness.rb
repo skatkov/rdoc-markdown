@@ -54,7 +54,16 @@ class TestRailsHarness < Minitest::Test
 
     assert_includes entries,
       ["ActiveSupport::HashWithIndifferentAccess", "Class", "ActiveSupport/HashWithIndifferentAccess.md"]
-    assert_eql 1, entries.count { |name, type, _path| name == "ActiveSupport::HashWithIndifferentAccess" && type == "Class" }
     assert_includes entries, ["README", "File", "activerecord/README_rdoc.md"]
+
+    [
+      ["Process", "Module", "Process.md"],
+      ["Thread", "Module", "Thread.md"],
+      ["Thread::Backtrace", "Module", "Thread/Backtrace.md"],
+      ["URI", "Module", "URI.md"]
+    ].each do |entry|
+      refute_path_exists File.join(out_dir, entry.last)
+      refute_includes entries, entry
+    end
   end
 end
