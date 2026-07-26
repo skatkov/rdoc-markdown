@@ -277,13 +277,15 @@ class TestMarkdownHelpers < Minitest::Test
   end
 
   def test_localized_markdown_sections_keep_their_markup_format
+    source = "A [link](https://example.test)"
+    translation = "Translated [link](https://example.test)"
     locale = Object.new
-    locale.define_singleton_method(:translate) { |text| text }
+    locale.define_singleton_method(:translate) { |_text| translation }
     options = generator_options(op_dir: stable_tmpdir("localized-markdown-section"))
     options.locale = locale
     store = RDoc::Store.new(options)
     klass = rdoc_class("LocalizedMarkdown", store: store)
-    comment = RDoc::Comment.new("A [link](https://example.test)", klass.in_files.first)
+    comment = RDoc::Comment.new(source, klass.in_files.first)
     comment.format = "markdown"
     klass.add_section("Details", comment)
     store.classes_hash[klass.full_name] = klass
@@ -292,7 +294,8 @@ class TestMarkdownHelpers < Minitest::Test
     RDoc::Generator::Markdown.new(store, options).generate
     markdown = File.read(File.join(options.op_dir, "LocalizedMarkdown.md"))
 
-    assert_includes markdown, "## Details\n\nA [link](https://example.test)\n"
+    assert_includes markdown, "## Details\n\n#{translation}\n"
+    assert_equal source, comment.text
   end
 
   def test_localized_sections_preserve_document_backed_comments
