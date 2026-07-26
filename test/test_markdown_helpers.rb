@@ -696,6 +696,39 @@ class TestMarkdownHelpers < Minitest::Test
     assert_false File.exist?(File.join(dir, "HiddenOwner.md"))
   end
 
+  def test_same_page_method_aliases_do_not_link_to_hidden_targets
+    klass = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
+    target = rdoc_method("secret", visible: false)
+    alias_method = rdoc_method("exposed", visible: true)
+    alias_method.is_alias_for = target
+    klass.add_method(target)
+    klass.add_method(alias_method)
+
+    markdown = read_generated("Aliases.md", classes: [klass])
+
+    assert_includes markdown, "Alias for: `secret`"
+    refute_includes markdown, "Alias for: [`secret`]"
+    refute_includes markdown, "#### `secret()"
+  end
+
+  def test_cross_page_method_aliases_do_not_link_to_hidden_targets
+    aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
+    owner = build_rdoc_class(full_name: "Owner", description: "Owner docs")
+    target = rdoc_method("secret", visible: false)
+    alias_method = rdoc_method("exposed", visible: true)
+    alias_method.is_alias_for = target
+    aliases.add_method(alias_method)
+    owner.add_method(target)
+
+    dir = generate_markdown(classes: [aliases, owner])
+    alias_markdown = File.read(File.join(dir, "Aliases.md"))
+    owner_markdown = File.read(File.join(dir, "Owner.md"))
+
+    assert_includes alias_markdown, "Alias for: `secret`"
+    refute_includes alias_markdown, "Alias for: [`secret`]"
+    refute_includes owner_markdown, "#### `secret()"
+  end
+
   def test_method_alias_links_to_distinct_repeated_namespace
     discarded = build_rdoc_class(full_name: "Real::Inner::Real::Thing", description: "Discarded")
     aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
