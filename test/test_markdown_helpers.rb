@@ -678,6 +678,24 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "Alias for: [`find`](../OtherAliases.md#method-i-find)"
   end
 
+  def test_method_aliases_do_not_link_to_omitted_owners
+    aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
+    hidden_owner = build_rdoc_class(full_name: "HiddenOwner", description: "Hidden docs")
+    target = rdoc_method("secret", visible: true)
+    alias_method = rdoc_method("exposed", visible: true)
+    alias_method.is_alias_for = target
+    aliases.add_method(alias_method)
+    hidden_owner.add_method(target)
+    hidden_owner.done_documenting = true
+
+    dir = generate_markdown(classes: [aliases, hidden_owner])
+    markdown = File.read(File.join(dir, "Aliases.md"))
+
+    assert_includes markdown, "Alias for: `secret`"
+    refute_includes markdown, "Alias for: [`secret`]"
+    assert_false File.exist?(File.join(dir, "HiddenOwner.md"))
+  end
+
   def test_method_alias_links_to_distinct_repeated_namespace
     discarded = build_rdoc_class(full_name: "Real::Inner::Real::Thing", description: "Discarded")
     aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
