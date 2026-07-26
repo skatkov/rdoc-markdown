@@ -396,8 +396,9 @@ class RDoc::Generator::Markdown
       if section
         locale = options.locale
         documents = code_object.comments.map do |comment|
-          comment = RDoc::I18n::Text.new(comment).translate(locale) if locale
-          code_object.parse(comment)
+          comment = comment.dup
+          comment.text = RDoc::I18n::Text.new(comment).translate(locale) if locale
+          comment.parse
         end
         RDoc::Markup::Document.new(*documents).accept(formatter)
       else

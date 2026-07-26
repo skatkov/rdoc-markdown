@@ -263,7 +263,8 @@ class TestMarkdownHelpers < Minitest::Test
     options.locale = locale
     store = RDoc::Store.new(options)
     klass = rdoc_class("Localized", comment: "Class body", store: store)
-    klass.add_section("Details", RDoc::Comment.new("Section body"))
+    section_comment = RDoc::Comment.new("Section body")
+    klass.add_section("Details", section_comment)
     store.classes_hash[klass.full_name] = klass
     store.complete(:public)
 
@@ -272,6 +273,26 @@ class TestMarkdownHelpers < Minitest::Test
 
     assert_includes markdown, "Translated introduction"
     assert_includes markdown, "Translated details"
+    assert_equal "Section body", section_comment.text
+  end
+
+  def test_localized_markdown_sections_keep_their_markup_format
+    locale = Object.new
+    locale.define_singleton_method(:translate) { |text| text }
+    options = generator_options(op_dir: stable_tmpdir("localized-markdown-section"))
+    options.locale = locale
+    store = RDoc::Store.new(options)
+    klass = rdoc_class("LocalizedMarkdown", store: store)
+    comment = RDoc::Comment.new("A [link](https://example.test)", klass.in_files.first)
+    comment.format = "markdown"
+    klass.add_section("Details", comment)
+    store.classes_hash[klass.full_name] = klass
+    store.complete(:public)
+
+    RDoc::Generator::Markdown.new(store, options).generate
+    markdown = File.read(File.join(options.op_dir, "LocalizedMarkdown.md"))
+
+    assert_includes markdown, "## Details\n\nA [link](https://example.test)\n"
   end
 
   def test_markdownify_accepts_frozen_converter_output
