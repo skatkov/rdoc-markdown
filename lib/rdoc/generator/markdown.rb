@@ -671,6 +671,8 @@ class RDoc::Generator::Markdown
   #
   # @return [String, nil] Anchor or relative Markdown link target, or nil when the target page is omitted.
   def method_link(method, current_class:)
+    return unless method.display?
+
     target_parent = method.parent
     target_path = @class_output_paths[target_parent.full_name]
     return unless target_path
