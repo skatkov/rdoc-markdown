@@ -3,7 +3,12 @@
 
 ## Unreleased
 
-- Remove fabricated external namespaces and preserve exact class and module paths.
+## 0.17.0
+
+- Remove fabricated external namespaces and preserve exact class and module identities across generated paths, index entries, metadata, and links.
+- Avoid broken alias links when the target method is hidden or its owner page is not generated.
+- Preserve localized section bodies, Markdown format, and source location when translating comments.
+- Avoid duplicate unresolved cross-reference warnings during class and module selection.
 
 ## 0.16.1
 
