@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+## 0.17.1
+
+- Don't include files with .tt extension
+
 ## 0.17.0
 
 - Remove fabricated external namespaces and preserve exact class and module identities across generated paths, index entries, metadata, and links.
