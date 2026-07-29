@@ -239,12 +239,13 @@ class TestClassDocs < Minitest::Test
     assert_eql ["Zoo::Bee", "Class", "Zoo/Bee.md"], class_entries.fetch(1)
   end
 
-  def test_setup_keeps_only_displayed_pages_and_sorts_them_by_base_name
+  def test_setup_keeps_only_documentation_pages_and_sorts_them_by_base_name
     pages = [
       rdoc_page(relative_name: "zeta.rdoc", comment: "Zeta page"),
       rdoc_page(relative_name: "alpha.rdoc", comment: "Alpha page"),
       rdoc_page(relative_name: "hidden.rdoc", comment: "Hidden page", display: false),
-      rdoc_page(relative_name: "binary.rdoc", comment: "Binary page", parser: nil)
+      rdoc_page(relative_name: "binary.rdoc", comment: "Binary page", parser: nil),
+      rdoc_page(relative_name: "channel.rb.tt", comment: "Channel template")
     ]
 
     dir = generate_from_store([], pages: pages)
@@ -253,6 +254,7 @@ class TestClassDocs < Minitest::Test
     assert_true File.exist?(File.join(dir, "zeta_rdoc.md"))
     assert_false File.exist?(File.join(dir, "hidden_rdoc.md"))
     assert_false File.exist?(File.join(dir, "binary_rdoc.md"))
+    assert_false File.exist?(File.join(dir, "channel_rb_tt.md"))
 
     file_entries = index_entries(dir).select { |_name, type, _path| type == "File" }
 

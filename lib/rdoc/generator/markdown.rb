@@ -760,7 +760,9 @@ class RDoc::Generator::Markdown
         klass.sections.any? { |section| section.title.to_s.match?(/\S/) || !section.to_document.empty? }
     end.sort
     @class_output_paths = @classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
-    @pages = @store.all_files.select(&:text?).select(&:display?).sort_by(&:base_name)
+    @pages = @store.all_files.select(&:text?).select(&:display?)
+      .reject { |page| page.relative_name.end_with?(".tt") }
+      .sort_by(&:base_name)
     @markdown_output_object_ids = (@classes + @pages).map(&:object_id)
     @known_output_paths = @class_output_paths.values
     @pages.each { |page| @known_output_paths << page_output_path(page) }
