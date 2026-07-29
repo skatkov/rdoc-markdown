@@ -245,7 +245,7 @@ class TestClassDocs < Minitest::Test
     File.write(File.join(root, "reference.markdown"), "# Reference\n")
 
     pages = [
-      rdoc_page(relative_name: "zeta.rdoc", comment: "Zeta page"),
+      rdoc_page(relative_name: "zeta.RDOC", comment: "Zeta page"),
       rdoc_page(relative_name: "alpha.rdoc", comment: "Alpha page"),
       rdoc_page(relative_name: "guide.md", comment: "Guide"),
       rdoc_page(relative_name: "reference.markdown", comment: "Reference"),
@@ -256,7 +256,7 @@ class TestClassDocs < Minitest::Test
 
     dir = generate_from_store([], pages: pages, root: root)
 
-    assert_eql %w[alpha_rdoc.md guide.md reference.markdown zeta_rdoc.md],
+    assert_eql %w[alpha_rdoc.md guide.md reference.markdown zeta_RDOC.md],
       Dir[File.join(dir, "*.{md,markdown}")].map { |path| File.basename(path) }.sort
 
     file_entries = index_entries(dir).select { |_name, type, _path| type == "File" }
@@ -265,7 +265,7 @@ class TestClassDocs < Minitest::Test
       ["alpha", "File", "alpha_rdoc.md"],
       ["guide", "File", "guide.md"],
       ["reference.markdown", "File", "reference.markdown"],
-      ["zeta", "File", "zeta_rdoc.md"]
+      ["zeta", "File", "zeta_RDOC.md"]
     ], file_entries
   end
 

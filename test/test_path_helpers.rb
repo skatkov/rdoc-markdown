@@ -86,22 +86,22 @@ class TestPathHelpers < Minitest::Test
       $ cat file.html | reverse_markdown > file.md
       ````
     MARKDOWN
-    guide = "# Guide\n\nPreserved exactly.\n"
+    guide = "# Guide\n\nPreserved exactly."
     _workspace, root = project_fixture(
       "raw-markdown-page",
-      "docs/README.md" => source,
-      "docs/GUIDE.markdown" => guide,
-      "docs/links.rdoc" => "{Readme}[README_md.html] {Guide}[GUIDE_markdown.html]"
+      "docs/README.MD" => source,
+      "docs/GUIDE.MARKDOWN" => guide,
+      "docs/links.rdoc" => "{Readme}[README_MD.html] {Guide}[GUIDE_MARKDOWN.html]"
     )
 
-    files = %w[README.md GUIDE.markdown links.rdoc].map { |name| File.join("docs", name) }
+    files = %w[README.MD GUIDE.MARKDOWN links.rdoc].map { |name| File.join("docs", name) }
     dir = Dir.chdir(root) { generate_docs(files: files, title: "raw markdown", root: ".") }
 
-    assert_equal source, File.binread(File.join(dir, "docs/README.md"))
-    assert_equal guide, File.binread(File.join(dir, "docs/GUIDE.markdown"))
-    assert_equal "[Readme](README.md) [Guide](GUIDE.markdown)\n",
+    assert_equal source, File.binread(File.join(dir, "docs/README.MD"))
+    assert_equal guide, File.binread(File.join(dir, "docs/GUIDE.MARKDOWN"))
+    assert_equal "[Readme](README.MD) [Guide](GUIDE.MARKDOWN)\n",
       File.read(File.join(dir, "docs/links_rdoc.md"))
-    assert_includes index_entries(dir), ["README", "File", "docs/README.md"]
+    assert_includes index_entries(dir), ["README", "File", "docs/README.MD"]
   end
 
   def test_page_output_path_strips_root_basename_prefix_from_page_paths

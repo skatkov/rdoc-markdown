@@ -224,7 +224,7 @@ class RDoc::Generator::Markdown
       out_file = Pathname.new("#{output_dir}/#{page_output_path(page)}")
       out_file.dirname.mkpath
 
-      next FileUtils.cp(File.expand_path(page.absolute_name, @source_dir), out_file) if page.relative_name.end_with?(".md", ".markdown")
+      next FileUtils.cp(File.expand_path(page.absolute_name, @source_dir), out_file) if page.relative_name.match?(/\.(?:md|markdown)\z/i)
 
       content = markdownify(render_description(page))
       File.write(out_file, finalize_markdown(
@@ -250,7 +250,7 @@ class RDoc::Generator::Markdown
   # @return [String] Relative Markdown path.
   def page_output_path(page)
     source_path = normalize_input_path_for_output(page.relative_name)
-    return source_path if page.relative_name.match?(/\.(?:md|markdown)\z/)
+    return source_path if page.relative_name.match?(/\.(?:md|markdown)\z/i)
 
     dirname = File.dirname(source_path)
     basename = "#{File.basename(source_path).tr(".", "_")}.md"
@@ -711,7 +711,7 @@ class RDoc::Generator::Markdown
   # @return [String, nil] Resolved output path, or nil when unresolved.
   def resolve_output_path(path, current_dir)
     candidates = [path, path.delete_prefix("#{@root_path_segment}/")]
-    candidates += candidates.map { |candidate| candidate.sub(/_(md|markdown)\.md\z/, '.\1') }
+    candidates += candidates.map { |candidate| candidate.sub(/_(md|markdown)\.md\z/i, '.\1') }
 
     candidates.each do |candidate|
       return candidate if @known_output_paths.include?(candidate)
@@ -761,7 +761,7 @@ class RDoc::Generator::Markdown
     end.sort
     @class_output_paths = @classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
     @pages = @store.all_files.select(&:text?).select(&:display?)
-      .select { |page| page.relative_name.end_with?(".md", ".markdown", ".rdoc") }
+      .select { |page| page.relative_name.match?(/\.(?:md|markdown|rdoc)\z/i) }
       .sort_by(&:base_name)
     @markdown_output_object_ids = (@classes + @pages).map(&:object_id)
     @known_output_paths = @class_output_paths.values
