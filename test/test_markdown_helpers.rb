@@ -98,7 +98,7 @@ class TestMarkdownHelpers < Minitest::Test
 
     markdown = read_generated("linked-heading_rdoc.md", pages: [page])
 
-    assert_includes markdown, "Intro\n\n<a id=\"label-Topic\"></a>\n# Topic"
+    assert_includes markdown, "Intro\n\n# Topic<a id=\"label-Topic\"></a>"
     refute_includes markdown, "[Topic](#topic)"
   end
 
@@ -110,7 +110,7 @@ class TestMarkdownHelpers < Minitest::Test
 
     markdown = read_generated("linked-heading-alias_rdoc.md", pages: [page])
 
-    assert_includes markdown, '# Topic<a id="class-example-label-Topic"></a>'
+    assert_equal '# Topic<a id="label-Topic"></a><a id="class-example-label-Topic"></a>' + "\n", markdown
   end
 
   def test_linked_heading_alias_accounts_for_trailing_links
@@ -144,7 +144,7 @@ class TestMarkdownHelpers < Minitest::Test
 
     markdown = read_generated("external-heading-link_rdoc.md", pages: [page])
 
-    assert_equal "# [Site](https://example.com)\n\n## Topic\n", markdown
+    assert_equal "# [Site](https://example.com)\n## Topic\n", markdown
   end
 
   def test_rdoc_indexing_expressions_are_not_rendered_as_links
@@ -294,7 +294,7 @@ class TestMarkdownHelpers < Minitest::Test
     RDoc::Generator::Markdown.new(store, options).generate
     markdown = File.read(File.join(options.op_dir, "LocalizedMarkdown.md"))
 
-    assert_includes markdown, "## Details\n\n#{translation}\n"
+    assert_includes markdown, "## Details\n#{translation}\n"
     assert_equal source, comment.text
   end
 
@@ -313,21 +313,21 @@ class TestMarkdownHelpers < Minitest::Test
     RDoc::Generator::Markdown.new(store, options).generate
     markdown = File.read(File.join(options.op_dir, "LocalizedDocument.md"))
 
-    assert_includes markdown, "## Details\n\nSection body\n"
+    assert_includes markdown, "## Details\nSection body\n"
     assert_includes markdown, "More details"
   end
 
   def test_markdownify_accepts_frozen_converter_output
     page = raw_html_page(
       relative_name: "frozen.rdoc",
-      html: '<span id="label-Topic" class="legacy-anchor"></span>'
+      html: '<h1><a href="#topic-alias">Topic</a></h1>'
     )
-    converted = (+"RDocMarkdownAnchor0End").freeze
+    converted = (+"# TopicRDocMarkdownAnchor0End").freeze
 
     ReverseMarkdown.stub(:convert, converted) do
       markdown = read_generated("frozen_rdoc.md", pages: [page])
 
-      assert_equal '<a id="label-Topic"></a>' + "\n", markdown
+      assert_equal "# Topic<a id=\"topic-alias\"></a>\n", markdown
     end
   end
 
@@ -529,7 +529,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "```ruby\nputs :ok\n```"
   end
 
-  def test_generated_pages_preserve_only_rdoc_legacy_span_anchors
+  def test_generated_pages_preserve_rdoc_legacy_span_anchors
     legacy_spans = 12.times.map do |index|
       %(<span id="label-Legacy-#{index}" class="legacy-anchor"></span>)
     end.join
@@ -541,6 +541,20 @@ class TestMarkdownHelpers < Minitest::Test
 
     assert_equal expected_anchors + "text\n",
       read_generated("legacy-anchor_rdoc.md", pages: [page])
+  end
+
+  def test_only_top_level_context_legacy_anchors_are_dropped
+    page = raw_html_page(
+      relative_name: "context-legacy-anchors.rdoc",
+      html: '<span id="module-example-label-Top" class="legacy-anchor"></span><h1>Top</h1>' \
+            '<span id="class-example-label-Section" class="legacy-anchor"></span><h2>Section</h2>' \
+            '<span id="module-example-label-Standalone" class="legacy-anchor"></span>'
+    )
+
+    assert_equal "# Top\n" \
+                 "## Section<a id=\"class-example-label-Section\"></a>\n" \
+                 "<a id=\"module-example-label-Standalone\"></a>\n",
+      read_generated("context-legacy-anchors_rdoc.md", pages: [page])
   end
 
   def test_requiring_generator_does_not_replace_reverse_markdown_converters
@@ -659,18 +673,22 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "# Class Topic"
     refute_includes markdown, "## Class Topic"
     refute_includes markdown, "\n\n\n"
-    assert_includes markdown, "# Class Topic<a id=\"class-docs-thing-class-topic\"></a>\n\n### Constants"
+    assert_includes markdown,
+      "# Class Topic<a id=\"class-docs-thing-class-topic\"></a>\n### Constants"
+    refute_includes markdown, '<a id="class-Docs::Thing-label-Class+Topic"></a>'
     assert_includes markdown, "#### `VALUE`<a id=\"VALUE\"></a>\nNot documented."
     assert_includes markdown, "## Overview"
-    assert_includes markdown, '<a id="Overview-label-Section+Topic"></a>'
-    assert_includes markdown, "### Section Topic"
+    assert_includes markdown,
+      "### Section Topic<a id=\"Overview-label-Section+Topic\"></a>" \
+      "<a id=\"overview-section-topic\"></a>"
     refute_includes markdown, "\n# Section Topic\n"
     assert_includes markdown, "#### `run()`"
     assert_includes markdown,
-      "\n<a id=\"method-i-run-label-Method+Topic\"></a>\n" \
-      "##### Method Topic<a id=\"method-i-run-method-topic\"></a>\n" \
-      "<a id=\"method-i-run-label-Method+Detail\"></a>\n" \
-      "###### Method Detail<a id=\"method-i-run-method-detail\"></a>\n"
+      "\n##### Method Topic<a id=\"method-i-run-label-Method+Topic\"></a>" \
+      "<a id=\"method-i-run-method-topic\"></a>\n" \
+      "###### Method Detail<a id=\"method-i-run-label-Method+Detail\"></a>" \
+      "<a id=\"method-i-run-method-detail\"></a>\n"
+    refute_match(/^<a id="[^"]+"><\/a>\n#+ /, markdown)
     refute_includes markdown, "\n###### Method Topic\n"
     refute_includes markdown, "\n####### Method Detail\n"
     refute_includes markdown, "\n## Method Detail\n"

@@ -94,14 +94,15 @@ class TestClassDocs < Minitest::Test
       table.css("tbody tr").map { |row| row.css("td").map(&:text) }
   end
 
-  def test_generate_does_not_add_spacing_without_metadata
-    mod = RDoc::NormalModule.new("ActiveModel::API")
+  def test_generate_does_not_add_spacing_or_top_legacy_aliases_without_metadata
+    mod = build_rdoc_module(full_name: "ActiveModel::API", description: "= Active Model API")
     mod.add_section("Overview")
 
     dir = generate_from_store([mod])
 
     assert_eql <<~MARKDOWN, File.read(File.join(dir, "ActiveModel/API.md"))
       # Module ActiveModel::API<a id="module-activemodel-api"></a>
+      # Active Model API<a id="module-activemodel-api-active-model-api"></a>
       ## Overview
     MARKDOWN
   end

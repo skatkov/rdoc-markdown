@@ -306,6 +306,13 @@ class RDoc::Generator::Markdown
     # - raise - Raise an error to let you know
 
     fragment = Nokogiri::HTML.fragment(input)
+    fragment.css("span.legacy-anchor[id]").select do |span|
+      span.next_element&.name == "h1" && span["id"].match?(/\A(?:class|module)-/)
+    end.each(&:remove)
+    fragment.css("span.legacy-anchor[id]").each do |span|
+      heading = span.next_element
+      heading.add_child(span) if heading&.name&.match?(/\Ah[1-6]\z/)
+    end
 
     fragment.css("pre").each do |pre|
       language = pre["class"].to_s[/\A(?!highlight\z)[A-Za-z][A-Za-z0-9_+-]*\z/]
@@ -357,9 +364,7 @@ class RDoc::Generator::Markdown
       unknown_tags: @markdown_unknown_tags
     ).dup
     anchor_aliases.each do |token, id|
-      anchor = %(<a id="#{id}"></a>)
-      md.gsub!("#{token}\n\n#", "#{anchor}\n#")
-      md.gsub!(token, anchor)
+      md.gsub!(token, %(<a id="#{id}"></a>))
     end
 
     normalize_definition_list_code_blocks(md).rstrip
@@ -607,6 +612,7 @@ class RDoc::Generator::Markdown
     output = content.lines.map(&:rstrip).join("\n")
     output = normalize_internal_links(output, current_output_path: current_output_path)
     output = output.sub(/\n{3,}/, "\n\n")
+    output = output.gsub(/^(#+ .+)\n\n/, "\\1\n")
     "#{output}\n"
   end
 

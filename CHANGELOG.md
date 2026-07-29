@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- Remove spaces after headers
+- Remove legacy anchor links
+- Remove extra files that are not required (js, css and etc)
 ## 0.17.1
 
 - Don't include files with .tt extension
