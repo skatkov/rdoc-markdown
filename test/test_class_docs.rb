@@ -240,26 +240,33 @@ class TestClassDocs < Minitest::Test
   end
 
   def test_setup_keeps_only_documentation_pages_and_sorts_them_by_base_name
+    root = stable_tmpdir("documentation-pages")
+    File.write(File.join(root, "guide.md"), "# Guide\n")
+    File.write(File.join(root, "reference.markdown"), "# Reference\n")
+
     pages = [
       rdoc_page(relative_name: "zeta.rdoc", comment: "Zeta page"),
       rdoc_page(relative_name: "alpha.rdoc", comment: "Alpha page"),
+      rdoc_page(relative_name: "guide.md", comment: "Guide"),
+      rdoc_page(relative_name: "reference.markdown", comment: "Reference"),
       rdoc_page(relative_name: "hidden.rdoc", comment: "Hidden page", display: false),
       rdoc_page(relative_name: "binary.rdoc", comment: "Binary page", parser: nil),
-      rdoc_page(relative_name: "channel.rb.tt", comment: "Channel template")
+      rdoc_page(relative_name: "actiontext.css", comment: "Not documentation", parser: RDoc::Parser::Simple)
     ]
 
-    dir = generate_from_store([], pages: pages)
+    dir = generate_from_store([], pages: pages, root: root)
 
-    assert_true File.exist?(File.join(dir, "alpha_rdoc.md"))
-    assert_true File.exist?(File.join(dir, "zeta_rdoc.md"))
-    assert_false File.exist?(File.join(dir, "hidden_rdoc.md"))
-    assert_false File.exist?(File.join(dir, "binary_rdoc.md"))
-    assert_false File.exist?(File.join(dir, "channel_rb_tt.md"))
+    assert_eql %w[alpha_rdoc.md guide.md reference.markdown zeta_rdoc.md],
+      Dir[File.join(dir, "*.{md,markdown}")].map { |path| File.basename(path) }.sort
 
     file_entries = index_entries(dir).select { |_name, type, _path| type == "File" }
 
-    assert_eql ["alpha", "File", "alpha_rdoc.md"], file_entries.fetch(0)
-    assert_eql ["zeta", "File", "zeta_rdoc.md"], file_entries.fetch(1)
+    assert_eql [
+      ["alpha", "File", "alpha_rdoc.md"],
+      ["guide", "File", "guide.md"],
+      ["reference.markdown", "File", "reference.markdown"],
+      ["zeta", "File", "zeta_rdoc.md"]
+    ], file_entries
   end
 
   def test_generate_populates_known_output_paths_for_link_normalization
@@ -288,14 +295,14 @@ class TestClassDocs < Minitest::Test
   def test_setup_uses_dot_root_segment_when_root_is_nil
     klass = build_rdoc_class(
       full_name: "DotRoot::Thing",
-      description: "See [guide](./guides/rooted.md).",
+      description: "See {guide}[./guides/rooted_rdoc.html].",
       methods: 1
     )
-    page = rdoc_page(relative_name: "guides/rooted", comment: "Rooted page")
+    page = rdoc_page(relative_name: "guides/rooted.rdoc", comment: "Rooted page")
 
     dir = generate_from_store([klass], pages: [page])
 
-    assert_includes File.read(File.join(dir, "DotRoot/Thing.md")), "[guide](../guides/rooted.md)"
+    assert_includes File.read(File.join(dir, "DotRoot/Thing.md")), "[guide](../guides/rooted_rdoc.md)"
   end
 
   def test_setup_keeps_crossrefs_to_emitted_pages
@@ -311,14 +318,14 @@ class TestClassDocs < Minitest::Test
     root = File.join(stable_tmpdir("root-path-segment"), "pages")
     klass = build_rdoc_class(
       full_name: "RootSegment::Thing",
-      description: "See [guide](pages/guides/rooted.md).",
+      description: "See {guide}[pages/guides/rooted_rdoc.html].",
       methods: 1
     )
-    page = rdoc_page(relative_name: "pages/guides/rooted", comment: "Rooted page")
+    page = rdoc_page(relative_name: "pages/guides/rooted.rdoc", comment: "Rooted page")
 
     dir = generate_from_store([klass], pages: [page], root: root)
 
-    assert_includes File.read(File.join(dir, "RootSegment/Thing.md")), "[guide](../guides/rooted.md)"
+    assert_includes File.read(File.join(dir, "RootSegment/Thing.md")), "[guide](../guides/rooted_rdoc.md)"
   end
 
   def test_emit_csv_index_writes_rows_for_visible_members_and_pages

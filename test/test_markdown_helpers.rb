@@ -584,12 +584,12 @@ class TestMarkdownHelpers < Minitest::Test
                "== {Signing is not encryption}[#class-ActiveSupport::Messages::MessageVerifier-label-Signing+is+not+encryption]"
     )
     api = rdoc_page(relative_name: "guides/api.rdoc", comment: "= API")
-    sibling = rdoc_page(relative_name: "docs/sibling", comment: "= Sibling")
-    simple_intro = rdoc_page(relative_name: "guides/intro", comment: "Intro")
+    sibling = rdoc_page(relative_name: "docs/sibling.rdoc", comment: "= Sibling")
+    simple_intro = rdoc_page(relative_name: "guides/simple.rdoc", comment: "Intro")
     single = rdoc_page(relative_name: "docs/single.rdoc", comment: "{Intro}[guides/intro_rdoc.html#top]")
     empty_anchor = rdoc_page(
       relative_name: "docs/empty-anchor.rdoc",
-      comment: "[EmptyAnchor](guides/intro.md#) [RootIntro](/guides/intro.md)"
+      comment: "{EmptyAnchor}[guides/simple_rdoc.html#] [RootIntro](/guides/root-intro.md)"
     )
     readme = rdoc_page(
       relative_name: "docs/readme.rdoc",
@@ -597,7 +597,7 @@ class TestMarkdownHelpers < Minitest::Test
                  "{Missing}[missing/path.html#part] " \
                  "{Secure}[https://example.com/page.md#class-example-label-Topic] " \
                  "{Mail}[mailto:test@example.com] {Anchor}[#topic.md] " \
-                 "[Sibling](nested/../sibling.md) " \
+                  "{Sibling}[nested/../sibling_rdoc.html] " \
                  "{Legacy}[guides/intro_rdoc.html#class-ActiveSupport::Messages::MessageVerifier-label-Signing+is+not+encryption] " \
                  "{Query}[guides/intro_rdoc.html?tag=-label-test]"
     )
@@ -614,29 +614,29 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[Secure](https://example.com/page.md#class-example-label-Topic)"
     assert_includes markdown, "[Mail](mailto:test@example.com)"
     assert_includes markdown, "[Anchor](#topic.md)"
-    assert_includes markdown, "[Sibling](sibling.md)"
+    assert_includes markdown, "[Sibling](sibling_rdoc.md)"
     assert_includes markdown,
       "[Legacy](../guides/intro_rdoc.md#class-ActiveSupport::Messages::MessageVerifier-label-Signing+is+not+encryption)"
     assert_includes markdown, "[Query](../guides/intro_rdoc.md?tag=-label-test)"
     assert_eql "[Intro](../guides/intro_rdoc.md#top)\n", File.read(File.join(dir, "docs/single_rdoc.md"))
-    assert_eql "[EmptyAnchor](../guides/intro.md#) [RootIntro](/guides/intro.md)\n",
+    assert_eql "[EmptyAnchor](../guides/simple_rdoc.md#) [RootIntro](/guides/root-intro.md)\n",
       File.read(File.join(dir, "docs/empty-anchor_rdoc.md"))
   end
 
   def test_internal_links_resolve_root_segment_candidates
-    direct = rdoc_page(relative_name: "pages/guides/direct", comment: "Direct")
-    rooted = rdoc_page(relative_name: "pages/guides/rooted", comment: "Rooted")
-    nested = rdoc_page(relative_name: "pages/pages/guides/nested", comment: "Nested")
+    direct = rdoc_page(relative_name: "pages/guides/direct.rdoc", comment: "Direct")
+    rooted = rdoc_page(relative_name: "pages/guides/rooted.rdoc", comment: "Rooted")
+    nested = rdoc_page(relative_name: "pages/pages/guides/nested.rdoc", comment: "Nested")
     readme = rdoc_page(
       relative_name: "pages/docs/readme.rdoc",
-      comment: "[Direct](guides/direct.md) [Rooted](pages/guides/rooted.md) " \
-               "[Nested](pages/guides/nested.md)"
+      comment: "{Direct}[guides/direct_rdoc.html] {Rooted}[pages/guides/rooted_rdoc.html] " \
+               "{Nested}[pages/guides/nested_rdoc.html]"
     )
 
     dir = generate_markdown(pages: [direct, rooted, nested, readme], root: "pages")
 
-    assert_eql "[Direct](../guides/direct.md) [Rooted](../guides/rooted.md) " \
-               "[Nested](../pages/guides/nested.md)\n",
+    assert_eql "[Direct](../guides/direct_rdoc.md) [Rooted](../guides/rooted_rdoc.md) " \
+               "[Nested](../pages/guides/nested_rdoc.md)\n",
       File.read(File.join(dir, "docs/readme_rdoc.md"))
   end
 

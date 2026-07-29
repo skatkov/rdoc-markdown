@@ -761,7 +761,7 @@ class RDoc::Generator::Markdown
     end.sort
     @class_output_paths = @classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
     @pages = @store.all_files.select(&:text?).select(&:display?)
-      .reject { |page| page.relative_name.end_with?(".tt") }
+      .select { |page| page.relative_name.end_with?(".md", ".markdown", ".rdoc") }
       .sort_by(&:base_name)
     @markdown_output_object_ids = (@classes + @pages).map(&:object_id)
     @known_output_paths = @class_output_paths.values
