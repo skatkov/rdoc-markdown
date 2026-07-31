@@ -5,6 +5,10 @@ require "fileutils"
 require "rdoc/rdoc"
 
 module RDocTestHelpers
+  def method_headings(markdown)
+    markdown.scan(/^#+ `(.+)`<a id="method-[^"]+"><\/a>$/).flatten
+  end
+
   def index_entries(dir)
     CSV.parse(File.read(File.join(dir, "index.csv")), headers: true).map do |row|
       [row["name"], row["type"], row["path"]]

@@ -1,8 +1,9 @@
-<a id="class-object"></a>
-# Class Object
+# Class Object<a id="class-object"></a>
+|  |  |
+| --- | --- |
+| **Inherits** | BasicObject |
+| **Defined in** | example.rb |
 
-### Constants
-
-<a id="DEFAULT_DUCK_VELOCITY"></a>
-#### `DEFAULT_DUCK_VELOCITY`
+## Constants
+### `DEFAULT_DUCK_VELOCITY`<a id="DEFAULT_DUCK_VELOCITY"></a>
 Default velocity for a flying duck.

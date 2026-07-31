@@ -674,17 +674,17 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "## Class Topic"
     refute_includes markdown, "\n\n\n"
     assert_includes markdown,
-      "# Class Topic<a id=\"class-docs-thing-class-topic\"></a>\n### Constants"
+      "# Class Topic<a id=\"class-docs-thing-class-topic\"></a>\n## Constants"
     refute_includes markdown, '<a id="class-Docs::Thing-label-Class+Topic"></a>'
-    assert_includes markdown, "#### `VALUE`<a id=\"VALUE\"></a>\nNot documented."
+    assert_includes markdown, "### `VALUE`<a id=\"VALUE\"></a>\nNot documented."
     assert_includes markdown, "## Overview"
     assert_includes markdown,
       "### Section Topic<a id=\"Overview-label-Section+Topic\"></a>" \
       "<a id=\"overview-section-topic\"></a>"
     refute_includes markdown, "\n# Section Topic\n"
-    assert_includes markdown, "#### `run()`"
+    assert_includes markdown, "### `run()`"
     assert_includes markdown,
-      "\n##### Method Topic<a id=\"method-i-run-label-Method+Topic\"></a>" \
+      "\n#### Method Topic<a id=\"method-i-run-label-Method+Topic\"></a>" \
       "<a id=\"method-i-run-method-topic\"></a>\n" \
       "###### Method Detail<a id=\"method-i-run-label-Method+Detail\"></a>" \
       "<a id=\"method-i-run-method-detail\"></a>\n"
@@ -692,9 +692,9 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "\n###### Method Topic\n"
     refute_includes markdown, "\n####### Method Detail\n"
     refute_includes markdown, "\n## Method Detail\n"
-    assert_includes markdown, "#### `new(str)`<a id=\"method-c-new\"></a>\nCreates a new entry using `str`."
-    refute_includes markdown, "#### `new(str)`<a id=\"method-c-new\"></a>\n\nCreates"
-    assert_includes markdown, "#### `plain()`<a id=\"method-i-plain\"></a>\nNot documented."
+    assert_includes markdown, "### `new(str)`<a id=\"method-c-new\"></a>\nCreates a new entry using `str`."
+    refute_includes markdown, "### `new(str)`<a id=\"method-c-new\"></a>\n\nCreates"
+    assert_includes markdown, "### `plain()`<a id=\"method-i-plain\"></a>\nNot documented."
     refute_includes markdown, "Alias for: [`plain`]"
   end
 
@@ -748,7 +748,7 @@ class TestMarkdownHelpers < Minitest::Test
 
     assert_includes markdown, "Alias for: `secret`"
     refute_includes markdown, "Alias for: [`secret`]"
-    refute_includes markdown, "#### `secret()"
+    refute_includes markdown, "### `secret()"
   end
 
   def test_cross_page_method_aliases_do_not_link_to_hidden_targets
@@ -766,7 +766,7 @@ class TestMarkdownHelpers < Minitest::Test
 
     assert_includes alias_markdown, "Alias for: `secret`"
     refute_includes alias_markdown, "Alias for: [`secret`]"
-    refute_includes owner_markdown, "#### `secret()"
+    refute_includes owner_markdown, "### `secret()"
   end
 
   def test_method_alias_links_to_distinct_repeated_namespace

@@ -1,108 +1,64 @@
-<a id="class-jekyll-seotag-drop"></a>
-# Class Jekyll::SeoTag::Drop
+# Class Jekyll::SeoTag::Drop<a id="class-jekyll-seotag-drop"></a>
+|  |  |
+| --- | --- |
+| **Inherits** | Jekyll::Drops::Drop |
+| **Includes** | [Jekyll::SeoTag::UrlHelper](UrlHelper.md) |
+| **Defined in** | lib/jekyll-seo-tag/drop.rb |
 
-### Constants
-
-<a id="FORMAT_STRING_METHODS"></a>
-#### `FORMAT_STRING_METHODS`
+## Constants
+### `FORMAT_STRING_METHODS`<a id="FORMAT_STRING_METHODS"></a>
 Not documented.
 
-<a id="HOMEPAGE_OR_ABOUT_REGEX"></a>
-#### `HOMEPAGE_OR_ABOUT_REGEX`
+### `HOMEPAGE_OR_ABOUT_REGEX`<a id="HOMEPAGE_OR_ABOUT_REGEX"></a>
 Not documented.
 
-<a id="TITLE_SEPARATOR"></a>
-#### `TITLE_SEPARATOR`
+### `TITLE_SEPARATOR`<a id="TITLE_SEPARATOR"></a>
 Not documented.
 
-### Public Class Methods
-
-<a id="method-c-new"></a>
-#### `new(text, context)`
+## Public Class Methods
+### `new(text, context)`<a id="method-c-new"></a>
 Not documented.
 
-### Public Instance Methods
-
-<a id="method-i-author"></a>
-#### `author()`
+## Public Instance Methods
+### `author()`<a id="method-i-author"></a>
 A drop representing the page author
-
-<a id="method-i-canonical_url"></a>
-#### `canonical_url()`
+### `canonical_url()`<a id="method-i-canonical_url"></a>
 Not documented.
-
-<a id="method-i-date_modified"></a>
-#### `date_modified()`
+### `date_modified()`<a id="method-i-date_modified"></a>
 Not documented.
-
-<a id="method-i-date_published"></a>
-#### `date_published()`
+### `date_published()`<a id="method-i-date_published"></a>
 Not documented.
-
-<a id="method-i-description"></a>
-#### `description()`
+### `description()`<a id="method-i-description"></a>
 Not documented.
-
-<a id="method-i-image"></a>
-#### `image()`
+### `image()`<a id="method-i-image"></a>
 Returns a [`Drop`](Drop.md) representing the page’s image Returns nil if the image has no path, to preserve backwards compatability
-
-<a id="method-i-json_ld"></a>
-#### `json_ld()`
+### `json_ld()`<a id="method-i-json_ld"></a>
 A drop representing the JSON-LD output
-
-<a id="method-i-links"></a>
-#### `links()`
+### `links()`<a id="method-i-links"></a>
 Not documented.
-
-<a id="method-i-logo"></a>
-#### `logo()`
+### `logo()`<a id="method-i-logo"></a>
 Not documented.
-
-<a id="method-i-name"></a>
-#### `name()`
+### `name()`<a id="method-i-name"></a>
 rubocop:enable Metrics/CyclomaticComplexity
-
-<a id="method-i-page_lang"></a>
-#### `page_lang()`
+### `page_lang()`<a id="method-i-page_lang"></a>
 Not documented.
-
-<a id="method-i-page_locale"></a>
-#### `page_locale()`
+### `page_locale()`<a id="method-i-page_locale"></a>
 Not documented.
-
-<a id="method-i-page_title"></a>
-#### `page_title()`
+### `page_title()`<a id="method-i-page_title"></a>
 Page title without site title or description appended
-
-<a id="method-i-site_description"></a>
-#### `site_description()`
+### `site_description()`<a id="method-i-site_description"></a>
 Not documented.
-
-<a id="method-i-site_tagline"></a>
-#### `site_tagline()`
+### `site_tagline()`<a id="method-i-site_tagline"></a>
 Not documented.
-
-<a id="method-i-site_tagline_or_description"></a>
-#### `site_tagline_or_description()`
+### `site_tagline_or_description()`<a id="method-i-site_tagline_or_description"></a>
 Not documented.
-
-<a id="method-i-site_title"></a>
-#### `site_title()`
+### `site_title()`<a id="method-i-site_title"></a>
 Not documented.
-
-<a id="method-i-title"></a>
-#### `title()`
+### `title()`<a id="method-i-title"></a>
 Page title with site title or description appended rubocop:disable Metrics/CyclomaticComplexity
-
-<a id="method-i-title-3F"></a>
-#### `title?()`
+### `title?()`<a id="method-i-title-3F"></a>
 Should the ‘\<title\>` tag be generated for this page?
-
-<a id="method-i-type"></a>
-#### `type()`
+### `type()`<a id="method-i-type"></a>
 Not documented.
-
-<a id="method-i-version"></a>
-#### `version()`
+### `version()`<a id="method-i-version"></a>
 Not documented.

@@ -107,6 +107,19 @@ class TestClassDocs < Minitest::Test
     MARKDOWN
   end
 
+  def test_generate_uses_class_as_parent_for_members_without_a_named_section
+    klass = build_rdoc_class(full_name: "Analyzer")
+    klass.add_attribute(rdoc_attribute("blob"))
+    klass.add_method(rdoc_method("metadata", comment: "= Result"))
+
+    dir = generate_from_store([klass])
+    markdown = File.read(File.join(dir, "Analyzer.md"))
+
+    assert_includes markdown, "## Attributes\n### `blob` [RW]"
+    assert_includes markdown, "## Public Instance Methods\n### `metadata()`"
+    assert_includes markdown, "#### Result"
+  end
+
   def test_generate_keeps_source_backed_empty_classes
     real = build_rdoc_class(full_name: "Shell", source_backed: true)
     nested = build_rdoc_class(full_name: "Alpha::Another", source_backed: true)
@@ -159,9 +172,9 @@ class TestClassDocs < Minitest::Test
 
     assert_includes markdown, "| **Includes** | ExternalMixin |"
     assert_includes File.read(File.join(dir, "DescribedOnly.md")), "Only docs"
-    assert_includes File.read(File.join(dir, "MethodOnly.md")), "#### `run()`"
-    assert_includes File.read(File.join(dir, "ConstantOnly.md")), "#### `VALUE`"
-    assert_includes File.read(File.join(dir, "AttributeOnly.md")), "#### `name`"
+    assert_includes File.read(File.join(dir, "MethodOnly.md")), "### `run()`"
+    assert_includes File.read(File.join(dir, "ConstantOnly.md")), "### `VALUE`"
+    assert_includes File.read(File.join(dir, "AttributeOnly.md")), "### `name`"
     assert_includes child_markdown, "| **Inherits** | ExternalBase |"
     refute_includes child_markdown, "[ExternalBase]"
     assert_false File.exist?(File.join(dir, "ExternalBase.md"))
