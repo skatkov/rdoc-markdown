@@ -1,34 +1,23 @@
-<a id="class-jekyll-seotag-jsonlddrop"></a>
-# Class Jekyll::SeoTag::JSONLDDrop
+# Class Jekyll::SeoTag::JSONLDDrop<a id="class-jekyll-seotag-jsonlddrop"></a>
+|  |  |
+| --- | --- |
+| **Inherits** | Jekyll::Drops::Drop |
+| **Defined in** | lib/jekyll-seo-tag/json_ld_drop.rb |
 
-### Public Class Methods
-
-<a id="method-c-new"></a>
-#### `new(page_drop)`
+## Public Class Methods
+### `new(page_drop)`<a id="method-c-new"></a>
 page\_drop should be an instance of [`Jekyll::SeoTag::Drop`](Drop.md)
 
-### Public Instance Methods
-
-<a id="method-i-author"></a>
-#### `author()`
+## Public Instance Methods
+### `author()`<a id="method-i-author"></a>
 Not documented.
-
-<a id="method-i-fallback_data"></a>
-#### `fallback_data()`
+### `fallback_data()`<a id="method-i-fallback_data"></a>
 Not documented.
-
-<a id="method-i-image"></a>
-#### `image()`
+### `image()`<a id="method-i-image"></a>
 Not documented.
-
-<a id="method-i-mainEntityOfPage"></a>
-#### `mainEntityOfPage()`
+### `mainEntityOfPage()`<a id="method-i-mainEntityOfPage"></a>
 Alias for: [`main_entity`](#method-i-main_entity)
-
-<a id="method-i-publisher"></a>
-#### `publisher()`
+### `publisher()`<a id="method-i-publisher"></a>
 Not documented.
-
-<a id="method-i-to_json"></a>
-#### `to_json(state = nil)`
+### `to_json(state = nil)`<a id="method-i-to_json"></a>
 Returns a JSON-encoded object containing the JSON-LD data. Keys are sorted.

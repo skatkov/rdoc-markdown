@@ -1,10 +1,11 @@
-<a id="class-jekyll-seotag"></a>
-# Class Jekyll::SeoTag
+# Class Jekyll::SeoTag<a id="class-jekyll-seotag"></a>
+|  |  |
+| --- | --- |
+| **Inherits** | [Liquid::Tag](../Liquid/Tag.md) |
+| **Defined in** | lib/jekyll-seo-tag.rb, lib/jekyll-seo-tag/author_drop.rb, lib/jekyll-seo-tag/drop.rb, lib/jekyll-seo-tag/filters.rb, lib/jekyll-seo-tag/image_drop.rb, lib/jekyll-seo-tag/json_ld.rb, lib/jekyll-seo-tag/json_ld_drop.rb, lib/jekyll-seo-tag/url_helper.rb, lib/jekyll-seo-tag/version.rb |
 
-### Constants
-
-<a id="MINIFY_REGEX"></a>
-#### `MINIFY_REGEX`
+## Constants
+### `MINIFY_REGEX`<a id="MINIFY_REGEX"></a>
 Matches all whitespace that follows either
 
 ```
@@ -21,28 +22,19 @@ so that we do not interfere with the HTML comment at the
 very begining
 ```
 
-<a id="VERSION"></a>
-#### `VERSION`
+### `VERSION`<a id="VERSION"></a>
 Not documented.
 
-### Attributes
-
-<a id="attribute-i-context"></a>
-#### `context` [RW]
+## Attributes
+### `context` [RW]<a id="attribute-i-context"></a>
 Not documented.
 
-### Public Class Methods
-
-<a id="method-c-new"></a>
-#### `new(_tag_name, text, _tokens)`
+## Public Class Methods
+### `new(_tag_name, text, _tokens)`<a id="method-c-new"></a>
+Not documented.
+### `template()`<a id="method-c-template"></a>
 Not documented.
 
-<a id="method-c-template"></a>
-#### `template()`
-Not documented.
-
-### Public Instance Methods
-
-<a id="method-i-render"></a>
-#### `render(context)`
+## Public Instance Methods
+### `render(context)`<a id="method-i-render"></a>
 Not documented.

@@ -1,5 +1,9 @@
-<a id="class-jekyll-seotag-authordrop"></a>
-# Class Jekyll::SeoTag::AuthorDrop
+# Class Jekyll::SeoTag::AuthorDrop<a id="class-jekyll-seotag-authordrop"></a>
+|  |  |
+| --- | --- |
+| **Inherits** | Jekyll::Drops::Drop |
+| **Defined in** | lib/jekyll-seo-tag/author_drop.rb |
+
 A drop representing the current page’s author
 
 Author name will be pulled from:
@@ -12,24 +16,16 @@ Author name will be pulled from:
 
 If the result from the name search is a string, we’ll also check for additional author metadata in `site.data.authors`
 
-### Public Class Methods
-
-<a id="method-c-new"></a>
-#### `new(page: nil, site: nil)`
+## Public Class Methods
+### `new(page: nil, site: nil)`<a id="method-c-new"></a>
 Initialize a new [`AuthorDrop`](AuthorDrop.md)
 
 page - The page hash (e.g., Page#to\_liquid) site - The Jekyll::Drops::SiteDrop
 
-### Public Instance Methods
-
-<a id="method-i-name"></a>
-#### `name()`
+## Public Instance Methods
+### `name()`<a id="method-i-name"></a>
 [`AuthorDrop#to_s`](AuthorDrop.md#method-i-to_s) should return name, allowing the author drop to safely replace `page.author`, if necessary, and remain backwards compatible
-
-<a id="method-i-to_s"></a>
-#### `to_s()`
+### `to_s()`<a id="method-i-to_s"></a>
 Alias for: [`name`](#method-i-name)
-
-<a id="method-i-twitter"></a>
-#### `twitter()`
+### `twitter()`<a id="method-i-twitter"></a>
 Not documented.

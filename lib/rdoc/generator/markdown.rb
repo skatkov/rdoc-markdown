@@ -587,10 +587,11 @@ class RDoc::Generator::Markdown
   #
   # @param method [RDoc::AnyMethod] Method object to render.
   # @param current_class [RDoc::Context] Class or module currently being rendered.
+  # @param heading_level_offset [Integer] Heading levels to add while rendering.
   #
   # @return [String] Rendered method description.
-  def method_description(method, current_class:)
-    text = describe(method, heading_level_offset: 4)
+  def method_description(method, current_class:, heading_level_offset:)
+    text = describe(method, heading_level_offset: heading_level_offset)
     return text unless text.empty?
 
     aliased_method = method.is_alias_for

@@ -1,5 +1,10 @@
-<a id="class-duck"></a>
-# Class Duck
+# Class Duck<a id="class-duck"></a>
+|  |  |
+| --- | --- |
+| **Inherits** | [Object](Object.md) |
+| **Includes** | [Waterfowl](Waterfowl.md) |
+| **Defined in** | example.rb |
+
 A duck is a [`Waterfowl`](Waterfowl.md) [`Bird`](Bird.md).
 
 Features:
@@ -14,43 +19,27 @@ waterfowl:
 - swim
 
 ## Bird overrides
-
 ### Public Instance Methods
-
-<a id="method-i-speak"></a>
-#### `speak() { |speech| ... }`
+#### `speak() { |speech| ... }`<a id="method-i-speak"></a>
 [`Duck`](Duck.md) overrides generic implementation.
-
 ## Duck extensions
-
 ### Constants
-
-<a id="MAX_VELOCITY"></a>
-#### `MAX_VELOCITY`
+#### `MAX_VELOCITY`<a id="MAX_VELOCITY"></a>
 Not documented.
 
 ### Attributes
-
-<a id="attribute-i-domestic"></a>
-#### `domestic` [RW]
+#### `domestic` [RW]<a id="attribute-i-domestic"></a>
 True for domestic ducks.
 
-<a id="attribute-i-rubber"></a>
-#### `rubber` [R]
+#### `rubber` [R]<a id="attribute-i-rubber"></a>
 True for rubber ducks.
 
 ### Public Class Methods
-
-<a id="method-c-new"></a>
-#### `new(domestic, rubber)`
+#### `new(domestic, rubber)`<a id="method-c-new"></a>
 Creates a new duck.
-
-<a id="method-c-rubber_ducks"></a>
-#### `rubber_ducks()`
+#### `rubber_ducks()`<a id="method-c-rubber_ducks"></a>
 Returns list of all rubber ducks.
 
 ### Public Instance Methods
-
-<a id="method-i-useful-3F"></a>
-#### `useful? -> bool`
+#### `useful? -> bool`<a id="method-i-useful-3F"></a>
 Checks if this duck is a useful one.

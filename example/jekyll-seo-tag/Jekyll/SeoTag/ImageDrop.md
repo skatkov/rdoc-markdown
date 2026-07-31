@@ -1,5 +1,10 @@
-<a id="class-jekyll-seotag-imagedrop"></a>
-# Class Jekyll::SeoTag::ImageDrop
+# Class Jekyll::SeoTag::ImageDrop<a id="class-jekyll-seotag-imagedrop"></a>
+|  |  |
+| --- | --- |
+| **Inherits** | Jekyll::Drops::Drop |
+| **Includes** | [Jekyll::SeoTag::UrlHelper](UrlHelper.md) |
+| **Defined in** | lib/jekyll-seo-tag/image_drop.rb |
+
 A drop representing the page image The image path will be pulled from:
 
 1. The `image` key if it’s a string
@@ -10,20 +15,14 @@ A drop representing the page image The image path will be pulled from:
 
 4. The `image.twitter` key
 
-### Public Class Methods
-
-<a id="method-c-new"></a>
-#### `new(page: nil, context: nil)`
+## Public Class Methods
+### `new(page: nil, context: nil)`<a id="method-c-new"></a>
 Initialize a new [`ImageDrop`](ImageDrop.md)
 
 page - The page hash (e.g., Page#to\_liquid) context - the Liquid::Context
 
-### Public Instance Methods
-
-<a id="method-i-path"></a>
-#### `path()`
+## Public Instance Methods
+### `path()`<a id="method-i-path"></a>
 Called path for backwards compatability, this is really the escaped, absolute URL representing the page’s image Returns nil if no image path can be determined
-
-<a id="method-i-to_s"></a>
-#### `to_s()`
+### `to_s()`<a id="method-i-to_s"></a>
 Alias for: [`path`](#method-i-path)

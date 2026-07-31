@@ -87,7 +87,7 @@ class TestGenerator < Minitest::Test
     refute_includes bird_doc, "| **Includes** |"
     refute_match(/\[¶\]/, bird_doc)
     refute_match(/\[↑\]\(#top\)/, bird_doc)
-    assert_includes bird_doc, "##### Example"
+    assert_includes bird_doc, "#### Example"
 
     csv_data = File.read("#{dir}/index.csv")
     result = CSV.parse(csv_data, headers: true).map do |row|
@@ -194,7 +194,7 @@ class TestGenerator < Minitest::Test
     nested_thing_doc = File.read(File.join(dir, "Root/Inner/Root/Thing.md"))
     entries = index_entries(dir)
 
-    assert_includes thing_doc, "#### `real_one()`"
+    assert_includes thing_doc, "### `real_one()`"
     assert_includes entries, ["Root::Thing.real_one", "Method", "Root/Thing.md#method-i-real_one"]
 
     assert_includes nested_thing_doc, "#### `synthetic()`"
@@ -253,7 +253,7 @@ class TestGenerator < Minitest::Test
 
     bird_doc = File.read("#{dir}/Bird.md")
 
-    assert_includes bird_doc, "#### `fly(direction: string, velocity: number) -> bool`"
+    assert_includes method_headings(bird_doc), "fly(direction: string, velocity: number) -> bool"
     refute_includes bird_doc, "Arguments: `direction, velocity`"
   end
 
@@ -312,17 +312,19 @@ class TestGenerator < Minitest::Test
     bird_doc = File.read(File.join(dir, "Aviary/Bird.md"))
     absolute_bird_doc = File.read(File.join(dir, "AbsoluteBird.md"))
     plain_bird_doc = File.read(File.join(dir, "PlainBird.md"))
+    ruby_only_headings = method_headings(ruby_only_bird_doc)
+    bird_headings = method_headings(bird_doc)
 
-    assert_includes ruby_only_bird_doc, "#### `fly(direction, velocity)`"
-    assert_includes bird_doc, "#### `new(String name) -> void`"
-    assert_includes bird_doc, "#### `fly(String direction, Integer velocity) -> bool`"
-    assert_includes bird_doc, "#### `build(Symbol name) -> String`"
-    assert_includes bird_doc, "#### `build(String name) -> Bird`"
-    assert_includes absolute_bird_doc, "#### `chirp(String sound) -> String`"
-    assert_includes plain_bird_doc, "#### `chirp(sound)`"
-    refute_includes bird_doc, "#### `new() -> singleton(Bird)`"
-    refute_includes bird_doc, "#### `fly(direction, velocity)`"
-    refute_includes bird_doc, "#### `build(name)`"
+    assert_includes ruby_only_headings, "fly(direction, velocity)"
+    assert_includes bird_headings, "new(String name) -> void"
+    assert_includes bird_headings, "fly(String direction, Integer velocity) -> bool"
+    assert_includes bird_headings, "build(Symbol name) -> String"
+    assert_includes bird_headings, "build(String name) -> Bird"
+    assert_includes method_headings(absolute_bird_doc), "chirp(String sound) -> String"
+    assert_includes method_headings(plain_bird_doc), "chirp(sound)"
+    refute_includes bird_headings, "new() -> singleton(Bird)"
+    refute_includes bird_headings, "fly(direction, velocity)"
+    refute_includes bird_headings, "build(name)"
   end
 
   def test_generator_uses_relative_rbs_inputs_from_rdoc_start_directory
@@ -346,9 +348,10 @@ class TestGenerator < Minitest::Test
       dir = run_generator(["bird.rb", "bird.rbs"], "relative rbs signature title")
     end
     bird_doc = File.read(File.join(dir, "Bird.md"))
+    headings = method_headings(bird_doc)
 
-    assert_includes bird_doc, "#### `fly(direction: String) -> bool`"
-    refute_includes bird_doc, "#### `fly(direction)`"
+    assert_includes headings, "fly(direction: String) -> bool"
+    refute_includes headings, "fly(direction)"
   end
 
   def test_generator_uses_rdoc_8_auto_discovered_sig_directory
@@ -374,9 +377,10 @@ class TestGenerator < Minitest::Test
       options.root = source_dir
     end
     bird_doc = File.read(File.join(dir, "Bird.md"))
+    headings = method_headings(bird_doc)
 
-    assert_includes bird_doc, "#### `fly(direction: String) -> bool`"
-    refute_includes bird_doc, "#### `fly(direction)`"
+    assert_includes headings, "fly(direction: String) -> bool"
+    refute_includes headings, "fly(direction)"
   end
 
   def test_generator_uses_store_sidecar_type_signatures
@@ -392,11 +396,12 @@ class TestGenerator < Minitest::Test
     RDoc::Generator::Markdown.new(store, generator_options(op_dir: dir)).generate
     doc = File.read(File.join(dir, "SignatureExamples.md"))
     plain_doc = File.read(File.join(dir, "PlainSignatureExamples.md"))
+    headings = method_headings(doc)
 
-    assert_includes doc, "#### `sidecar(value: String) -> bool | (value: Integer) -> bool`"
-    refute_includes doc, "#### `sidecar(value: String) -> bool | (Integer) -> bool`"
-    refute_includes doc, "#### `sidecar(value)`"
-    assert_includes plain_doc, "#### `plain(name)`"
+    assert_includes headings, "sidecar(value: String) -> bool | (value: Integer) -> bool"
+    refute_includes headings, "sidecar(value: String) -> bool | (Integer) -> bool"
+    refute_includes headings, "sidecar(value)"
+    assert_includes method_headings(plain_doc), "plain(name)"
   end
 
   def test_generator_omits_nodoc_and_invisible_code_objects
@@ -431,7 +436,7 @@ class TestGenerator < Minitest::Test
     assert_false File.exist?(File.join(dir, "HiddenClass.md"))
     assert_false File.exist?(File.join(dir, "HiddenModule.md"))
     assert_false File.exist?(File.join(dir, "ExternalNamespace.md"))
-    assert_includes visible_doc, "#### `public_method()`"
+    assert_includes method_headings(visible_doc), "public_method()"
     refute_includes visible_doc, "hidden_method"
     refute_includes visible_doc, "private_method"
     assert_includes entries, ["Visible", "Class", "Visible.md"]

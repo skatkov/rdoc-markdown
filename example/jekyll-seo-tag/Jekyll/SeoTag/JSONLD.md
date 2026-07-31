@@ -1,15 +1,14 @@
-<a id="module-jekyll-seotag-jsonld"></a>
-# Module Jekyll::SeoTag::JSONLD
+# Module Jekyll::SeoTag::JSONLD<a id="module-jekyll-seotag-jsonld"></a>
+|  |  |
+| --- | --- |
+| **Defined in** | lib/jekyll-seo-tag/json_ld.rb |
+
 This module is deprecated, but is included in the Gem to avoid a breaking change and should be removed at the next major version bump
 
-### Constants
-
-<a id="METHODS_KEYS"></a>
-#### `METHODS_KEYS`
+## Constants
+### `METHODS_KEYS`<a id="METHODS_KEYS"></a>
 Not documented.
 
-### Public Instance Methods
-
-<a id="method-i-json_ld"></a>
-#### `json_ld()`
+## Public Instance Methods
+### `json_ld()`<a id="method-i-json_ld"></a>
 Self should be a [`Jekyll::SeoTag::Drop`](Drop.md) instance (when extending the module)
