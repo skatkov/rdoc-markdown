@@ -1,8 +1,10 @@
 # Changelog
 
-
 ## Unreleased
 
+## 0.18.0
+
+- Rework heading for the document
 
 ## 0.17.2
 
