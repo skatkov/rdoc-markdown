@@ -31,10 +31,6 @@ Run following command in directory with ruby source code:
 
 `rdoc --format=markdown`
 
-    
-## Examples
-Find examples in [/example](/example/) folder. You can regenerate examples by running `./bin/generate.sh`; it produces the sample docs from `test/data/example.rb` and a pinned `jekyll-seo-tag` example from `vendor/jekyll-seo-tag`.
-
 
 ## Development
 
@@ -73,17 +69,19 @@ bundle exec rake erb:lint
 ### Generate vendored docs
 Use rake tasks to generate markdown output for vendored projects:
 
+`./bin/generate.sh`
+
+or generate only some vendor docs:
+
 ```
-rake vendor:setup
 rake vendor:docs:jekyll_seo_tag
 rake vendor:docs:minitest
 rake vendor:docs:reverse_markdown
 rake vendor:docs:rails
-# or generate all
-rake vendor:docs
 ```
 
-Make sure to inspect `example/` folder.
+Find examples in [/example](/example/) folder. 
+
 
 ## Release
 
