@@ -22,8 +22,6 @@ Install gem and add to application's Gemfile by executing:
 If bundler is not being used to manage dependencies, install the gem by executing:
 
     $ gem install rdoc-markdown
-## Examples
-Find examples in [/example](/example/) folder. You can regenerate examples by running `./bin/generate.sh`; it produces the sample docs from `test/data/example.rb` and a pinned `jekyll-seo-tag` example from `vendor/jekyll-seo-tag`.
 
 
 ## Usage
@@ -33,32 +31,10 @@ Run following command in directory with ruby source code:
 
 `rdoc --format=markdown`
 
-This will produce a tree of markdown documents and search index in `/doc` folder. Every class in library will have it's own markdown file.
+    
+## Examples
+Find examples in [/example](/example/) folder. You can regenerate examples by running `./bin/generate.sh`; it produces the sample docs from `test/data/example.rb` and a pinned `jekyll-seo-tag` example from `vendor/jekyll-seo-tag`.
 
-Input `.md` and `.markdown` pages are copied unchanged to the same relative path. RDoc pages and Ruby documentation are converted to Markdown.
-
-### Unknown HTML tags
-rdoc-markdown uses `reverse_markdown` to convert RDoc's HTML fragments to Markdown. You can configure how unknown HTML tags are handled with:
-
-```sh
-rdoc --format=markdown --markdown-unknown-tags=raise
-```
-
-Accepted values are `pass_through`, `drop`, `bypass`, and `raise`. The default is `pass_through`.
-
-The same setting can be stored in RDoc's `.rdoc_options` file:
-
-```yaml
----
-markdown_unknown_tags: :raise
-```
-
-## Note on index.csv file
-This gem emits index of all markdown files in a index.csv file.
-
-There are decent tools that offer search through structured plain-text files. But my expectation is that nobody will use CSV as an actual search index, but rather import it into something that performs this function better.
-
-In my personal use-case, I use SQLite. All other databases seem to have a good support for CSV imports.
 
 ## Development
 
@@ -105,26 +81,6 @@ To lint markdown ERB templates:
 bundle exec rake erb:lint
 ```
 
-### Integration: minitest
-To run the integration harness against minitest (aligned with docs.seattlerb.org/minitest):
-
-```
-rake vendor:setup:minitest
-bundle exec rake test
-```
-
-The harness validates markdown formatting quality, generated page files, class/module paths, and search index output.
-
-### Integration: rails
-To run the rails harness (focused on Active Support + Active Record API docs with sdoc-like structure):
-
-```
-rake vendor:setup:rails
-bundle exec rake test
-```
-
-The rails harness validates alias rendering, preserved code blocks, file/page links rewritten to markdown, and omission of fabricated external namespaces.
-
 ### Generate vendored docs
 Use rake tasks to generate markdown output for vendored projects:
 
@@ -138,16 +94,8 @@ rake vendor:docs:rails
 rake vendor:docs
 ```
 
-`rake vendor:setup` also checks out the dependency-aligned `reverse_markdown` source in `vendor/reverse_markdown`.
-
-Output is written to:
-
-- `vendor/docs/minitest`
-- `vendor/docs/jekyll-seo-tag`
-- `vendor/docs/reverse_markdown`
-- `vendor/docs/rails`
-
 ## Release
+
 ```
 gem build rdoc-markdown.gemspec
 gem push rdoc-markdown-0.1.2.gem
