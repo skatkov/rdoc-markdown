@@ -64,17 +64,6 @@ To validate generated markdown against GitHub Flavored Markdown and check local 
 rake markdown:validate
 ```
 
-This task validates:
-
-- generated sample docs,
-- checked-in `example/` docs,
-- generated `jekyll-seo-tag` docs,
-- vendored minitest docs,
-- vendored rails docs (Active Support, Active Record, Action Pack, Railties slices).
-
-Validation artifacts are written to `tmp/markdown-validate/` inside this repository.
-This task is also executed in CI.
-
 To lint markdown ERB templates:
 
 ```
@@ -93,6 +82,8 @@ rake vendor:docs:rails
 # or generate all
 rake vendor:docs
 ```
+
+Make sure to inspect `example/` folder.
 
 ## Release
 
