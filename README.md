@@ -2,32 +2,32 @@
 RDoc plugin to generate markdown documentation and search index file (CSV).
 
 > [!CAUTION]
-> This gem relies on multiple hacks to generate "plausible" markdown documentation. This is **NOT PRODUCTION READY**, use at your own risk.
+> This gem relies on multiple hacks to generate "plausible" markdown documentation. This is **NOT PRODUCTION READY** — use at your own risk.
 >
-> rdoc maintainers are actively working on markdown support, things will improve with time... 
+> RDoc maintainers are actively working on markdown support, things will improve with time...
 
 ## Motivation
-Markdown has become the de-facto documentation standard. We can render markdown file on any device, possibly on thermometer with a screen. And everyone knows markdown...
+Markdown has become the de facto documentation standard. We can render markdown files on any device, possibly on a thermometer with a screen. And everyone knows markdown...
 
-It's a pitty that rdoc can't output a proper markdown file. Somebody has to try and build it.
+It's a pity that RDoc can't output a proper markdown file. Somebody has to try to build it.
 
 ## Installation
 
 rdoc-markdown requires Ruby 3.3 or newer and RDoc 8 or newer.
 
-Install gem and add to application's Gemfile by executing:
+Install the gem and add it to your application's Gemfile by executing:
 
     $ bundle add rdoc-markdown
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+If Bundler is not being used to manage dependencies, install the gem by executing:
 
     $ gem install rdoc-markdown
 
 
 ## Usage
-RDoc will auto-detect rdoc-markdown plugin if it was installed. You just need to instruct RDoc to produce markdown output instead of standard HTML through `format` parameter.
+RDoc will auto-detect the rdoc-markdown plugin if it is installed. You just need to instruct RDoc to produce markdown output instead of standard HTML through the `format` parameter.
 
-Run following command in directory with ruby source code:
+Run the following command in a directory with Ruby source code:
 
 `rdoc --format=markdown`
 
@@ -42,14 +42,14 @@ gem build rdoc-markdown.gemspec
 gem install <path-to>/rdoc-markdown-0.1.2.gem
 ```
 
-or you can do the same, but through gemfile:
+or you can do the same through a Gemfile:
 
 ```
-gem 'rdoc-markdown`, path: "../rdoc-markdown/`
+gem 'rdoc-markdown', path: "../rdoc-markdown/"
 ```
 
 ## Testing
-Following command should run entire testsuit:
+The following command should run the entire test suite:
 ```
 rake test
 ```
@@ -80,7 +80,7 @@ rake vendor:docs:reverse_markdown
 rake vendor:docs:rails
 ```
 
-Find examples in [/example](/example/) folder. 
+Find examples in the [/example](/example/) folder.
 
 
 ## Release
@@ -90,7 +90,7 @@ gem build rdoc-markdown.gemspec
 gem push rdoc-markdown-0.1.2.gem
 ```
 
-There is `./bin/publish.sh` script that does that. But it assumes, that you have [gum library](https://github.com/charmbracelet/gum) installed.
+There is a `./bin/publish.sh` script that does that. However, it assumes that you have the [gum library](https://github.com/charmbracelet/gum) installed.
 
 ## Contributing
 
@@ -98,4 +98,4 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/skatko
 
 ## Code of Conduct
 
-Everyone interacting in the Rdoc::Markdown project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/skatkov/rdoc-markdown/blob/master/CODE_OF_CONDUCT.md).
+Everyone interacting in the RDoc::Markdown project's codebases, issue trackers, chat rooms, and mailing lists is expected to follow the [code of conduct](https://github.com/skatkov/rdoc-markdown/blob/master/CODE_OF_CONDUCT.md).
