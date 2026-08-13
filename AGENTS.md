@@ -5,7 +5,7 @@ You are working in a Ruby project that uses mutation testing, but also tracks li
 Achieve 100% line, branch and mutation coverage. Always run simplecov before mutant testing. Use following commands:
 
 ```
-SIMPLECOV=1 bundle exec rspec
+SIMPLECOV=1 bundle exec rake test
 ```
 
 ```
@@ -38,13 +38,13 @@ the user.
   No `expressions:` filters, no `coverage_criteria:` tweaks.
 - You may not use `send` or `__send__` to invoke private methods
   in tests just to satisfy coverage requirement.
-- You may not stub or mock the system under test (`Age`).
+- You may not stub or mock the system under test.
 
 ## Done
 
 You are done when both of these are green:
 
 ```
-SIMPLECOV=1 bundle exec rspec
+SIMPLECOV=1 bundle exec rake test
 bundle exec mutant run
 ```
