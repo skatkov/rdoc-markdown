@@ -193,6 +193,7 @@ end
 
 def rails_validation_files(root)
   files = Dir[File.join(root, "activesupport/lib/**/*.rb")]
+  files.concat(Dir[File.join(root, "activemodel/lib/**/*.rb")])
   files.concat(Dir[File.join(root, "activerecord/lib/**/*.rb")])
   files.concat(Dir[File.join(root, "actionpack/lib/**/*.rb")])
   files.concat(Dir[File.join(root, "railties/lib/**/*.rb")])

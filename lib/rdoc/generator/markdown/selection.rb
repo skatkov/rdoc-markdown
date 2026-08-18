@@ -7,7 +7,7 @@ module RDoc::Generator::Markdown::Selection
   # @param store [RDoc::Store] Documentation store.
   #
   # @return [Array<RDoc::Context>] Selected classes and modules.
-  def classes(store)
+  def self.classes(store)
     store.unique_classes_and_modules.select(&:display?).select { |klass| renderable_class?(klass) }.sort
   end
 
@@ -16,7 +16,7 @@ module RDoc::Generator::Markdown::Selection
   # @param klass [RDoc::Context] Candidate class or module.
   #
   # @return [Boolean] Whether the object should produce a page.
-  def renderable_class?(klass)
+  def self.renderable_class?(klass)
     klass.in_files.any? ||
       klass.documented? ||
       klass.includes.any? ||
@@ -31,11 +31,9 @@ module RDoc::Generator::Markdown::Selection
   # @param store [RDoc::Store] Documentation store.
   #
   # @return [Array<RDoc::TopLevel>] Selected pages.
-  def pages(store)
+  def self.pages(store)
     store.all_files.select(&:text?).select(&:display?)
       .select { |page| page.relative_name.match?(/\.(?:md|markdown|rdoc)\z/i) }
       .sort_by(&:base_name)
   end
-
-  module_function :classes, :renderable_class?, :pages
 end

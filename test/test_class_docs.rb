@@ -162,11 +162,17 @@ class TestClassDocs < Minitest::Test
     constant.add_constant(rdoc_constant("VALUE"))
     attributed = RDoc::NormalModule.new("AttributeOnly")
     attributed.add_attribute(rdoc_attribute("name"))
+    sectioned = RDoc::NormalModule.new("SectionOnly")
+    sectioned.add_section("Overview")
+    section_described = RDoc::NormalModule.new("SectionDescriptionOnly")
+    section_described.add_section(nil, RDoc::Comment.new("Section body"))
     omitted = RDoc::NormalClass.new("ExternalBase")
     child = build_rdoc_class(full_name: "Child", source_backed: true)
     child.superclass = omitted
 
-    dir = generate_from_store([included, described, methoded, constant, attributed, omitted, child])
+    dir = generate_from_store(
+      [included, described, methoded, constant, attributed, sectioned, section_described, omitted, child]
+    )
     markdown = File.read(File.join(dir, "IncludedOnly.md"))
     child_markdown = File.read(File.join(dir, "Child.md"))
 
@@ -175,6 +181,8 @@ class TestClassDocs < Minitest::Test
     assert_includes File.read(File.join(dir, "MethodOnly.md")), "### `run()`"
     assert_includes File.read(File.join(dir, "ConstantOnly.md")), "### `VALUE`"
     assert_includes File.read(File.join(dir, "AttributeOnly.md")), "### `name`"
+    assert_includes File.read(File.join(dir, "SectionOnly.md")), "## Overview"
+    assert_includes File.read(File.join(dir, "SectionDescriptionOnly.md")), "Section body"
     assert_includes child_markdown, "| **Inherits** | ExternalBase |"
     refute_includes child_markdown, "[ExternalBase]"
     assert_false File.exist?(File.join(dir, "ExternalBase.md"))

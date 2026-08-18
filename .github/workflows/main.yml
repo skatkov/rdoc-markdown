@@ -7,6 +7,10 @@ on:
 
   pull_request:
 
+permissions:
+  checks: write
+  contents: read
+
 jobs:
   compatibility:
     name: Tests / Ruby ${{ matrix.ruby-version }}
@@ -34,14 +38,17 @@ jobs:
             ${{ runner.os }}-vendored-repos-v1-
       - name: Run tests
         run: bundle exec rake test
+      - name: Report SimpleCov
+        if: matrix.ruby-version == '4.0'
+        uses: joshmfrankel/simplecov-check-action@e4d24394253366c3b96d9e73e9b68127b2bad081 # v1.1.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          minimum_suite_coverage: 100
+          coverage_json_path: coverage/simplecov-json-disabled.json
 
   quality:
     name: Quality and generated docs
     runs-on: ubuntu-latest
-    permissions:
-      checks: write
-      contents: read
-
     steps:
       - uses: actions/checkout@v6
       - name: Set up Ruby

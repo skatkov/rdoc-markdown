@@ -61,7 +61,7 @@ module RDoc::Generator::Markdown::Paths
   # @param state [RDoc::Generator::Markdown::GenerationState] Prepared generation state.
   #
   # @return [String] Markdown with normalized internal links.
-  def rewrite_internal_links(markdown, current_output_path, state)
+  def self.rewrite_internal_links(markdown, current_output_path, state)
     current_dir = Pathname.new(current_output_path).dirname
 
     markdown.gsub(%r{\]\(([^)]+)\)}) do
@@ -75,20 +75,6 @@ module RDoc::Generator::Markdown::Paths
     end
   end
 
-  # Resolves an internal link path against known generated outputs.
-  #
-  # @param path [String] Link path from Markdown content.
-  # @param current_dir [Pathname] Directory of the current output file.
-  #
-  # @return [String, nil] Resolved output path, or nil when unresolved.
-  def resolve_output_path(path, current_dir)
-    RDoc::Generator::Markdown::Paths.resolve_output_path_from(
-      path,
-      current_dir,
-      generation_state
-    )
-  end
-
   # Resolves a link against explicit generated-path state.
   #
   # @param path [String] Link path from Markdown content.
@@ -96,7 +82,7 @@ module RDoc::Generator::Markdown::Paths
   # @param state [RDoc::Generator::Markdown::GenerationState] Prepared generation state.
   #
   # @return [String, nil] Resolved output path, or nil when unresolved.
-  def resolve_output_path_from(path, current_dir, state)
+  def self.resolve_output_path_from(path, current_dir, state)
     candidates = [path, path.delete_prefix("#{state.root_path_segment}/")]
     candidates += candidates.map { |candidate| candidate.sub(/_(md|markdown)\.md\z/i, '.\1') }
     expanded_candidates = candidates.map { |candidate| current_dir.join(candidate).cleanpath.to_s }
@@ -119,7 +105,7 @@ module RDoc::Generator::Markdown::Paths
   # @param source_dir [String] Absolute documentation source directory.
   #
   # @return [String] Normalized path without root prefixes.
-  def normalize_input_path(path, source_dir)
+  def self.normalize_input_path(path, source_dir)
     normalized = path.tr("\\", "/").sub(%r{\A\./}, "")
     normalized = normalized.sub(%r{\A#{Regexp.escape(source_dir)}/}, "")
     normalized = normalized.sub(%r{\A/}, "")
@@ -127,9 +113,4 @@ module RDoc::Generator::Markdown::Paths
     root_basename = File.basename(source_dir)
     normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, "")
   end
-
-  module_function :turn_to_path,
-    :rewrite_internal_links,
-    :resolve_output_path_from,
-    :normalize_input_path
 end

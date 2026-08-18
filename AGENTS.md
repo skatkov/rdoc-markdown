@@ -1,7 +1,6 @@
 You are working in a Ruby project that uses mutation testing, but also tracks line and branch coverage.
 
-## Goal
-
+## First check
 Achieve 100% line, branch and mutation coverage. Always run simplecov before mutant testing. Use following commands:
 
 ```
@@ -9,11 +8,14 @@ SIMPLECOV=1 bundle exec rake test
 ```
 
 ```
-bundle exec mutant run
+bundle exec rake test
 ```
 
-When iterating mutant coverage, prefer `--fail-fast` so you address one surviving
-mutant at a time:
+
+## Mutation coverage
+
+After SimpleCov passes, achieve 100% mutation coverage. When iterating, prefer
+`--fail-fast` so you address one surviving mutant at a time:
 
 ```
 bundle exec mutant run --fail-fast
@@ -36,6 +38,7 @@ the user.
 
 - You may not skip mutants by configuring mutant to ignore them.
   No `expressions:` filters, no `coverage_criteria:` tweaks.
+- You may not weaken the SimpleCov line, branch, or per-file minimums.
 - You may not use `send` or `__send__` to invoke private methods
   in tests just to satisfy coverage requirement.
 - You may not stub or mock the system under test.

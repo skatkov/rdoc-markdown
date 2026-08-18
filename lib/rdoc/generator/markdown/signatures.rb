@@ -2,11 +2,9 @@
 
 # Normalizes RDoc and RBS method signatures for headings.
 module RDoc::Generator::Markdown::Signatures
-  # Signature delimiter depth changes by character.
-  DELIMITER_CHANGES = {
-    "(" => [:parentheses, 1], ")" => [:parentheses, -1],
-    "[" => [:brackets, 1], "]" => [:brackets, -1],
-    "{" => [:braces, 1], "}" => [:braces, -1]
+  # Signature opening delimiters and their matching closers.
+  DELIMITER_PAIRS = {
+    "(" => ")", "[" => "]", "{" => "}"
   }.freeze
 
   private
@@ -26,7 +24,7 @@ module RDoc::Generator::Markdown::Signatures
   # @param store [RDoc::Store] Documentation store with sidecar signatures.
   #
   # @return [String] Normalized method signature.
-  def render_method_signature(method, store)
+  def self.render_method_signature(method, store)
     signatures = method.type_signature_lines || store.rbs_signature_for(method) || [method.param_seq]
 
     signatures = signatures.filter_map do |signature|
@@ -49,7 +47,7 @@ module RDoc::Generator::Markdown::Signatures
   # @param raw_params [String, nil] Method parameter list from RDoc.
   #
   # @return [String] Signature with names added when safe.
-  def merge_method_signature_arguments(signature, raw_params)
+  def self.merge_method_signature_arguments(signature, raw_params)
     params = normalized_method_params(raw_params)
 
     signature_args, signature_suffix = split_signature_arguments_and_suffix(signature)
@@ -70,7 +68,7 @@ module RDoc::Generator::Markdown::Signatures
   # @param signature_suffix [String] Text following the argument list.
   #
   # @return [String, nil] Merged signature, or nil when merging is unsafe or unnecessary.
-  def merged_signature(param_parts, signature_parts, signature_suffix)
+  def self.merged_signature(param_parts, signature_parts, signature_suffix)
     param_names = param_parts.map { |part| extract_parameter_name(part) }
     return if param_names.any?(&:nil?)
     return if signature_parts.zip(param_names).all? { |part, name| signature_part_mentions_name?(part, name) }
@@ -88,7 +86,7 @@ module RDoc::Generator::Markdown::Signatures
   # @param raw_params [String, nil] Parameter list from RDoc.
   #
   # @return [String] Parameter list without outer parentheses.
-  def normalized_method_params(raw_params)
+  def self.normalized_method_params(raw_params)
     params = raw_params.to_s.strip
     params = params[1...-1] if params.start_with?("(") && params.end_with?(")")
 
@@ -100,7 +98,7 @@ module RDoc::Generator::Markdown::Signatures
   # @param signature [String] Method signature.
   #
   # @return [Array<String>, nil] Argument text and suffix, or nil when not parenthesized.
-  def split_signature_arguments_and_suffix(signature)
+  def self.split_signature_arguments_and_suffix(signature)
     return unless signature.start_with?("(")
 
     depth = 0
@@ -120,17 +118,22 @@ module RDoc::Generator::Markdown::Signatures
   # @param list [String] Signature argument list.
   #
   # @return [Array<String>] Signature parts.
-  def split_signature_list(list)
+  def self.split_signature_list(list)
     parts = []
     current = +""
-    depths = {parentheses: 0, brackets: 0, braces: 0}
+    delimiters = []
 
     list.each_char do |char|
-      if top_level_signature_separator?(char, depths)
+      if top_level_signature_separator?(char, delimiters)
         parts << current.strip
         current.clear
       else
-        update_signature_depths(char, depths)
+        closing = DELIMITER_PAIRS[char]
+        if closing
+          delimiters << closing
+        elsif char == delimiters.last
+          delimiters.pop
+        end
         current << char
       end
     end
@@ -142,25 +145,11 @@ module RDoc::Generator::Markdown::Signatures
   # Checks whether a character separates top-level signature parts.
   #
   # @param char [String] Current signature character.
-  # @param depths [Hash{Symbol => Integer}] Current delimiter depths.
+  # @param delimiters [Array<String>] Expected closing delimiters.
   #
   # @return [Boolean] Whether the character is a top-level comma.
-  def top_level_signature_separator?(char, depths)
-    [char, *depths.values] == [",", 0, 0, 0]
-  end
-
-  # Updates delimiter nesting depths for one signature character.
-  #
-  # @param char [String] Current signature character.
-  # @param depths [Hash{Symbol => Integer}] Mutable delimiter depths.
-  #
-  # @return [void]
-  def update_signature_depths(char, depths)
-    change = DELIMITER_CHANGES[char]
-    return unless change
-
-    delimiter, delta = change
-    depths[delimiter] += delta
+  def self.top_level_signature_separator?(char, delimiters)
+    char == "," && delimiters.empty?
   end
 
   # Extracts a bare Ruby parameter name from a parameter fragment.
@@ -168,7 +157,7 @@ module RDoc::Generator::Markdown::Signatures
   # @param parameter [String] Parameter fragment.
   #
   # @return [String, nil] Parameter name, or nil when invalid.
-  def extract_parameter_name(parameter)
+  def self.extract_parameter_name(parameter)
     match = parameter.match(/\A(?:\*\*|\*|&)?([a-z_]\w*):?\z/)
     match && match[1]
   end
@@ -179,18 +168,7 @@ module RDoc::Generator::Markdown::Signatures
   # @param name [String] Parameter name.
   #
   # @return [Boolean] True when the name appears as a standalone word.
-  def signature_part_mentions_name?(text, name)
+  def self.signature_part_mentions_name?(text, name)
     text.match?(/(?<!\w)#{name}(?!\w)/)
   end
-
-  module_function :render_method_signature,
-    :merge_method_signature_arguments,
-    :merged_signature,
-    :normalized_method_params,
-    :split_signature_arguments_and_suffix,
-    :split_signature_list,
-    :top_level_signature_separator?,
-    :update_signature_depths,
-    :extract_parameter_name,
-    :signature_part_mentions_name?
 end
