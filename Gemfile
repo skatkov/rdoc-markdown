@@ -6,6 +6,7 @@ source "https://rubygems.org"
 gemspec
 
 gem "erb_lint", require: false
+gem "reek", require: false
 gem "standard"
 gem "yard-lint"
 
