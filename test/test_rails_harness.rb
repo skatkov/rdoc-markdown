@@ -19,6 +19,7 @@ class TestRailsHarness < Minitest::Test
     skip "vendor/rails does not look like the expected repository" unless File.file?(active_support_base)
 
     files = Dir[File.join(rails_root, "activesupport/lib/**/*.rb")]
+    files.concat(Dir[File.join(rails_root, "activemodel/lib/**/*.rb")])
     files.concat(Dir[File.join(rails_root, "activerecord/lib/**/*.rb")])
 
     active_record_readme = File.join(rails_root, "activerecord/README.rdoc")

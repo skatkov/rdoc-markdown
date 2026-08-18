@@ -147,11 +147,13 @@ module RDoc::Generator::Markdown::Conversion
     receiver = link.text
     href = link["href"].to_s
 
-    return replace_index_reference(link, document, href) if index_reference?(receiver, href)
-    return link["href"] = "https://#{href}" if href.start_with?("www.")
-    return if href.match?(/\A(?:https?:\/\/|mailto:|#)/i)
-
-    link["href"] = normalized_link_target(href)
+    if index_reference?(receiver, href)
+      replace_index_reference(link, document, href)
+    elsif href.start_with?("www.")
+      link["href"] = "https://#{href}"
+    elsif !href.match?(/\A(?:https?:\/\/|mailto:|#)/i)
+      link["href"] = normalized_link_target(href)
+    end
   end
 
   # Checks whether RDoc encoded an indexing expression as a link.

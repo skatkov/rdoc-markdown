@@ -651,7 +651,7 @@ class TestMarkdownHelpers < Minitest::Test
     klass.add_constant(rdoc_constant("VALUE"))
     constructor = rdoc_method("new", visible: true, comment: "Creates a new entry using +str+.", signature: "(str)")
     constructor.singleton = true
-    method = rdoc_method("run", visible: true, comment: "= Method Topic\n\n=== Method Detail")
+    method = rdoc_method("run", visible: true, comment: "= Method Topic\n\n=== Method Detail\n\n==== Method Depth")
     klass.add_method(constructor)
     klass.add_method(method)
     klass.add_method(rdoc_method("plain", visible: true))
@@ -679,9 +679,11 @@ class TestMarkdownHelpers < Minitest::Test
       "<a id=\"method-i-run-method-topic\"></a>\n" \
       "###### Method Detail<a id=\"method-i-run-label-Method+Detail\"></a>" \
       "<a id=\"method-i-run-method-detail\"></a>\n"
+    assert_includes markdown, "###### Method Depth"
     refute_match(/^<a id="[^"]+"><\/a>\n#+ /, markdown)
     refute_includes markdown, "\n###### Method Topic\n"
     refute_includes markdown, "\n####### Method Detail\n"
+    refute_includes markdown, "\n####### Method Depth"
     refute_includes markdown, "\n## Method Detail\n"
     assert_includes markdown, "### `new(str)`<a id=\"method-c-new\"></a>\nCreates a new entry using `str`."
     refute_includes markdown, "### `new(str)`<a id=\"method-c-new\"></a>\n\nCreates"
