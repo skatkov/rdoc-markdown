@@ -12,24 +12,14 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown.setup_options"
   cover "RDoc::Generator::Markdown.validate_markdown_unknown_tags"
   cover "RDoc::Generator::Markdown#initialize"
-  cover "RDoc::Generator::Markdown#markdownify"
-  cover "RDoc::Generator::Markdown#describe"
+  cover "RDoc::Generator::Markdown::Conversion*"
+  cover "RDoc::Generator::Markdown::Descriptions*"
   cover "RDoc::Generator::Markdown#debug"
-  cover "RDoc::Generator::Markdown#method_description"
-  cover "RDoc::Generator::Markdown#method_link"
-  cover "RDoc::Generator::Markdown#section_description"
-  cover "RDoc::Generator::Markdown#render_description"
-  cover "RDoc::Generator::Markdown#finalize_markdown"
-  cover "RDoc::Generator::Markdown#normalize_internal_links"
+  cover "RDoc::Generator::Markdown::Paths*"
   cover "RDoc::Generator::Markdown::OptionsExtension#init_ivars"
   cover "RDoc::Generator::Markdown::OptionsExtension#init_with"
   cover "RDoc::Generator::Markdown::OptionsExtension#override"
-  cover "RDoc::Generator::Markdown#resolve_output_path"
-  cover "RDoc::Generator::Markdown#shift_headings"
-  cover "RDoc::Generator::Markdown#normalize_definition_list_code_blocks"
-  cover "RDoc::Generator::Markdown#convert_definition_list_block"
-  cover "RDoc::Generator::Markdown#definition_list_line?"
-  cover "RDoc::Generator::Markdown::CrossrefExtension#link"
+  cover "RDoc::Generator::Markdown::CrossrefExtension*"
 
   def generate_markdown(classes: [], pages: [], root: nil, markdown_unknown_tags: DEFAULT_MARKDOWN_UNKNOWN_TAGS)
     dir = stable_tmpdir("generated-markdown")
@@ -223,23 +213,24 @@ class TestMarkdownHelpers < Minitest::Test
       "Missing" => "Missing"
     })
     formatter.extend(RDoc::Generator::Markdown::CrossrefExtension)
-    formatter.markdown_cross_reference = resolver
-    formatter.markdown_output_object_ids = Set[source.object_id]
 
-    assert_equal "<code>Hidden</code>", formatter.link("Hidden", "Hidden")
-    assert_equal "Hidden", formatter.link("Hidden", "Hidden", false)
-    assert_equal "<code>Hidden&lt;T&gt;</code>", formatter.link("Hidden", "Hidden&lt;T&gt;")
-    assert_equal "Hidden&lt;T&gt;", formatter.link("Hidden", "Hidden&lt;T&gt;", false)
-    assert_equal "Guide", formatter.link("guide", "Guide")
-    assert_equal "linked", formatter.link(nil, "Missing")
-    assert_equal "linked", formatter.link("Missing", "Missing")
-    assert_false formatter.rdoc_ref
+    formatter.with_markdown_cross_references(resolver, Set[source.object_id]) do
+      assert_equal "<code>Hidden</code>", formatter.link("Hidden", "Hidden")
+      assert_equal "Hidden", formatter.link("Hidden", "Hidden", false)
+      assert_equal "<code>Hidden&lt;T&gt;</code>", formatter.link("Hidden", "Hidden&lt;T&gt;")
+      assert_equal "Hidden&lt;T&gt;", formatter.link("Hidden", "Hidden&lt;T&gt;", false)
+      assert_equal "Guide", formatter.link("guide", "Guide")
+      assert_equal "linked", formatter.link(nil, "Missing")
+      assert_equal "linked", formatter.link("Missing", "Missing")
+      assert_false formatter.rdoc_ref
+    end
 
-    formatter.markdown_output_object_ids = Set[hidden.object_id, guide.object_id]
-    assert_equal "linked", formatter.link("Hidden", "Hidden", false, rdoc_ref: true)
-    assert_true formatter.rdoc_ref
-    assert_equal "linked", formatter.link("Hidden#run", "run")
-    assert_equal "linked", formatter.link("guide", "Guide")
+    formatter.with_markdown_cross_references(resolver, Set[hidden.object_id, guide.object_id]) do
+      assert_equal "linked", formatter.link("Hidden", "Hidden", false, rdoc_ref: true)
+      assert_true formatter.rdoc_ref
+      assert_equal "linked", formatter.link("Hidden#run", "run")
+      assert_equal "linked", formatter.link("guide", "Guide")
+    end
     refute_includes RDoc::Markup::ToHtmlCrossref.ancestors, RDoc::Generator::Markdown::CrossrefExtension
   end
 

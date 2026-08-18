@@ -6,13 +6,7 @@ require "rdoc/rdoc"
 require "rdoc/markdown"
 
 class TestSignatureHelpers < Minitest::Test
-  cover "RDoc::Generator::Markdown#method_signature"
-  cover "RDoc::Generator::Markdown#merge_method_signature_arguments"
-  cover "RDoc::Generator::Markdown#normalized_method_params"
-  cover "RDoc::Generator::Markdown#split_signature_arguments_and_suffix"
-  cover "RDoc::Generator::Markdown#split_signature_list"
-  cover "RDoc::Generator::Markdown#extract_parameter_name"
-  cover "RDoc::Generator::Markdown#signature_part_mentions_name?"
+  cover "RDoc::Generator::Markdown::Signatures*"
 
   def generated_class_doc(methods)
     dir = stable_tmpdir("signature-docs")

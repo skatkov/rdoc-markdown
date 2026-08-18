@@ -2,11 +2,19 @@
 
 # Prevents RDoc from linking to code objects omitted from Markdown output.
 module RDoc::Generator::Markdown::CrossrefExtension
-  # Cross-reference resolver scoped to this formatter instance.
-  attr_writer :markdown_cross_reference
-
-  # Object IDs emitted by the active Markdown generator.
-  attr_writer :markdown_output_object_ids
+  # Applies Markdown cross-reference state while rendering a description.
+  #
+  # @param cross_reference [RDoc::CrossReference] Resolver scoped to the formatter.
+  # @param output_object_ids [Set<Integer>] Object IDs emitted by the generator.
+  #
+  # @return [Object] Value returned by the block.
+  def with_markdown_cross_references(cross_reference, output_object_ids)
+    @markdown_cross_reference = cross_reference
+    @markdown_output_object_ids = output_object_ids
+    yield
+  ensure
+    @markdown_cross_reference = nil
+  end
 
   # Renders a cross-reference only when its owning object is emitted.
   #
