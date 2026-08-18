@@ -38,6 +38,9 @@ jobs:
   quality:
     name: Quality and generated docs
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v6
@@ -58,6 +61,14 @@ jobs:
       - run: bundle config unset deployment
       - name: Standard Ruby
         uses: standardrb/standard-ruby-action@v1
+      - name: Reek
+        uses: reviewdog/action-reek@43d3a426ebcfd42aca089a877b60f8e6170c51e0 # v1.20.0
+        with:
+          reek_version: "6.5.0"
+          workdir: lib
+          reporter: github-check
+          filter_mode: nofilter
+          fail_level: any
       - name: Lint markdown ERB templates
         run: bundle exec rake erb:lint
       - name: YARD Lint
