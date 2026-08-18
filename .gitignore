@@ -20,3 +20,4 @@ vendor/jekyll-seo-tag/
 vendor/reverse_markdown/
 vendor/docs/
 .mutant/*
+.reek.yml
