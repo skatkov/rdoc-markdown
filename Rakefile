@@ -18,12 +18,12 @@ end
 
 task default: [:test]
 
-require 'reek/rake/task'
+require "reek/rake/task"
 
 Reek::Rake::Task.new do |t|
   t.fail_on_error = true
   t.verbose = false
-  t.source_files = 'lib/**/*.rb'
+  t.source_files = "lib/**/*.rb"
 end
 
 namespace :erb do

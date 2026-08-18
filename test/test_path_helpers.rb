@@ -8,11 +8,8 @@ require "rdoc/markdown"
 class TestPathHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_pagefiles"
   cover "RDoc::Generator::Markdown#initialize"
-  cover "RDoc::Generator::Markdown#normalize_input_path_for_output"
-  cover "RDoc::Generator::Markdown#resolve_output_path"
-  cover "RDoc::Generator::Markdown#turn_to_path"
-  cover "RDoc::Generator::Markdown#page_output_path"
-  cover "RDoc::Generator::Markdown#anchor"
+  cover "RDoc::Generator::Markdown::Paths*"
+  cover "RDoc::Generator::Markdown::Conversion#anchor"
 
   def generator(root: nil)
     RDoc::Generator::Markdown.new(nil, generator_options(op_dir: stable_tmpdir("generator"), root: root))
@@ -54,6 +51,7 @@ class TestPathHelpers < Minitest::Test
     markdown_generator = generator
 
     assert_nil markdown_generator.classes
+    assert_nil markdown_generator.pages
   end
 
   def test_turn_to_path_writes_nested_namespaces_to_nested_paths

@@ -9,11 +9,11 @@ require "rdoc/markdown"
 
 class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_classfiles"
-  cover "RDoc::Generator::Markdown#emit_csv_index"
+  cover "RDoc::Generator::Markdown::Index*"
+  cover "RDoc::Generator::Markdown::Selection*"
   cover "RDoc::Generator::Markdown#generate"
-  cover "RDoc::Generator::Markdown#metadata_reference"
-  cover "RDoc::Generator::Markdown#metadata_table_cell"
-  cover "RDoc::Generator::Markdown#output_path_for"
+  cover "RDoc::Generator::Markdown::Descriptions*"
+  cover "RDoc::Generator::Markdown::Paths*"
   cover "RDoc::Generator::Markdown#setup"
 
   def generate_from_store(classes, pages: nil, dir: stable_tmpdir("generate-from-store"), root: nil)
