@@ -4,6 +4,7 @@ require "fileutils"
 require "rdoc/rdoc"
 require "rdoc/markdown"
 require_relative "test/support/markdown_validator"
+require "reek/rake/task"
 
 JEKYLL_SEO_TAG_NAME = "jekyll-seo-tag"
 JEKYLL_SEO_TAG_REF = "v2.8.0"
@@ -16,15 +17,13 @@ Rake::TestTask.new do |t|
   t.test_files = FileList["test/test*.rb"]
 end
 
-task default: [:test]
-
-require "reek/rake/task"
-
 Reek::Rake::Task.new do |t|
   t.fail_on_error = true
   t.verbose = false
   t.source_files = "lib/**/*.rb"
 end
+
+task default: [:test, :reek]
 
 namespace :erb do
   desc "Lint markdown ERB templates"
