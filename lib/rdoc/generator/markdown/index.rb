@@ -55,6 +55,4 @@ module RDoc::Generator::Markdown::Index
       csv << ["#{class_name}.#{attr.name}", "Attribute", "#{output_path}##{attr.aref}"]
     end
   end
-
-  module_function :write_class_rows
 end
