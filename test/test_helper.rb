@@ -14,7 +14,6 @@ require "tmpdir"
 
 require "mutant/minitest/coverage"
 
-require_relative "support/mutant"
 require_relative "support/rdoc"
 
 class Minitest::Test

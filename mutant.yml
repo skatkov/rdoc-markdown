@@ -8,7 +8,8 @@ includes:
   - test
 
 requires:
-  - ./test/support/mutant.rb
+  - rdoc/rdoc
+  - rdoc/markdown
 
 matcher:
   subjects:
