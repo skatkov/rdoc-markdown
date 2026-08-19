@@ -196,6 +196,7 @@ def rails_validation_files(root)
   files.concat(Dir[File.join(root, "activemodel/lib/**/*.rb")])
   files.concat(Dir[File.join(root, "activerecord/lib/**/*.rb")])
   files.concat(Dir[File.join(root, "actionpack/lib/**/*.rb")])
+  files.concat(Dir[File.join(root, "actionview/lib/action_view/helpers/asset_tag_helper.rb")])
   files.concat(Dir[File.join(root, "railties/lib/**/*.rb")])
 
   files.concat(Dir[File.join(root, "{active*,action*,railties}/README.{rdoc,md,markdown}")])
