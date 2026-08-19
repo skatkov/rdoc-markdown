@@ -157,10 +157,4 @@ module RDoc::Generator::Markdown::Descriptions
 
     "#{target_path}##{anchor}"
   end
-
-  module_function :metadata_table_cell,
-    :description_formatter,
-    :render_formatted_description,
-    :localized_comment_document,
-    :alias_description
 end

@@ -18,9 +18,6 @@ module RDoc::Generator::Markdown::Conversion
     normalize_definition_list_code_blocks(markdown).rstrip
   end
 
-  # Short alias used by ERB templates.
-  alias_method :h, :markdownify
-
   # Normalizes HTML constructs that reverse_markdown cannot preserve directly.
   #
   # @param input [String] RDoc HTML fragment.
@@ -292,24 +289,4 @@ module RDoc::Generator::Markdown::Conversion
     stripped = line.strip
     stripped.empty? || stripped.end_with?("::") || stripped.match?(/\A\*\s/)
   end
-
-  module_function :normalized_html_fragment,
-    :context_anchor?,
-    :move_legacy_anchors_into_headings,
-    :normalize_pre_blocks,
-    :normalize_heading_links,
-    :normalize_heading_link,
-    :leading_heading_link?,
-    :tokenize_legacy_anchors,
-    :normalize_links,
-    :normalize_link,
-    :index_reference?,
-    :replace_index_reference,
-    :normalized_link_target,
-    :restore_anchor_aliases,
-    :anchor,
-    :shift_headings,
-    :normalize_definition_list_code_blocks,
-    :convert_definition_list_block,
-    :definition_list_line?
 end
