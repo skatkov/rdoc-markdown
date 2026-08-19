@@ -9,14 +9,11 @@
 .mutant/
 *.gem
 .DS_Store
-example/created.rid
 example/**/created.rid
 .vscode/
 example_ruby/*
-source_ruby/*
 vendor/minitest/
 vendor/rails/
 vendor/jekyll-seo-tag/
 vendor/reverse_markdown/
 vendor/docs/
-.mutant/*
