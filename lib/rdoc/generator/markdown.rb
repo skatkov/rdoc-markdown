@@ -41,9 +41,6 @@ class RDoc::Generator::Markdown
     :root_path_segment
   )
 
-  # Validated dependencies shared across generation phases.
-  Configuration = Data.define(:store, :options, :source_dir, :markdown_unknown_tags)
-
   # Adds rdoc-markdown generator configuration to RDoc's option object.
   module OptionsExtension
     # Initializes markdown generator options alongside RDoc's built-in options.
@@ -105,9 +102,7 @@ class RDoc::Generator::Markdown
   # Source store for generated content.
   #
   # @return [RDoc::Store]
-  def store
-    configuration.store
-  end
+  attr_reader :store
 
   # Classes and modules selected for output.
   #
@@ -128,12 +123,10 @@ class RDoc::Generator::Markdown
   # @param store [RDoc::Store] Source documentation store.
   # @param rdoc_options [RDoc::Options] Generator options.
   def initialize(store, rdoc_options)
-    @configuration = Configuration.new(
-      store: store,
-      options: rdoc_options,
-      source_dir: File.expand_path(rdoc_options.root.to_s),
-      markdown_unknown_tags: self.class.validate_markdown_unknown_tags(rdoc_options.markdown_unknown_tags)
-    )
+    @store = store
+    @options = rdoc_options
+    @source_dir = File.expand_path(rdoc_options.root.to_s)
+    @markdown_unknown_tags = self.class.validate_markdown_unknown_tags(rdoc_options.markdown_unknown_tags)
   end
 
   # Writes class files, page files, and the search index.
@@ -155,28 +148,7 @@ class RDoc::Generator::Markdown
 
   private
 
-  attr_reader :configuration, :generation_state
-
-  # Returns the RDoc options used for this run.
-  #
-  # @return [RDoc::Options] Generator options.
-  def options
-    configuration.options
-  end
-
-  # Returns the absolute documentation source directory.
-  #
-  # @return [String] Source directory.
-  def source_dir
-    configuration.source_dir
-  end
-
-  # Returns the validated unknown-tag conversion mode.
-  #
-  # @return [Symbol] Unknown-tag mode.
-  def markdown_unknown_tags
-    configuration.markdown_unknown_tags
-  end
+  attr_reader :generation_state, :markdown_unknown_tags, :options, :source_dir
 
   # Prints a message when RDoc debug output is enabled.
   #
