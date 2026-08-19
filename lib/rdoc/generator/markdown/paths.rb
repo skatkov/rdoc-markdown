@@ -2,8 +2,6 @@
 
 # Resolves source and generated documentation paths.
 module RDoc::Generator::Markdown::Paths
-  private
-
   # Converts a qualified object name into a Markdown path.
   #
   # @param class_name [String] Qualified class or module name.
@@ -54,6 +52,8 @@ module RDoc::Generator::Markdown::Paths
     )
   end
 
+  private :turn_to_path, :page_output_path, :output_path_for, :normalize_internal_links
+
   # Rewrites links using explicit generated-path state.
   #
   # @param markdown [String] Markdown content.
@@ -98,6 +98,8 @@ module RDoc::Generator::Markdown::Paths
   def normalize_input_path_for_output(path)
     RDoc::Generator::Markdown::Paths.normalize_input_path(path, source_dir)
   end
+
+  private :normalize_input_path_for_output
 
   # Normalizes an input path against an explicit source directory.
   #

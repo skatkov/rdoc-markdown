@@ -47,6 +47,7 @@ class TestSignatureHelpers < Minitest::Test
       visible_method("keyword", signature: "(bool)", params: "(flag:)"),
       visible_method("bad_second", signature: "(String, Integer)", params: "(name, 1count)"),
       visible_method("nested", signature: "(Array[String], Proc[(Integer) -> bool]) -> value", params: "(items, block)"),
+      visible_method("nested_first_arg", signature: "(Proc[(String, Integer) -> bool], Float)", params: "(block, value)"),
       visible_method("nested_first", signature: "((String), Integer)", params: "(wrapped, count)"),
       visible_method("paren_comma", signature: "(Tuple(String, Integer), Float)", params: "(tuple, value)"),
       visible_method("bracket_comma", signature: "(Array[String, Integer], Float)", params: "(items, value)"),
@@ -83,6 +84,7 @@ class TestSignatureHelpers < Minitest::Test
     assert_includes headings, "keyword(flag: bool)"
     assert_includes headings, "bad_second(String, Integer)"
     assert_includes headings, "nested(items: Array[String], block: Proc[(Integer) -> bool]) -> value"
+    assert_includes headings, "nested_first_arg(block: Proc[(String, Integer) -> bool], value: Float)"
     assert_includes headings, "nested_first(wrapped: (String), count: Integer)"
     refute_includes headings, "nested_first((String), Integer)"
     assert_includes headings, "paren_comma(tuple: Tuple(String, Integer), value: Float)"
