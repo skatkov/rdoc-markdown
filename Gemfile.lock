@@ -140,7 +140,6 @@ GEM
       logger
       prism (>= 1.6.0)
       tsort
-    rdiscount (2.2.7.4)
     rdoc (8.0.0)
       erb
       prism (>= 1.6.0)
@@ -222,7 +221,6 @@ DEPENDENCIES
   mutant
   mutant-minitest
   rake (~> 13.0)
-  rdiscount (~> 2.0)
   rdoc-markdown!
   reek
   simplecov

@@ -6,7 +6,6 @@ require "commonmarker"
 require "nokogiri"
 require "rdoc/rdoc"
 require "rdoc/markdown"
-require "rdiscount"
 
 class TestGenerator < Minitest::Test
   cover "RDoc::Generator::Markdown::Descriptions*"
@@ -53,14 +52,7 @@ class TestGenerator < Minitest::Test
     end
 
     files.each do |file|
-      contents = File.read(file)
-      # puts "---file start---"
-      # puts contents
-      # puts "---file end---"
-
-      refute_empty RDiscount.new(contents).to_html
-    rescue => e
-      assert(False, "#{file} file is not formatted correctly: #{e}")
+      refute_empty Commonmarker.to_html(File.read(file)), file
     end
 
     duck_doc = File.read("#{dir}/Duck.md")
