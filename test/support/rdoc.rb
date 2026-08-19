@@ -107,11 +107,6 @@ module RDocTestHelpers
     end
   end
 
-  def rdoc_section(comment:, store: rdoc_store, parent: :default_parent, section_store: store)
-    parent = rdoc_file(store) if parent == :default_parent
-    RDoc::Context::Section.new(parent, "section", RDoc::Comment.new(comment), section_store)
-  end
-
   def rdoc_method(name = "run", parent: nil, comment: nil, visible: true, signature: nil, params: nil)
     RDoc::AnyMethod.new(name).tap do |method|
       method.parent = parent if parent
