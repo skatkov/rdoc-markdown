@@ -18,19 +18,8 @@ module RDoc::Generator::Markdown::Index
   # @return [void]
   def write_index(csv)
     csv << %w[name type path]
-    classes.each { |klass| write_class_index(csv, klass) }
+    classes.each { |klass| write_class_rows(csv, klass, output_path_for(klass)) }
     pages.each { |page| csv << [page.page_name, "File", page_output_path(page)] }
-  end
-
-  # Writes a class and its visible members to the search index.
-  #
-  # @param csv [CSV] Open CSV writer.
-  # @param klass [RDoc::Context] Class or module to index.
-  #
-  # @return [void]
-  def write_class_index(csv, klass)
-    output_path = output_path_for(klass)
-    write_class_rows(csv, klass, output_path)
   end
 
   # Writes one class and its visible member rows.
