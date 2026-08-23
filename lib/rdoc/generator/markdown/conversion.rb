@@ -2,20 +2,22 @@
 
 # Converts RDoc HTML and normalizes generated Markdown.
 class RDoc::Generator::Markdown::Conversion
-  private_class_method :new
-
   # Converts RDoc HTML into GitHub-flavored Markdown.
   #
   # @param input [String] RDoc HTML fragment.
+  # @param heading_level_offset [Integer] Heading levels to add.
   #
   # @return [String] Markdown with normalized links and no trailing whitespace.
-  def self.markdownify(input)
+  def self.markdownify(input, heading_level_offset: 0)
     fragment = normalized_html_fragment(input)
     anchor_aliases = tokenize_legacy_anchors(fragment.css("span.legacy-anchor[id]"))
-    normalize_links(fragment)
-    markdown = reverse_markdown(fragment)
-    restore_anchor_aliases(markdown, anchor_aliases)
-    normalize_definition_list_code_blocks(markdown).rstrip
+    document = fragment.document
+    fragment.css("a").each { |link| normalize_link(link, document) }
+    markdown = ReverseMarkdown.convert(fragment, github_flavored: true).dup
+    anchor_aliases.each { |token, id| markdown.gsub!(token, %(<a id="#{id}"></a>)) }
+    normalize_definition_list_code_blocks(markdown).rstrip.gsub(/^(#+)(\s)/) do
+      "#{"#" * [Regexp.last_match(1).length + heading_level_offset, 6].min}#{Regexp.last_match(2)}"
+    end
   end
 
   class << self
@@ -32,9 +34,15 @@ class RDoc::Generator::Markdown::Conversion
         context_anchor?(span)
       end
       context_anchors.each(&:remove)
-      move_legacy_anchors_into_headings(content_anchors)
+      content_anchors.each do |span|
+        heading = span.next_element
+        heading.add_child(span) if heading&.name&.match?(/\Ah[1-6]\z/)
+      end
       normalize_pre_blocks(fragment)
-      normalize_heading_links(fragment)
+      document = fragment.document
+      fragment.css("h1, h2, h3, h4, h5, h6").each do |heading|
+        normalize_heading_link(heading, document)
+      end
       fragment
     end
 
@@ -47,18 +55,6 @@ class RDoc::Generator::Markdown::Conversion
       span.next_element&.name == "h1" && span["id"].match?(/\A(?:class|module)-/)
     end
 
-    # Moves standalone legacy anchors into the following heading.
-    #
-    # @param anchors [Array<Nokogiri::XML::Element>] Legacy anchor spans.
-    #
-    # @return [void]
-    def move_legacy_anchors_into_headings(anchors)
-      anchors.each do |span|
-        heading = span.next_element
-        heading.add_child(span) if heading&.name&.match?(/\Ah[1-6]\z/)
-      end
-    end
-
     # Preserves simple language classes and literal preformatted text.
     #
     # @param fragment [Nokogiri::HTML4::DocumentFragment] HTML fragment.
@@ -69,18 +65,6 @@ class RDoc::Generator::Markdown::Conversion
         language = pre["class"].to_s[/\A(?!highlight\z)[A-Za-z][A-Za-z0-9_+-]*\z/]
         pre["class"] = "brush: #{language};" if language
         pre.inner_html = pre.text
-      end
-    end
-
-    # Flattens leading fragment links in headings while preserving alias anchors.
-    #
-    # @param fragment [Nokogiri::HTML4::DocumentFragment] HTML fragment.
-    #
-    # @return [void]
-    def normalize_heading_links(fragment)
-      document = fragment.document
-      fragment.css("h1, h2, h3, h4, h5, h6").each do |heading|
-        normalize_heading_link(heading, document)
       end
     end
 
@@ -127,16 +111,6 @@ class RDoc::Generator::Markdown::Conversion
       end
     end
 
-    # Normalizes links before reverse_markdown converts the fragment.
-    #
-    # @param fragment [Nokogiri::HTML4::DocumentFragment] HTML fragment.
-    #
-    # @return [void]
-    def normalize_links(fragment)
-      document = fragment.document
-      fragment.css("a").each { |link| normalize_link(link, document) }
-    end
-
     # Normalizes one HTML link.
     #
     # @param link [Nokogiri::XML::Element] Link element.
@@ -148,7 +122,7 @@ class RDoc::Generator::Markdown::Conversion
       href = link["href"].to_s
 
       if index_reference?(receiver, href)
-        replace_index_reference(link, document, href)
+        link.replace(document.create_element("code") { |code| code.content = "#{receiver}[#{href}]" })
       elsif href.start_with?("www.")
         link["href"] = "https://#{href}"
       elsif !href.match?(/\A(?:https?:\/\/|mailto:|#)/i)
@@ -167,17 +141,6 @@ class RDoc::Generator::Markdown::Conversion
         href.match?(/\A(?::.+|".+")\z/)
     end
 
-    # Replaces an indexing link with a code element.
-    #
-    # @param link [Nokogiri::XML::Element] Link element.
-    # @param document [Nokogiri::HTML4::Document] Owning document.
-    # @param href [String] Encoded index expression.
-    #
-    # @return [void]
-    def replace_index_reference(link, document, href)
-      link.replace(document.create_element("code") { |code| code.content = "#{link.text}[#{href}]" })
-    end
-
     # Rewrites an internal RDoc HTML target to its Markdown equivalent.
     #
     # @param href [String] Original link target.
@@ -187,30 +150,6 @@ class RDoc::Generator::Markdown::Conversion
       href.sub(/\.html(?=[?#]|\z)/i, ".md")
         .sub(%r{\A/(?=.+\.md(?:[?#]|\z))}, "")
         .sub(%r{\A((?:\.\./)*)(?:files|classes|modules)/(?=.+\.md(?:[?#]|\z))}, '\1')
-    end
-
-    # Converts a normalized fragment to Markdown.
-    #
-    # @param fragment [Nokogiri::HTML4::DocumentFragment] HTML fragment.
-    #
-    # @return [String] Mutable Markdown output.
-    def reverse_markdown(fragment)
-      ReverseMarkdown.convert(
-        fragment,
-        github_flavored: true
-      ).dup
-    end
-
-    # Restores tokenized legacy anchors in converted Markdown.
-    #
-    # @param markdown [String] Converted Markdown.
-    # @param anchor_aliases [Array<Array<String>>] Token and anchor ID pairs.
-    #
-    # @return [void]
-    def restore_anchor_aliases(markdown, anchor_aliases)
-      anchor_aliases.each do |token, id|
-        markdown.gsub!(token, %(<a id="#{id}"></a>))
-      end
     end
 
     # Converts RDoc definition-list code blocks into Markdown lists.

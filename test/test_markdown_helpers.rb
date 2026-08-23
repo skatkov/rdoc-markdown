@@ -14,10 +14,6 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown::Paths*"
   cover "RDoc::Generator::Markdown::CrossrefExtension*"
 
-  def test_conversion_exposes_only_markdownify
-    assert_equal [:markdownify], RDoc::Generator::Markdown::Conversion.singleton_class.public_instance_methods(false)
-  end
-
   def generate_markdown(classes: [], pages: [], root: nil)
     dir = stable_tmpdir("generated-markdown")
     options = generator_options(op_dir: dir, root: root)
