@@ -9,7 +9,7 @@ class TestPathHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_pagefiles"
   cover "RDoc::Generator::Markdown#initialize"
   cover "RDoc::Generator::Markdown::Paths*"
-  cover "RDoc::Generator::Markdown::Conversion#anchor"
+  cover "RDoc::Generator::Markdown#anchor"
 
   def generator(root: nil)
     RDoc::Generator::Markdown.new(nil, generator_options(op_dir: stable_tmpdir("generator"), root: root))

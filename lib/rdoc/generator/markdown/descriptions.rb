@@ -96,7 +96,7 @@ module RDoc::Generator::Markdown::Descriptions
     description = render_description(code_object)
     return fallback.to_s if description.empty?
 
-    shift_headings(markdownify(description), heading_level_offset)
+    shift_headings(RDoc::Generator::Markdown::Conversion.markdownify(description), heading_level_offset)
   end
 
   # Renders a section description as Markdown.
@@ -106,7 +106,7 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [String] Rendered section description.
   def section_description(section, heading_level_offset:)
-    shift_headings(markdownify(render_description(section)), heading_level_offset)
+    shift_headings(RDoc::Generator::Markdown::Conversion.markdownify(render_description(section)), heading_level_offset)
   end
 
   # Renders a method description or an alias fallback.
@@ -156,5 +156,20 @@ module RDoc::Generator::Markdown::Descriptions
     return "##{anchor}" if target_parent == current_class
 
     "#{target_path}##{anchor}"
+  end
+
+  # Increases Markdown heading levels without exceeding level six.
+  #
+  # @param markdown [String] Markdown content.
+  # @param heading_level_offset [Integer] Heading levels to add.
+  #
+  # @return [String] Markdown with shifted headings.
+  def shift_headings(markdown, heading_level_offset)
+    markdown.gsub(/^(#+)(\s)/) do
+      hashes = Regexp.last_match(1)
+      spaces = Regexp.last_match(2)
+      level = [hashes.length + heading_level_offset, 6].min
+      "#{"#" * level}#{spaces}"
+    end
   end
 end
