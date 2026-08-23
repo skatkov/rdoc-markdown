@@ -4,7 +4,6 @@ require "erb"
 require "reverse_markdown"
 require "csv"
 require "fileutils"
-require "optparse"
 
 # Generates Markdown output and a CSV search index from an RDoc store.
 class RDoc::Generator::Markdown
@@ -18,7 +17,6 @@ class RDoc::Generator::Markdown
   require_relative "markdown/selection"
   require_relative "markdown/signatures"
 
-  include Conversion
   include Descriptions
   include Index
   include Paths
@@ -26,9 +24,6 @@ class RDoc::Generator::Markdown
 
   # Directory containing ERB templates.
   TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
-
-  # Supported reverse_markdown unknown-tag modes.
-  MARKDOWN_UNKNOWN_TAGS = %i[pass_through drop bypass raise].freeze
 
   # Prepared objects and lookup tables used during one generation run.
   GenerationState = Data.define(
@@ -40,64 +35,6 @@ class RDoc::Generator::Markdown
     :known_output_paths,
     :root_path_segment
   )
-
-  # Adds rdoc-markdown generator configuration to RDoc's option object.
-  module OptionsExtension
-    # Initializes markdown generator options alongside RDoc's built-in options.
-    #
-    # @return [void]
-    def init_ivars
-      super
-      @markdown_unknown_tags = :pass_through
-    end
-
-    # Loads markdown generator options from serialized RDoc options.
-    #
-    # @param map [Psych::Coder] Serialized RDoc options.
-    #
-    # @return [void]
-    def init_with(map)
-      super
-      @markdown_unknown_tags = map["markdown_unknown_tags"] if map.map.key?("markdown_unknown_tags")
-    end
-
-    # Applies markdown generator options from a loaded .rdoc_options hash.
-    #
-    # @param map [Hash] Loaded RDoc options.
-    #
-    # @return [void]
-    def override(map)
-      super
-      @markdown_unknown_tags = map.fetch("markdown_unknown_tags") if map.key?("markdown_unknown_tags")
-    end
-  end
-
-  # Registers markdown generator-specific RDoc options.
-  #
-  # @param rdoc_options [RDoc::Options] RDoc options object.
-  #
-  # @return [void]
-  def self.setup_options(rdoc_options)
-    rdoc_options.option_parser.on(
-      "--markdown-unknown-tags=MODE",
-      "How to handle unknown HTML tags: #{MARKDOWN_UNKNOWN_TAGS.join(", ")}."
-    ) do |value|
-      rdoc_options.markdown_unknown_tags = value.to_sym
-    end
-  end
-
-  # Validates the configured reverse_markdown unknown-tag mode.
-  #
-  # @param value [Symbol] Unknown-tag mode.
-  #
-  # @return [Symbol] Validated unknown-tag mode.
-  def self.validate_markdown_unknown_tags(value)
-    return value if MARKDOWN_UNKNOWN_TAGS.include?(value)
-
-    expected = MARKDOWN_UNKNOWN_TAGS.map { |mode| ":#{mode}" }.join(", ")
-    raise OptionParser::InvalidArgument,
-      "invalid markdown_unknown_tags: #{value.inspect} (expected one of: #{expected})"
-  end
 
   # Source store for generated content.
   #
@@ -126,7 +63,6 @@ class RDoc::Generator::Markdown
     @store = store
     @options = rdoc_options
     @source_dir = File.expand_path(rdoc_options.root.to_s)
-    @markdown_unknown_tags = self.class.validate_markdown_unknown_tags(rdoc_options.markdown_unknown_tags)
   end
 
   # Writes class files, page files, and the search index.
@@ -148,7 +84,30 @@ class RDoc::Generator::Markdown
 
   private
 
-  attr_reader :generation_state, :markdown_unknown_tags, :options, :source_dir
+  attr_reader :generation_state, :options, :source_dir
+
+  # Builds an HTML anchor tag.
+  #
+  # @param id [String] Fragment identifier for the generated anchor.
+  #
+  # @return [String] HTML anchor tag.
+  def anchor(id)
+    %(<a id="#{id}"></a>)
+  end
+
+  # Applies final whitespace and link normalization before writing Markdown.
+  #
+  # @param content [String] Markdown content.
+  # @param current_output_path [String] Output path for the file being written.
+  #
+  # @return [String] Final Markdown ending with one newline.
+  def finalize_markdown(content, current_output_path:)
+    normalized = normalize_internal_links(
+      content.lines.map(&:rstrip).join("\n"),
+      current_output_path: current_output_path
+    ).sub(/\n{3,}/, "\n\n").gsub(/^(#+ .+)\n\n/, "\\1\n")
+    "#{normalized}\n"
+  end
 
   # Prints a message when RDoc debug output is enabled.
   #
@@ -191,7 +150,7 @@ class RDoc::Generator::Markdown
 
       next FileUtils.cp(File.expand_path(page.absolute_name, source_dir), out_file) if page.relative_name.match?(/\.(?:md|markdown)\z/i)
 
-      content = markdownify(render_description(page))
+      content = Conversion.markdownify(render_description(page))
       File.write(out_file, finalize_markdown(content, current_output_path: output_path))
     end
   end
@@ -226,21 +185,4 @@ class RDoc::Generator::Markdown
   def output_dir
     generation_state.output_dir
   end
-end
-
-# RDoc configuration extended with markdown generator options.
-class RDoc::Options
-  prepend RDoc::Generator::Markdown::OptionsExtension
-
-  # Controls how reverse_markdown handles unknown HTML tags.
-  #
-  # @return [Symbol]
-  attr_reader :markdown_unknown_tags
-
-  # Sets how reverse_markdown handles unknown HTML tags.
-  #
-  # @param value [Symbol] Unknown-tag handling mode.
-  #
-  # @return [Symbol]
-  attr_writer :markdown_unknown_tags
 end

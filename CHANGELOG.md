@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove the `markdown_unknown_tags` option and use reverse_markdown's default handling.
+
 ## 0.18.0
 
 - Rework heading for the document

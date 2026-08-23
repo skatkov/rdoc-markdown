@@ -1,8 +1,5 @@
 ---
 detectors:
-  Attribute:
-    exclude:
-      - RDoc::Options#markdown_unknown_tags
   BooleanParameter:
     exclude:
       - RDoc::Generator::Markdown::CrossrefExtension#link
