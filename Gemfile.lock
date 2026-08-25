@@ -175,6 +175,10 @@ GEM
       lint_roller (~> 1.1)
       rubocop (>= 1.75.0, < 2.0)
       rubocop-ast (>= 1.47.1, < 2.0)
+    ruby-lsp (0.26.11)
+      language_server-protocol (~> 3.17.0)
+      prism (>= 1.2, < 2.0)
+      rbs (>= 3, < 5)
     ruby-progressbar (1.13.0)
     securerandom (0.4.1)
     simplecov (1.1.1)
@@ -223,6 +227,7 @@ DEPENDENCIES
   rake (~> 13.0)
   rdoc-markdown!
   reek
+  ruby-lsp
   simplecov
   standard
   yard-lint
