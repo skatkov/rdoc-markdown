@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.19.0
+
 - Remove the `markdown_unknown_tags` option and use reverse_markdown's default handling.
 - Preserve source file extensions in search-index names.
 
