@@ -8,8 +8,11 @@ on:
   pull_request:
 
 permissions:
-  checks: write
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   compatibility:
@@ -27,24 +30,17 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
-      - name: Cache vendored repositories
+      - name: Cache Rails fixture
+        if: matrix.ruby-version == '4.0'
         uses: actions/cache@v4
         with:
-          path: |
-            vendor/minitest
-            vendor/rails
-          key: ${{ runner.os }}-vendored-repos-v1-${{ hashFiles('Rakefile') }}
-          restore-keys: |
-            ${{ runner.os }}-vendored-repos-v1-
+          path: vendor/rails
+          key: ${{ runner.os }}-rails-v1-${{ hashFiles('Rakefile') }}
+      - name: Prepare Rails fixture
+        if: matrix.ruby-version == '4.0'
+        run: bundle exec rake vendor:setup:rails
       - name: Run tests
         run: bundle exec rake test
-      - name: Report SimpleCov
-        if: matrix.ruby-version == '4.0'
-        uses: joshmfrankel/simplecov-check-action@e4d24394253366c3b96d9e73e9b68127b2bad081 # v1.1.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          minimum_suite_coverage: 100
-          coverage_json_path: coverage/simplecov-json-disabled.json
 
   quality:
     name: Quality and generated docs
@@ -56,29 +52,22 @@ jobs:
         with:
           ruby-version: "4.0"
           bundler-cache: true
-      - name: Cache vendored repositories
-        uses: actions/cache@v4
-        with:
-          path: |
-            vendor/minitest
-            vendor/rails
-          key: ${{ runner.os }}-vendored-repos-v1-${{ hashFiles('Rakefile') }}
-          restore-keys: |
-            ${{ runner.os }}-vendored-repos-v1-
-      - run: bundle config unset deployment
       - name: Standard Ruby
-        uses: standardrb/standard-ruby-action@v1
+        run: bundle exec standardrb
       - name: Reek
-        uses: reviewdog/action-reek@43d3a426ebcfd42aca089a877b60f8e6170c51e0 # v1.20.0
-        with:
-          reek_version: "6.5.0"
-          workdir: lib
-          reporter: github-check
-          filter_mode: nofilter
-          fail_level: any
+        run: bundle exec rake reek
       - name: Lint markdown ERB templates
         run: bundle exec rake erb:lint
       - name: YARD Lint
         run: bundle exec yard-lint lib/
+      - name: Cache documentation fixtures
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor/jekyll-seo-tag
+            vendor/minitest
+            vendor/rails
+            vendor/reverse_markdown
+          key: ${{ runner.os }}-docs-v1-${{ hashFiles('Rakefile') }}
       - name: Validate markdown output (GFM)
         run: bundle exec rake markdown:validate
