@@ -369,7 +369,7 @@ class TestClassDocs < Minitest::Test
     assert_includes entries, ["Csv::Thing", "Class", "Csv/Thing.md"]
     assert_includes entries, ["Csv::Thing.run", "Method", "Csv/Thing.md#method-i-run"]
     refute_includes entries, ["Csv::Thing.hidden", "Method", "Csv/Thing.md#method-i-hidden"]
-    assert_includes entries, ["guide.rdoc", "File", "docs/guide_rdoc.md"]
+    assert_includes entries, ["docs/guide.rdoc", "File", "docs/guide_rdoc.md"]
 
     assert_eql [
       ["Csv::Thing.ALPHA", "Constant", "Csv/Thing.md#ALPHA"],

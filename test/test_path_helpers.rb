@@ -72,7 +72,7 @@ class TestPathHelpers < Minitest::Test
     entries = index_entries(dir)
 
     assert_includes entries, ["README.rdoc", "File", "README_rdoc.md"]
-    assert_includes entries, ["getting.started.rdoc", "File", "guides/getting_started_rdoc.md"]
+    assert_includes entries, ["guides/getting.started.rdoc", "File", "guides/getting_started_rdoc.md"]
   end
 
   def test_generator_copies_markdown_pages_unchanged
@@ -88,20 +88,22 @@ class TestPathHelpers < Minitest::Test
     _workspace, root = project_fixture(
       "raw-markdown-page",
       "docs/README.MD" => source,
+      "docs/guides/README.MD" => "# Guides",
       "docs/GUIDE.MARKDOWN" => guide,
       "docs/cache.html.md" => "# Cache",
       "docs/links.rdoc" => "{Readme}[README_MD.html] {Guide}[GUIDE_MARKDOWN.html]"
     )
 
-    files = %w[README.MD GUIDE.MARKDOWN cache.html.md links.rdoc].map { |name| File.join("docs", name) }
+    files = %w[README.MD guides/README.MD GUIDE.MARKDOWN cache.html.md links.rdoc].map { |name| File.join("docs", name) }
     dir = Dir.chdir(root) { generate_docs(files: files, title: "raw markdown", root: ".") }
 
     assert_equal source, File.binread(File.join(dir, "docs/README.MD"))
     assert_equal guide, File.binread(File.join(dir, "docs/GUIDE.MARKDOWN"))
     assert_equal "[Readme](README.MD) [Guide](GUIDE.MARKDOWN)\n",
       File.read(File.join(dir, "docs/links_rdoc.md"))
-    assert_includes index_entries(dir), ["README.MD", "File", "docs/README.MD"]
-    assert_includes index_entries(dir), ["cache.html.md", "File", "docs/cache.html.md"]
+    assert_includes index_entries(dir), ["docs/README.MD", "File", "docs/README.MD"]
+    assert_includes index_entries(dir), ["docs/guides/README.MD", "File", "docs/guides/README.MD"]
+    assert_includes index_entries(dir), ["docs/cache.html.md", "File", "docs/cache.html.md"]
   end
 
   def test_page_output_path_strips_root_basename_prefix_from_page_paths
@@ -131,15 +133,15 @@ class TestPathHelpers < Minitest::Test
 
     entries = index_entries(dir)
 
-    assert_includes entries, ["install.me.rdoc", "File", "guides/install_me_rdoc.md"]
-    assert_includes entries, ["absolute.rdoc", "File", "guides/absolute_rdoc.md"]
+    assert_includes entries, ["guides/install.me.rdoc", "File", "guides/install_me_rdoc.md"]
+    assert_includes entries, ["guides/absolute.rdoc", "File", "guides/absolute_rdoc.md"]
 
     dotted_entries = index_entries(dotted_dir)
-    assert_includes dotted_entries, ["dotted.rdoc", "File", "guides/dotted_rdoc.md"]
-    assert_includes dotted_entries, ["basename.rdoc", "File", "guides/basename_rdoc.md"]
+    assert_includes dotted_entries, ["guides/dotted.rdoc", "File", "guides/dotted_rdoc.md"]
+    assert_includes dotted_entries, ["guides/basename.rdoc", "File", "guides/basename_rdoc.md"]
 
     relative_entries = index_entries(relative_dir)
-    assert_includes relative_entries, ["relative.rdoc", "File", "guides/relative_rdoc.md"]
+    assert_includes relative_entries, ["guides/relative.rdoc", "File", "guides/relative_rdoc.md"]
   end
 
   def test_anchor_writes_method_anchor_tags_into_generated_docs
@@ -171,8 +173,8 @@ class TestPathHelpers < Minitest::Test
     assert_eql "Windows path\n", File.read(File.join(dir, "docs/windows_rdoc.md"))
 
     entries = index_entries(dir)
-    assert_includes entries, ["dot.rdoc", "File", "docs/dot_rdoc.md"]
-    assert_includes entries, ["absolute.rdoc", "File", "docs/absolute_rdoc.md"]
+    assert_includes entries, ["docs/dot.rdoc", "File", "docs/dot_rdoc.md"]
+    assert_includes entries, ["docs/absolute.rdoc", "File", "docs/absolute_rdoc.md"]
     assert_includes entries.map(&:last), "docs/windows_rdoc.md"
   end
 end
