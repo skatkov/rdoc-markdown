@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.19.1
+
+- Store fullpath for files, instead of just file names.
+
 ## 0.19.0
 
 - Remove the `markdown_unknown_tags` option and use reverse_markdown's default handling.

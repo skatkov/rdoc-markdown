@@ -5,6 +5,6 @@ module Rdoc
   # @private
   module Markdown
     # @private
-    VERSION = "0.19.0"
+    VERSION = "0.19.1"
   end
 end
