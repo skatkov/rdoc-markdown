@@ -173,8 +173,8 @@ class RDoc::Generator::Markdown
       classes: classes,
       pages: pages,
       class_output_paths: class_output_paths,
-      markdown_output_object_ids: (classes + pages).map(&:object_id),
-      known_output_paths: class_output_paths.values + pages.map { |page| page_output_path(page) },
+      markdown_output_object_ids: (classes + pages).to_set(&:object_id),
+      known_output_paths: class_output_paths.values.to_set.merge(pages.map { |page| page_output_path(page) }),
       root_path_segment: Pathname.new(options.root || ".").basename
     )
   end
