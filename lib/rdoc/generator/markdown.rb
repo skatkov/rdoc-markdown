@@ -158,7 +158,6 @@ class RDoc::Generator::Markdown
   # Prepares sorted objects and link lookup state for generation.
   #
   # @return [void]
-  # mutant:disable - Set conversion is required for constant-time lookups.
   def setup
     output_dir = options.op_dir
     unless output_dir.instance_of?(String)
@@ -175,7 +174,7 @@ class RDoc::Generator::Markdown
       pages: pages,
       class_output_paths: class_output_paths,
       markdown_output_object_ids: (classes + pages).to_set(&:object_id),
-      known_output_paths: (class_output_paths.values + pages.map { |page| page_output_path(page) }).to_set,
+      known_output_paths: class_output_paths.values.to_set.merge(pages.map { |page| page_output_path(page) }),
       root_path_segment: Pathname.new(options.root || ".").basename
     )
   end
