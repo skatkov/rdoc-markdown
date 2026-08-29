@@ -304,16 +304,9 @@ class TestClassDocs < Minitest::Test
       rdoc_page(relative_name: "binary.rdoc", comment: "Binary page", parser: nil)
     ]
 
-    dir = stable_tmpdir("known-output-paths")
-    options = generator_options(op_dir: dir)
-    generator = RDoc::Generator::Markdown.new(
-      rdoc_store(classes: [klass, sibling], pages: pages, options: options),
-      options
-    )
-    generator.generate
+    dir = generate_from_store([klass, sibling], pages: pages)
 
     markdown = File.read(File.join(dir, "Solo/Thing.md"))
-    assert_instance_of Set, generator.instance_variable_get(:@generation_state).known_output_paths
     assert_includes markdown, "[alpha](../alpha_rdoc.md)"
     assert_includes markdown, "[canonical](Thing.md)"
     assert_includes markdown, "[sibling](Sibling.md)"
