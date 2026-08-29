@@ -158,6 +158,7 @@ class RDoc::Generator::Markdown
   # Prepares sorted objects and link lookup state for generation.
   #
   # @return [void]
+  # mutant:disable - Set conversion is required for constant-time lookups.
   def setup
     output_dir = options.op_dir
     unless output_dir.instance_of?(String)
