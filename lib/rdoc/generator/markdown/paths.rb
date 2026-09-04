@@ -83,11 +83,16 @@ module RDoc::Generator::Markdown::Paths
   #
   # @return [String, nil] Resolved output path, or nil when unresolved.
   def self.resolve_output_path_from(path, current_dir, state)
+    return if path.empty? || path.match?(%r{\A(?:[a-z][a-z0-9+.-]*:|//)}i)
+
     candidates = [path, path.delete_prefix("#{state.root_path_segment}/")]
     candidates += candidates.map { |candidate| candidate.sub(/_(md|markdown)\.md\z/i, '.\1') }
-    expanded_candidates = candidates.map { |candidate| current_dir.join(candidate).cleanpath.to_s }
+    candidates.uniq!
 
-    (candidates + expanded_candidates).find { |candidate| state.known_output_paths.include?(candidate) }
+    candidates.find { |candidate| state.known_output_paths.include?(candidate) } ||
+      candidates.lazy
+        .map { |candidate| current_dir.join(candidate).cleanpath.to_s }
+        .find { |candidate| state.known_output_paths.include?(candidate) }
   end
 
   # Normalizes an input filename into an output-relative source path.
