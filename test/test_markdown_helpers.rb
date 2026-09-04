@@ -639,14 +639,12 @@ class TestMarkdownHelpers < Minitest::Test
     klass.add_attribute(empty_attribute)
     klass.add_method(empty_method)
     empty_objects = [empty_section, empty_constant, empty_attribute, empty_method]
-    rendered_empty_objects = []
     rendered_objects = []
     converted_empty_input = false
     trace = TracePoint.new(:call) do |event|
       if event.defined_class == RDoc::Generator::Markdown::Descriptions && event.method_id == :description_formatter
         code_object = event.binding.local_variable_get(:code_object)
         rendered_objects << code_object
-        rendered_empty_objects << code_object if empty_objects.include?(code_object)
       elsif event.defined_class == RDoc::Generator::Markdown::Conversion.singleton_class &&
           event.method_id == :markdownify
         converted_empty_input ||= event.binding.local_variable_get(:input).empty?
@@ -662,7 +660,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "### `run()`<a id=\"method-i-run\"></a>\nNot documented."
     assert_includes markdown, "## Empty"
     assert_includes markdown, "## Documented\nSection description"
-    assert_empty rendered_empty_objects
+    assert_empty rendered_objects & empty_objects
     assert_includes rendered_objects, document_constant
     assert_includes rendered_objects, documented_constant
     assert_includes rendered_objects, documented_section

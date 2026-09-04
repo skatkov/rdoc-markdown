@@ -93,10 +93,11 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [String] Rendered description or fallback text.
   def describe(code_object, fallback: nil, heading_level_offset: 0)
-    return fallback.to_s if !(RDoc::ClassModule === code_object) && code_object.comment.empty?
+    fallback = fallback.to_s
+    return fallback if !(RDoc::ClassModule === code_object) && code_object.comment.empty?
 
     description = render_description(code_object)
-    return fallback.to_s if description.empty?
+    return fallback if description.empty?
 
     RDoc::Generator::Markdown::Conversion.markdownify(description, heading_level_offset: heading_level_offset)
   end
