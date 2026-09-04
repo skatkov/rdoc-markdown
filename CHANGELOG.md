@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Restore legacy anchors in a single Markdown substitution pass.
+
 ## 0.19.1
 
 - Store fullpath for files, instead of just file names.
