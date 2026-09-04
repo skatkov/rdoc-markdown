@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require "erb"
+# standard:disable Lint/RedundantRequireStatement
+require "set"
+# standard:enable Lint/RedundantRequireStatement
 require "reverse_markdown"
 require "csv"
 require "fileutils"
