@@ -13,7 +13,7 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#debug"
   cover "RDoc::Generator::Markdown::Paths*"
   cover "RDoc::Generator::Markdown::CrossrefExtension*"
-  cover "RDoc::Generator::Markdown::PlainVerbatimExtension*"
+  cover "RDoc::Generator::Markdown::PlainVerbatim*"
 
   def generate_markdown(classes: [], pages: [], root: nil)
     dir = stable_tmpdir("generated-markdown")
@@ -200,6 +200,7 @@ class TestMarkdownHelpers < Minitest::Test
     resolver = Struct.new(:refs) do
       def resolve(name) = refs.fetch(name)
     end.new({
+      "Source" => source,
       "Hidden" => hidden,
       "Hidden#run" => hidden_method,
       "guide" => guide,
@@ -224,6 +225,8 @@ class TestMarkdownHelpers < Minitest::Test
       assert_equal "linked", formatter.link("Hidden#run", "run")
       assert_equal "linked", formatter.link("guide", "Guide")
     end
+    assert_equal "linked", formatter.link("Source", "Source", rdoc_ref: true)
+    assert_true formatter.rdoc_ref
     refute_includes RDoc::Markup::ToHtmlCrossref.ancestors, RDoc::Generator::Markdown::CrossrefExtension
   end
 
@@ -368,21 +371,19 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "```ruby\nrequire 'erb'\nputs :ok\n```"
   end
 
-  def test_generated_verbatim_blocks_avoid_discarded_html_highlighting
+  def test_generated_verbatim_blocks_skip_discarded_highlighting_without_leaking
     inferred_ruby = rdoc_page(
       relative_name: "inferred-ruby.rdoc",
       comment: "Example:\n\n      if ready\n        puts \"<em>&</em>\"\n      end\n"
     )
     non_ruby = rdoc_page(relative_name: "non-ruby.rdoc", comment: "Example:\n\n    unmatched }\n")
-    explicit_ruby = rdoc_page(
-      relative_name: "explicit-ruby.rdoc",
-      comment: "```ruby\ndef broken(\n```\n"
-    )
-    explicit_sql = rdoc_page(
-      relative_name: "explicit-sql.rdoc",
-      comment: "```sql\nputs \"<row>&</row>\"\n```\n"
-    )
+    explicit_ruby = rdoc_page(relative_name: "explicit-ruby.rdoc", comment: "```ruby\ndef broken(\n```\n")
+    explicit_sql = rdoc_page(relative_name: "explicit-sql.rdoc", comment: "```sql\nputs \"<row>&</row>\"\n```\n")
     [explicit_ruby, explicit_sql].each { |page| page.comment.format = "markdown" }
+    options = generator_options(op_dir: stable_tmpdir("plain-verbatim"))
+    store = rdoc_store(pages: [inferred_ruby, non_ruby, explicit_ruby, explicit_sql], options: options)
+    cached_formatter = inferred_ruby.formatter
+    assert_includes inferred_ruby.description, '<span class="ruby-keyword">if</span>'
 
     colorizer_calls = 0
     trace = TracePoint.new(:call) do |event|
@@ -390,17 +391,16 @@ class TestMarkdownHelpers < Minitest::Test
         colorizer_calls += 1
       end
     end
-    dir = trace.enable do
-      generate_markdown(pages: [inferred_ruby, non_ruby, explicit_ruby, explicit_sql])
-    end
+    trace.enable { RDoc::Generator::Markdown.new(store, options).generate }
 
     assert_equal 0, colorizer_calls
-    assert_includes File.read(File.join(dir, "inferred-ruby_rdoc.md")),
+    assert_includes File.read(File.join(options.op_dir, "inferred-ruby_rdoc.md")),
       "```ruby\nif ready\n  puts \"_&_\"\nend\n```"
-    assert_includes File.read(File.join(dir, "non-ruby_rdoc.md")), "```\nunmatched }\n```"
-    assert_equal "```ruby\ndef broken(\n```\n", File.read(File.join(dir, "explicit-ruby_rdoc.md"))
-    assert_equal "```sql\nputs \"<row>&amp;</row>\"\n```\n", File.read(File.join(dir, "explicit-sql_rdoc.md"))
-    assert_includes inferred_ruby.description, '<span class="ruby-identifier">puts</span>'
+    assert_includes File.read(File.join(options.op_dir, "non-ruby_rdoc.md")), "```\nunmatched }\n```"
+    assert_equal "```ruby\ndef broken(\n```\n", File.read(File.join(options.op_dir, "explicit-ruby_rdoc.md"))
+    assert_equal "```sql\nputs \"<row>&amp;</row>\"\n```\n", File.read(File.join(options.op_dir, "explicit-sql_rdoc.md"))
+    assert_same cached_formatter, inferred_ruby.formatter
+    assert_includes inferred_ruby.description, '<span class="ruby-keyword">if</span>'
   end
 
   def test_pre_block_language_classes_are_preserved

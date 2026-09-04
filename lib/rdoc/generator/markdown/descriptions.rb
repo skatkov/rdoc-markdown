@@ -1,26 +1,14 @@
 # frozen_string_literal: true
 
-# Emits plain Ruby verbatim content only while Markdown is rendering.
-module RDoc::Generator::Markdown::PlainVerbatimExtension
-  # Renders the block with plain parseable verbatim content.
-  #
-  # @return [Object] Value returned by the block.
-  def with_plain_verbatim
-    @markdown_plain_verbatim = true
-    yield
-  ensure
-    @markdown_plain_verbatim = false
-  end
-
-  # Escapes parseable verbatim text without syntax-highlight markup.
+# Emits escaped verbatim content without syntax-highlight markup.
+module RDoc::Generator::Markdown::PlainVerbatim
+  # Emits escaped parseable verbatim text without syntax-highlight markup.
   #
   # @param text [String] Verbatim source text.
   #
   # @return [String] Escaped HTML text.
   def parsable_text_to_html(text)
-    return super unless @markdown_plain_verbatim
-
-    "#{CGI.escapeHTML(text)}\n"
+    "#{convert_string(text)}\n"
   end
 end
 
@@ -61,15 +49,13 @@ module RDoc::Generator::Markdown::Descriptions
   # @return [String] HTML description.
   def render_description(code_object)
     formatter = description_formatter(code_object)
-    formatter.extend(RDoc::Generator::Markdown::PlainVerbatimExtension)
+    formatter.extend(RDoc::Generator::Markdown::PlainVerbatim)
     formatter.extend(RDoc::Generator::Markdown::CrossrefExtension)
-    formatter.with_plain_verbatim do
-      formatter.with_markdown_cross_references(
-        RDoc::CrossReference.new(formatter.context),
-        generation_state.markdown_output_object_ids
-      ) do
-        render_formatted_description(code_object, formatter, options.locale)
-      end
+    formatter.with_markdown_cross_references(
+      RDoc::CrossReference.new(formatter.context),
+      generation_state.markdown_output_object_ids
+    ) do
+      render_formatted_description(code_object, formatter, options.locale)
     end
   end
 
@@ -79,9 +65,12 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [RDoc::Markup::Formatter] Formatter configured for the object.
   def description_formatter(code_object)
-    return code_object.formatter unless RDoc::Context::Section === code_object
-
-    code_object.parent.formatter.dup.tap { |copy| copy.code_object = code_object }
+    formatter = if RDoc::Context::Section === code_object
+      code_object.parent.formatter
+    else
+      code_object.formatter
+    end
+    formatter.dup.tap { |copy| copy.code_object = code_object }
   end
 
   # Renders an object through its configured formatter.
@@ -92,7 +81,11 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [String] Formatted HTML description.
   def render_formatted_description(code_object, formatter, locale)
-    return code_object.description unless RDoc::Context::Section === code_object
+    unless RDoc::Context::Section === code_object
+      copy = code_object.clone
+      copy.define_singleton_method(:formatter) { formatter }
+      return copy.description
+    end
 
     documents = code_object.comments.map { |comment| localized_comment_document(comment, locale) }
     RDoc::Markup::Document.new(*documents).accept(formatter)
