@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Use sets for faster generated-output membership checks.
+- Reduce internal-link candidate construction and deduplication work.
+- Restore legacy anchors in a single Markdown substitution pass.
+- Skip rendering empty member and section descriptions.
+- Avoid syntax highlighting verbatim HTML that Markdown conversion discards.
+
 ## 0.19.1
 
 - Store fullpath for files, instead of just file names.
