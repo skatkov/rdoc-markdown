@@ -401,16 +401,17 @@ class TestMarkdownHelpers < Minitest::Test
   end
 
   def test_generated_pages_preserve_rdoc_legacy_span_anchors
-    legacy_spans = 12.times.map do |index|
-      %(<span id="label-Legacy-#{index}" class="legacy-anchor"></span>)
+    legacy_ids = %w[label-Legacy-0 label-Legacy-1 label-Legacy-0]
+    legacy_spans = legacy_ids.map do |id|
+      %(<span id="#{id}" class="legacy-anchor"></span>)
     end.join
     page = raw_html_page(
       relative_name: "legacy-anchor.rdoc",
-      html: legacy_spans + '<span id="ordinary" class="ordinary">text</span>'
+      html: "<p>Before RDocMarkdownAnchor99End.</p>" + legacy_spans + "<p>After.</p>"
     )
-    expected_anchors = 12.times.map { |index| %(<a id="label-Legacy-#{index}"></a>) }.join
+    expected_anchors = legacy_ids.map { |id| %(<a id="#{id}"></a>) }.join
 
-    assert_equal expected_anchors + "text\n",
+    assert_equal "Before RDocMarkdownAnchor99End.\n\n#{expected_anchors}\n\nAfter.\n",
       read_generated("legacy-anchor_rdoc.md", pages: [page])
   end
 

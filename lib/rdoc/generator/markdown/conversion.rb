@@ -14,7 +14,7 @@ class RDoc::Generator::Markdown::Conversion
     document = fragment.document
     fragment.css("a").each { |link| normalize_link(link, document) }
     markdown = ReverseMarkdown.convert(fragment, github_flavored: true).dup
-    anchor_aliases.each { |token, id| markdown.gsub!(token, %(<a id="#{id}"></a>)) }
+    markdown.gsub!(Regexp.union(anchor_aliases.keys), anchor_aliases)
     normalize_definition_list_code_blocks(markdown).rstrip.gsub(/^(#+)(\s)/) do
       "#{"#" * [Regexp.last_match(1).length + heading_level_offset, 6].min}#{Regexp.last_match(2)}"
     end
@@ -101,13 +101,13 @@ class RDoc::Generator::Markdown::Conversion
     #
     # @param anchors [Nokogiri::XML::NodeSet] Legacy anchor spans.
     #
-    # @return [Array<Array<String>>] Token and anchor ID pairs.
+    # @return [Hash<String, String>] Token-to-anchor HTML lookup.
     def tokenize_legacy_anchors(anchors)
-      anchors.map.with_index do |span, index|
+      anchors.each.with_index.to_h do |span, index|
         token = "RDocMarkdownAnchor#{index}End"
-        id = span["id"]
+        anchor = %(<a id="#{span["id"]}"></a>)
         span.replace(token)
-        [token, id]
+        [token, anchor]
       end
     end
 
