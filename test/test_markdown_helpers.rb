@@ -13,6 +13,7 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#debug"
   cover "RDoc::Generator::Markdown::Paths*"
   cover "RDoc::Generator::Markdown::CrossrefExtension*"
+  cover "RDoc::Generator::Markdown::PlainVerbatimExtension*"
 
   def generate_markdown(classes: [], pages: [], root: nil)
     dir = stable_tmpdir("generated-markdown")
@@ -365,6 +366,41 @@ class TestMarkdownHelpers < Minitest::Test
     markdown = read_generated("ruby-block_rdoc.md", pages: [page])
 
     assert_includes markdown, "```ruby\nrequire 'erb'\nputs :ok\n```"
+  end
+
+  def test_generated_verbatim_blocks_avoid_discarded_html_highlighting
+    inferred_ruby = rdoc_page(
+      relative_name: "inferred-ruby.rdoc",
+      comment: "Example:\n\n      if ready\n        puts \"<em>&</em>\"\n      end\n"
+    )
+    non_ruby = rdoc_page(relative_name: "non-ruby.rdoc", comment: "Example:\n\n    unmatched }\n")
+    explicit_ruby = rdoc_page(
+      relative_name: "explicit-ruby.rdoc",
+      comment: "```ruby\ndef broken(\n```\n"
+    )
+    explicit_sql = rdoc_page(
+      relative_name: "explicit-sql.rdoc",
+      comment: "```sql\nputs \"<row>&</row>\"\n```\n"
+    )
+    [explicit_ruby, explicit_sql].each { |page| page.comment.format = "markdown" }
+
+    colorizer_calls = 0
+    trace = TracePoint.new(:call) do |event|
+      if event.self.equal?(RDoc::Parser::RubyColorizer) && event.method_id == :colorize
+        colorizer_calls += 1
+      end
+    end
+    dir = trace.enable do
+      generate_markdown(pages: [inferred_ruby, non_ruby, explicit_ruby, explicit_sql])
+    end
+
+    assert_equal 0, colorizer_calls
+    assert_includes File.read(File.join(dir, "inferred-ruby_rdoc.md")),
+      "```ruby\nif ready\n  puts \"_&_\"\nend\n```"
+    assert_includes File.read(File.join(dir, "non-ruby_rdoc.md")), "```\nunmatched }\n```"
+    assert_equal "```ruby\ndef broken(\n```\n", File.read(File.join(dir, "explicit-ruby_rdoc.md"))
+    assert_equal "```sql\nputs \"<row>&amp;</row>\"\n```\n", File.read(File.join(dir, "explicit-sql_rdoc.md"))
+    assert_includes inferred_ruby.description, '<span class="ruby-identifier">puts</span>'
   end
 
   def test_pre_block_language_classes_are_preserved

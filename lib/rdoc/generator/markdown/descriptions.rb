@@ -1,5 +1,29 @@
 # frozen_string_literal: true
 
+# Emits plain Ruby verbatim content only while Markdown is rendering.
+module RDoc::Generator::Markdown::PlainVerbatimExtension
+  # Renders the block with plain parseable verbatim content.
+  #
+  # @return [Object] Value returned by the block.
+  def with_plain_verbatim
+    @markdown_plain_verbatim = true
+    yield
+  ensure
+    @markdown_plain_verbatim = false
+  end
+
+  # Escapes parseable verbatim text without syntax-highlight markup.
+  #
+  # @param text [String] Verbatim source text.
+  #
+  # @return [String] Escaped HTML text.
+  def parsable_text_to_html(text)
+    return super unless @markdown_plain_verbatim
+
+    "#{CGI.escapeHTML(text)}\n"
+  end
+end
+
 # Renders RDoc descriptions and metadata for Markdown templates.
 module RDoc::Generator::Markdown::Descriptions
   private
@@ -37,12 +61,15 @@ module RDoc::Generator::Markdown::Descriptions
   # @return [String] HTML description.
   def render_description(code_object)
     formatter = description_formatter(code_object)
+    formatter.extend(RDoc::Generator::Markdown::PlainVerbatimExtension)
     formatter.extend(RDoc::Generator::Markdown::CrossrefExtension)
-    formatter.with_markdown_cross_references(
-      RDoc::CrossReference.new(formatter.context),
-      generation_state.markdown_output_object_ids
-    ) do
-      render_formatted_description(code_object, formatter, options.locale)
+    formatter.with_plain_verbatim do
+      formatter.with_markdown_cross_references(
+        RDoc::CrossReference.new(formatter.context),
+        generation_state.markdown_output_object_ids
+      ) do
+        render_formatted_description(code_object, formatter, options.locale)
+      end
     end
   end
 
