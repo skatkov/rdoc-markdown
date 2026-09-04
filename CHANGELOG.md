@@ -4,6 +4,7 @@
 
 - Restore legacy anchors in a single Markdown substitution pass.
 - Reduce internal-link candidate construction and deduplication work.
+- Skip rendering empty member and section descriptions.
 
 ## 0.19.1
 
