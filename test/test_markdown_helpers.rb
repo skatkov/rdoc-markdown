@@ -36,6 +36,11 @@ class TestMarkdownHelpers < Minitest::Test
     end
   end
 
+  def rewrite_internal_links(markdown, known_output_paths, root_path_segment: "project")
+    state = Struct.new(:root_path_segment, :known_output_paths).new(root_path_segment, known_output_paths)
+    RDoc::Generator::Markdown::Paths.rewrite_internal_links(markdown, "docs/current.md", state)
+  end
+
   def test_pages_are_markdownified_with_headings_links_and_definition_lists
     page = rdoc_page(
       relative_name: "guide.rdoc",
@@ -524,6 +529,54 @@ class TestMarkdownHelpers < Minitest::Test
     assert_eql "[Direct](../guides/direct_rdoc.md) [Rooted](../guides/rooted_rdoc.md) " \
                "[Nested](../pages/guides/nested_rdoc.md)\n",
       File.read(File.join(dir, "docs/readme_rdoc.md"))
+  end
+
+  def test_internal_links_restore_local_array_paths_and_suffixes
+    known_output_paths = ["guides/intro.md", "README.md", "GUIDE.markdown"]
+    markdown = "[Relative](../guides/intro.md?view=full#topic) " \
+      "[Root](project/guides/intro.md#root) [MD](README_md.md) [Markdown](GUIDE_markdown.md)"
+
+    assert_equal "[Relative](../guides/intro.md?view=full#topic) " \
+      "[Root](../guides/intro.md#root) [MD](../README.md) [Markdown](../GUIDE.markdown)",
+      rewrite_internal_links(markdown, known_output_paths)
+  end
+
+  def test_internal_links_leave_empty_and_non_local_array_targets_unresolved
+    targets = "[#](#topic) [?](?view=full) [HTTPS](HTTPS://example.test/guide.md) " \
+      "[Mail](mailto:docs@example.test) [Short](x:guide.md) [Protocol](//example.test/guide.md)"
+    known_output_paths = ["", "HTTPS://example.test/guide.md", "mailto:docs@example.test", "x:guide.md", "//example.test/guide.md"]
+
+    assert_equal targets, rewrite_internal_links(targets, known_output_paths)
+  end
+
+  def test_internal_links_deduplicate_direct_array_candidates
+    known_output_paths = ["target.md"]
+    include_calls = 0
+    trace = TracePoint.new(:c_call) do |event|
+      include_calls += 1 if event.method_id == :include? && event.self.equal?(known_output_paths)
+    end
+
+    result = trace.enable { rewrite_internal_links("[Target](target_md.md)", known_output_paths) }
+
+    assert_equal "[Target](../target.md)", result
+    assert_equal 2, include_calls
+  end
+
+  def test_internal_links_expand_only_candidates_still_needed
+    join_calls = 0
+    trace = TracePoint.new(:call, :c_call) do |event|
+      join_calls += 1 if event.method_id == :join && Pathname === event.self
+    end
+
+    direct = trace.enable { rewrite_internal_links("[Direct](target.md)", Set["target.md"]) }
+    assert_equal "[Direct](../target.md)", direct
+    assert_equal 0, join_calls
+
+    expanded = trace.enable do
+      rewrite_internal_links("[Expanded](project/target.md)", Set["docs/project/target.md"])
+    end
+    assert_equal "[Expanded](project/target.md)", expanded
+    assert_equal 1, join_calls
   end
 
   def test_class_and_method_descriptions_are_markdownified
