@@ -101,7 +101,7 @@ class RDoc::Generator::Markdown::Conversion
     #
     # @param anchors [Nokogiri::XML::NodeSet] Legacy anchor spans.
     #
-    # @return [Hash<String, String>] Token-to-anchor HTML lookup.
+    # @return [Hash{String => String}] Token-to-anchor HTML lookup.
     def tokenize_legacy_anchors(anchors)
       anchors.each.with_index.to_h do |span, index|
         token = "RDocMarkdownAnchor#{index}End"
