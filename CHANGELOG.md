@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Avoid syntax highlighting verbatim HTML that Markdown conversion discards.
+
 ## 0.19.1
 
 - Store fullpath for files, instead of just file names.
