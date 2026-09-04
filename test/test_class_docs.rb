@@ -199,6 +199,26 @@ class TestClassDocs < Minitest::Test
     assert_eql 1, stdout.scan("can't be resolved").length
   end
 
+  def test_generate_preserves_reopened_class_and_module_comments
+    first_location = RDoc::TopLevel.new("first.rb")
+    second_location = RDoc::TopLevel.new("second.rb")
+    klass = build_rdoc_class(full_name: "ReopenedClass")
+    mod = build_rdoc_module(full_name: "ReopenedModule")
+
+    [[klass, "class"], [mod, "module"]].each do |context, type|
+      context.add_comment(RDoc::Comment.new("First #{type} description"), first_location)
+      context.add_comment(RDoc::Comment.new("Second #{type} description"), second_location)
+      context.clear_comment
+    end
+
+    dir = generate_from_store([klass, mod])
+
+    assert_includes File.read(File.join(dir, "ReopenedClass.md")), "First class description"
+    assert_includes File.read(File.join(dir, "ReopenedClass.md")), "Second class description"
+    assert_includes File.read(File.join(dir, "ReopenedModule.md")), "First module description"
+    assert_includes File.read(File.join(dir, "ReopenedModule.md")), "Second module description"
+  end
+
   def test_generate_skips_source_less_modules_with_only_hidden_members
     mod = RDoc::NormalModule.new("HiddenOnly")
     mod.add_method(rdoc_method("hidden", visible: false))

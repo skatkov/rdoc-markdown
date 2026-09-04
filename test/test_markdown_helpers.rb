@@ -625,6 +625,50 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "Alias for: [`plain`]"
   end
 
+  def test_empty_member_and_section_descriptions_skip_rendering
+    klass = build_rdoc_class(full_name: "ShortCircuit", description: "Class description")
+    empty_section = klass.add_section("Empty")
+    documented_section = klass.add_section("Documented", RDoc::Comment.new("Section description"))
+    empty_constant = rdoc_constant("VALUE")
+    documented_constant = RDoc::Constant.new("DOCUMENTED", "1", "Constant description")
+    empty_document = RDoc::Markup::Document.new(RDoc::Markup::Raw.new(""))
+    document_constant = RDoc::Constant.new("EMPTY_DOCUMENT", "1", RDoc::Comment.from_document(empty_document))
+    empty_attribute = rdoc_attribute("name")
+    empty_method = rdoc_method("run")
+    [empty_constant, documented_constant, document_constant].each { |constant| klass.add_constant(constant) }
+    klass.add_attribute(empty_attribute)
+    klass.add_method(empty_method)
+    empty_objects = [empty_section, empty_constant, empty_attribute, empty_method]
+    rendered_empty_objects = []
+    rendered_objects = []
+    converted_empty_input = false
+    trace = TracePoint.new(:call) do |event|
+      if event.defined_class == RDoc::Generator::Markdown::Descriptions && event.method_id == :description_formatter
+        code_object = event.binding.local_variable_get(:code_object)
+        rendered_objects << code_object
+        rendered_empty_objects << code_object if empty_objects.include?(code_object)
+      elsif event.defined_class == RDoc::Generator::Markdown::Conversion.singleton_class &&
+          event.method_id == :markdownify
+        converted_empty_input ||= event.binding.local_variable_get(:input).empty?
+      end
+    end
+
+    markdown = trace.enable { read_generated("ShortCircuit.md", classes: [klass]) }
+
+    assert_includes markdown, "### `VALUE`<a id=\"VALUE\"></a>\nNot documented."
+    assert_includes markdown, "### `EMPTY_DOCUMENT`<a id=\"EMPTY_DOCUMENT\"></a>\nNot documented."
+    assert_includes markdown, "### `DOCUMENTED`<a id=\"DOCUMENTED\"></a>\nConstant description"
+    assert_includes markdown, "### `name` [RW]<a id=\"attribute-i-name\"></a>\nNot documented."
+    assert_includes markdown, "### `run()`<a id=\"method-i-run\"></a>\nNot documented."
+    assert_includes markdown, "## Empty"
+    assert_includes markdown, "## Documented\nSection description"
+    assert_empty rendered_empty_objects
+    assert_includes rendered_objects, document_constant
+    assert_includes rendered_objects, documented_constant
+    assert_includes rendered_objects, documented_section
+    assert_false converted_empty_input
+  end
+
   def test_method_aliases_link_to_generated_anchors
     klass = build_rdoc_class(full_name: "Nested::Aliases", description: "Alias docs")
     other = build_rdoc_class(full_name: "OtherAliases", description: "Other alias docs")

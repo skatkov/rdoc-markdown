@@ -93,6 +93,8 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [String] Rendered description or fallback text.
   def describe(code_object, fallback: nil, heading_level_offset: 0)
+    return fallback.to_s if !(RDoc::ClassModule === code_object) && code_object.comment.empty?
+
     description = render_description(code_object)
     return fallback.to_s if description.empty?
 
@@ -106,6 +108,8 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [String] Rendered section description.
   def section_description(section, heading_level_offset:)
+    return "" if section.comments.empty?
+
     RDoc::Generator::Markdown::Conversion.markdownify(
       render_description(section),
       heading_level_offset: heading_level_offset
