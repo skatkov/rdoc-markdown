@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use sets for faster generated-output membership checks.
+
 ## 0.19.1
 
 - Store fullpath for files, instead of just file names.
