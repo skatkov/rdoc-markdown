@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.20.0
+
 - Restore legacy anchors in a single Markdown substitution pass.
 - Reduce internal-link candidate construction and deduplication work.
 
