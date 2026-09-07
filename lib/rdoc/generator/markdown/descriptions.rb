@@ -96,6 +96,8 @@ module RDoc::Generator::Markdown::Descriptions
     description = render_description(code_object)
     return fallback.to_s if description.empty?
 
+    comment = code_object.comment
+    heading_level_offset = 0 if RDoc::Comment === comment && comment.format == "markdown"
     RDoc::Generator::Markdown::Conversion.markdownify(description, heading_level_offset: heading_level_offset)
   end
 

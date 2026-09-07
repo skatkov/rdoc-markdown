@@ -625,6 +625,26 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "Alias for: [`plain`]"
   end
 
+  def test_markdown_method_descriptions_preserve_explicit_heading_levels
+    klass = build_rdoc_class(full_name: "Channel")
+    method = rdoc_method("action_methods", comment: "#### Returns\n\n* `Set` - The action methods.")
+    method.comment.format = "markdown"
+    method.singleton = true
+    klass.add_method(method)
+    string_comment_method = rdoc_method("result")
+    string_comment_method.comment = "= Result"
+    klass.add_method(string_comment_method)
+
+    markdown = read_generated("Channel.md", classes: [klass])
+
+    assert_includes markdown, "### `action_methods()`"
+    assert_includes markdown, "#### Returns"
+    assert_includes markdown, "### `result()`"
+    assert_includes markdown, "#### Result"
+    refute_includes markdown, "##### Returns"
+    refute_includes markdown, "###### Returns"
+  end
+
   def test_method_aliases_link_to_generated_anchors
     klass = build_rdoc_class(full_name: "Nested::Aliases", description: "Alias docs")
     other = build_rdoc_class(full_name: "OtherAliases", description: "Other alias docs")
