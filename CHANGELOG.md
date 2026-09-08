@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.20.1
+
+- Don't offset headings for commets 
+
 ## 0.20.0
 
 - Restore legacy anchors in a single Markdown substitution pass.
