@@ -228,11 +228,30 @@ class TestMarkdownValidator < Minitest::Test
   end
 
   def test_rejects_empty_placeholder_anchor
-    validator = documentation("Guide.md" => "# Guide\n\n[](#)\n")
+    ["[](#)", "### [](#)", '<a href="#"></a>', '<a href="#" class="anchor" aria-hidden="true" id=""></a>'].each do |link|
+      validator = documentation("Guide.md" => "# Guide\n\n#{link}\n")
 
-    error = assert_raises(MarkdownValidator::ValidationError) { validator.validate! }
+      error = assert_raises(MarkdownValidator::ValidationError) { validator.validate! }
 
-    assert_includes error.message, "empty anchor link found in Guide.md"
+      assert_includes error.message, "empty anchor link found in Guide.md"
+    end
+  end
+
+  def test_accepts_operator_headings_with_empty_automatic_slugs
+    validator = documentation(
+      "Buffer.md" => <<~MARKDOWN,
+        # Buffer
+
+        ### `[](*)`<a id="method-i-5B-5D"></a>
+        Returns a slice.
+
+        ### `slice(*)`<a id="method-i-slice"></a>
+        Alias for: [`[]`](#method-i-5B-5D)
+      MARKDOWN
+      "index.csv" => "name,type,path\nBuffer.[],Method,Buffer.md#method-i-5B-5D\n"
+    )
+
+    assert_eql 1, validator.validate!
   end
 
   def test_accepts_top_of_document_link

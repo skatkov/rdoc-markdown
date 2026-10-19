@@ -31,7 +31,9 @@ class MarkdownValidator
   private
 
   def validate_file(file)
-    html_for(file).css("a[href]").each do |link|
+    # Validate source links, not Commonmarker's synthetic heading self-links:
+    # punctuation-only headings such as `[](*)` produce an empty automatic slug.
+    html_for(file, header_ids: nil).css("a[href]").each do |link|
       target = link["href"]
       raise ValidationError, "empty anchor link found in #{relative_path(file)}" if target == "#" && link.children.empty?
       next if target.match?(%r{\A(?:https?://|mailto:)}i)
@@ -91,10 +93,10 @@ class MarkdownValidator
       .css("[id]").map { |node| node["id"] }.to_set
   end
 
-  def html_for(file)
-    @html_cache[file] ||= begin
+  def html_for(file, header_ids: "")
+    @html_cache[[file, header_ids]] ||= begin
       document = parse_gfm!(File.read(file), file)
-      Nokogiri::HTML.fragment(document.to_html(options: {render: {unsafe: true, sourcepos: true}}))
+      Nokogiri::HTML.fragment(document.to_html(options: {extension: {header_ids: header_ids}, render: {unsafe: true, sourcepos: true}}))
     end
   end
 
