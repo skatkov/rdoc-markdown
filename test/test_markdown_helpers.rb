@@ -2,6 +2,7 @@
 
 require_relative "test_helper"
 
+require "commonmarker"
 require "csv"
 require "rdoc/rdoc"
 require "rdoc/markdown"
@@ -382,8 +383,8 @@ class TestMarkdownHelpers < Minitest::Test
   def test_pre_blocks_remove_highlighting_without_reparsing_the_code
     page = raw_html_page(
       relative_name: "highlighted-template.rdoc",
-      html: '<pre class="ruby"><span class="ruby-identifier">template</span> = ' \
-            '<span class="ruby-string">\'&lt;b&gt;&lt;%= arg1 %&gt;&lt;/b&gt; &amp;lt;div&amp;gt; &amp;amp;\'</span></pre>'
+      html: '<pre class="ruby"><code><span class="ruby-identifier">template</span> = ' \
+            '<span class="ruby-string">\'&lt;b&gt;&lt;%= arg1 %&gt;&lt;/b&gt; &amp;lt;div&amp;gt; &amp;amp;\'</span></code></pre>'
     )
 
     markdown = read_generated("highlighted-template_rdoc.md", pages: [page])
@@ -650,6 +651,134 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "### `new(str)`<a id=\"method-c-new\"></a>\n\nCreates"
     assert_includes markdown, "### `plain()`<a id=\"method-i-plain\"></a>\nNot documented."
     refute_includes markdown, "Alias for: [`plain`]"
+  end
+
+  def test_method_examples_keep_comments_links_and_heredoc_whitespace
+    code = "require 'erb'\n# Example heading\n\ntemplate = <<~TEMPLATE\n" \
+      "  preserved trailing spaces  \n\nTEMPLATE\n" \
+      "link = '[Guide](Docs/Guide.md)'\nputs template"
+    klass = build_rdoc_class(full_name: "Docs::Examples")
+    klass.add_method(rdoc_method(
+      "render",
+      comment: "= Example\n\n#{code.lines.map { |line| "    #{line}" }.join}\n"
+    ))
+    guide = build_rdoc_class(full_name: "Docs::Guide", description: "Guide")
+
+    markdown = read_generated("Docs/Examples.md", classes: [klass, guide])
+
+    assert_includes markdown, "#### Example<a id=\"method-i-render-label-Example\"></a>"
+    assert_includes markdown, "```ruby\n#{code}\n```"
+  end
+
+  def test_preformatted_code_keeps_blank_lines_and_trailing_spaces
+    code = "# Example heading\n\nvalue = 'x'  \n\n\n\nputs :ok"
+    page = raw_html_page(
+      relative_name: "code-whitespace.rdoc",
+      html: "<h1>Example</h1><pre class=\"ruby\">#{code}</pre>"
+    )
+
+    markdown = read_generated("code-whitespace_rdoc.md", pages: [page])
+
+    assert_equal "# Example\n```ruby\n#{code}\n```\n", markdown
+  end
+
+  def test_code_keeps_internal_spaces_and_literal_token_names_during_conversion
+    page = raw_html_page(
+      relative_name: "literal-tokens.rdoc",
+      html: "<p>0End X0End XX0End <code>'two  spaces'</code></p>" \
+            "<pre class=\"ruby\">puts 'three   spaces'</pre>"
+    )
+
+    markdown = read_generated("literal-tokens_rdoc.md", pages: [page])
+
+    assert_equal "0End X0End XX0End `'two  spaces'`\n\n" \
+                 "```ruby\nputs 'three   spaces'\n```\n", markdown
+  end
+
+  def test_code_in_blockquotes_preserves_indentation_and_blank_lines
+    code = "puts 'two  spaces'\n\n\n  puts 'indented'\nputs :done"
+    page = raw_html_page(
+      relative_name: "quoted-code.rdoc",
+      html: "<blockquote><pre class=\"ruby\">#{code}</pre></blockquote>"
+    )
+
+    markdown = read_generated("quoted-code_rdoc.md", pages: [page])
+    rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+    assert_equal "#{code}\n", rendered.at_css("blockquote pre > code").text
+  end
+
+  def test_inline_code_preserves_border_spaces_and_trailing_blank_lines
+    page = raw_html_page(
+      relative_name: "inline-code-whitespace.rdoc",
+      html: "<p>Copy <code> value  </code> and <code>line one\nline two\n\n</code>.</p>"
+    )
+
+    markdown = read_generated("inline-code-whitespace_rdoc.md", pages: [page])
+
+    assert_equal "Copy ` value  ` and `line one\nline two\n\n`.\n", markdown
+  end
+
+  def test_pre_blocks_keep_trailing_spaces_on_the_last_code_line
+    page = raw_html_page(
+      relative_name: "code-trailing-spaces.rdoc",
+      html: "<pre class=\"ruby\">\nputs 'trailing'  </pre>"
+    )
+
+    markdown = read_generated("code-trailing-spaces_rdoc.md", pages: [page])
+
+    assert_equal "```ruby\nputs 'trailing'  \n```\n", markdown
+  end
+
+  def test_long_code_blocks_preserve_whitespace_on_every_line
+    code = Array.new(180) { |index| "puts 'line #{index}  value'" }.join("\n") + "\n\n\nputs :done"
+    page = raw_html_page(
+      relative_name: "long-code.rdoc",
+      html: "<pre class=\"ruby\">#{code}</pre>"
+    )
+
+    markdown = read_generated("long-code_rdoc.md", pages: [page])
+
+    assert_equal "```ruby\n#{code}\n```\n", markdown
+  end
+
+  def test_generated_links_are_rewritten_without_changing_inline_code
+    klass = build_rdoc_class(full_name: "Docs::Examples")
+    method = rdoc_method(
+      "render",
+      comment: "See [Guide](Docs/Guide.md).\n\nCopy `[Guide](Docs/Guide.md)`."
+    )
+    method.comment.format = "markdown"
+    klass.add_method(method)
+    guide = build_rdoc_class(full_name: "Docs::Guide", description: "Guide")
+
+    markdown = read_generated("Docs/Examples.md", classes: [klass, guide])
+
+    assert_includes markdown, "See [Guide](Guide.md)."
+    assert_includes markdown, "Copy `[Guide](Docs/Guide.md)`."
+  end
+
+  def test_internal_link_rewriting_preserves_fenced_and_inline_examples
+    markdown = <<~MARKDOWN
+      [Before](guides/intro.md)
+
+      ```ruby
+      link = '[Example](guides/intro.md)'
+      ```
+
+      `[Inline](guides/intro.md)` and [After](guides/intro.md)
+    MARKDOWN
+    expected = <<~MARKDOWN
+      [Before](../guides/intro.md)
+
+      ```ruby
+      link = '[Example](guides/intro.md)'
+      ```
+
+      `[Inline](guides/intro.md)` and [After](../guides/intro.md)
+    MARKDOWN
+
+    assert_equal expected, rewrite_internal_links(markdown, ["guides/intro.md"])
   end
 
   def test_markdown_method_descriptions_preserve_explicit_heading_levels

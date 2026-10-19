@@ -64,14 +64,16 @@ module RDoc::Generator::Markdown::Paths
   def self.rewrite_internal_links(markdown, current_output_path, state)
     current_dir = Pathname.new(current_output_path).dirname
 
-    markdown.gsub(%r{\]\(([^)]+)\)}) do
-      target = Regexp.last_match(1)
-      path = target.sub(/[?#].*\z/, "")
-      suffix = target[path.length..]
+    RDoc::Generator::Markdown::CodeProtection.rewrite(markdown) do |prose|
+      prose.gsub(%r{\]\(([^)]+)\)}) do
+        target = Regexp.last_match(1)
+        path = target.sub(/[?#].*\z/, "")
+        suffix = target[path.length..]
 
-      resolved = resolve_output_path_from(path, current_dir, state)
-      rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
-      "](#{rewritten}#{suffix})"
+        resolved = resolve_output_path_from(path, current_dir, state)
+        rewritten = resolved ? Pathname.new(resolved).relative_path_from(current_dir) : path
+        "](#{rewritten}#{suffix})"
+      end
     end
   end
 

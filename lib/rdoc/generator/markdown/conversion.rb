@@ -11,12 +11,15 @@ class RDoc::Generator::Markdown::Conversion
   def self.markdownify(input, heading_level_offset: 0)
     fragment = normalized_html_fragment(input)
     anchor_aliases = tokenize_legacy_anchors(fragment.css("span.legacy-anchor[id]"))
+    anchor_aliases.merge!(tokenize_code(fragment))
     document = fragment.document
     fragment.css("a").each { |link| normalize_link(link, document) }
     markdown = ReverseMarkdown.convert(fragment, github_flavored: true).dup
     markdown.gsub!(Regexp.union(anchor_aliases.keys), anchor_aliases)
-    normalize_definition_list_code_blocks(markdown).rstrip.gsub(/^(#+)(\s)/) do
-      "#{"#" * [Regexp.last_match(1).length + heading_level_offset, 6].min}#{Regexp.last_match(2)}"
+    RDoc::Generator::Markdown::CodeProtection.rewrite(normalize_definition_list_code_blocks(markdown).rstrip) do |prose|
+      prose.gsub(/^(#+)(\s)/) do
+        "#{"#" * [Regexp.last_match(1).length + heading_level_offset, 6].min}#{Regexp.last_match(2)}"
+      end
     end
   end
 
@@ -38,7 +41,7 @@ class RDoc::Generator::Markdown::Conversion
         heading = span.next_element
         heading.add_child(span) if heading&.name&.match?(/\Ah[1-6]\z/)
       end
-      normalize_pre_blocks(fragment)
+      normalize_pre_block_languages(fragment)
       document = fragment.document
       fragment.css("h1, h2, h3, h4, h5, h6").each do |heading|
         normalize_heading_link(heading, document)
@@ -55,17 +58,48 @@ class RDoc::Generator::Markdown::Conversion
       span.next_element&.name == "h1" && span["id"].match?(/\A(?:class|module)-/)
     end
 
-    # Preserves simple language classes and literal preformatted text.
+    # Preserves simple language classes on preformatted blocks.
     #
     # @param fragment [Nokogiri::HTML4::DocumentFragment] HTML fragment.
     #
     # @return [void]
-    def normalize_pre_blocks(fragment)
+    def normalize_pre_block_languages(fragment)
       fragment.css("pre").each do |pre|
         language = pre["class"].to_s[/\A(?!highlight\z)[A-Za-z][A-Za-z0-9_+-]*\z/]
         pre["class"] = "brush: #{language};" if language
-        pre.content = pre.text
       end
+    end
+
+    # Hides literal code from reverse_markdown's document-wide whitespace cleanup.
+    #
+    # @param fragment [Nokogiri::HTML4::DocumentFragment] HTML fragment.
+    # @return [Hash{String => String}] Token-to-code lookup.
+    def tokenize_code(fragment)
+      source = fragment.to_html
+      prefix = +""
+      prefix << "X" while source.include?(prefix)
+      literals = {}
+      fragment.xpath(".//pre | .//code[not(ancestor::pre)]").each do |node|
+        literal = node.text
+        literal = literal.lstrip if node.name == "pre"
+        node.content = tokenize_code_lines(literal, prefix, literals)
+      end
+      literals
+    end
+
+    # Masks each line without hiding structural line breaks from container converters.
+    # Alphanumeric tokens keep even blank lines safe from markup and whitespace cleanup.
+    #
+    # @param literal [String] Literal code.
+    # @param prefix [String] Token prefix absent from the input HTML.
+    # @param literals [Hash{String => String}] Token-to-code lookup to extend.
+    # @return [String] Code replaced by one token per line.
+    def tokenize_code_lines(literal, prefix, literals)
+      literal.lines.map do |line|
+        token = "#{prefix}#{literals.length}End"
+        literals[token] = line.delete_suffix("\n")
+        line.sub(/.*/, token)
+      end.join
     end
 
     # Normalizes one heading's leading fragment link.

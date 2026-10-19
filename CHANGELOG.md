@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Preserve literal HTML, ERB templates, heredocs, and entity strings in code examples.
+- Leave fenced code and inline code unchanged when normalizing headings, internal links, and whitespace.
 
 ## 0.20.2
 
