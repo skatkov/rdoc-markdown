@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve literal HTML, ERB templates, heredocs, and entity strings in code examples.
+
 ## 0.20.2
 
 - Preserve documented bracket lookup and assignment arguments in method headings without changing their anchors.
