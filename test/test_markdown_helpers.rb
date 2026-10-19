@@ -5,6 +5,7 @@ require_relative "test_helper"
 require "csv"
 require "rdoc/rdoc"
 require "rdoc/markdown"
+require_relative "support/markdown_validator"
 
 class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#initialize"
@@ -650,6 +651,50 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "### `new(str)`<a id=\"method-c-new\"></a>\n\nCreates"
     assert_includes markdown, "### `plain()`<a id=\"method-i-plain\"></a>\nNot documented."
     refute_includes markdown, "Alias for: [`plain`]"
+  end
+
+  def test_generate_keeps_methods_after_examples_following_definition_lists
+    klass = build_rdoc_class(full_name: "Relation")
+    klass.add_method(rdoc_method(
+      "insert",
+      comment: "[Returns]\n  The result.\n\n== Examples\n\n    value = 1\n\n    value += 1\n"
+    ))
+    klass.add_method(rdoc_method("load"))
+
+    dir = generate_markdown(classes: [klass])
+    markdown = File.read(File.join(dir, "Relation.md"))
+    rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+    assert_includes markdown, "</dl>\n\n##### Examples"
+    assert_includes rendered.css("h3").map(&:text), "load()"
+    assert_eql "value = 1\n\nvalue += 1\n", rendered.at_css("pre code").text
+    assert_eql 1, MarkdownValidator.new(dir).validate!
+  end
+
+  def test_every_definition_list_is_separated_from_following_markdown
+    page = raw_html_page(
+      relative_name: "definition-lists.rdoc",
+      html: "<dl><dt>First</dt><dd>Result</dd></dl>\n<h2>First example</h2>\n" \
+        "<dl><dt>Second</dt><dd>Result</dd></dl>\n<h2>Second example</h2>"
+    )
+
+    markdown = read_generated("definition-lists_rdoc.md", pages: [page])
+
+    assert_includes markdown, "</dl>\n\n## First example"
+    assert_includes markdown, "</dl>\n\n## Second example"
+    assert_eql ["First example", "Second example"],
+      Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("h2").map(&:text)
+  end
+
+  def test_definition_list_boundaries_do_not_rewrite_fenced_examples
+    page = raw_html_page(
+      relative_name: "literal-definition-list.rdoc",
+      html: "<pre class=\"text\">&lt;/dl&gt;\nnot a new paragraph</pre>"
+    )
+
+    markdown = read_generated("literal-definition-list_rdoc.md", pages: [page])
+
+    assert_eql "```text\n</dl>\nnot a new paragraph\n```\n", markdown
   end
 
   def test_markdown_method_descriptions_preserve_explicit_heading_levels

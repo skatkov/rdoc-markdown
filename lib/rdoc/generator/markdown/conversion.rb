@@ -15,7 +15,7 @@ class RDoc::Generator::Markdown::Conversion
     fragment.css("a").each { |link| normalize_link(link, document) }
     markdown = ReverseMarkdown.convert(fragment, github_flavored: true).dup
     markdown.gsub!(Regexp.union(anchor_aliases.keys), anchor_aliases)
-    normalize_definition_list_code_blocks(markdown).rstrip.gsub(/^(#+)(\s)/) do
+    normalize_definition_lists(markdown).rstrip.gsub(/^(#+)(\s)/) do
       "#{"#" * [Regexp.last_match(1).length + heading_level_offset, 6].min}#{Regexp.last_match(2)}"
     end
   end
@@ -152,14 +152,17 @@ class RDoc::Generator::Markdown::Conversion
         .sub(%r{\A((?:\.\./)*)(?:files|classes|modules)/(?=.+\.md(?:[?#]|\z))}, '\1')
     end
 
-    # Converts RDoc definition-list code blocks into Markdown lists.
+    # Converts RDoc definition-list code blocks into Markdown lists and separates
+    # raw HTML lists from following Markdown without rewriting fenced examples.
     #
     # @param markdown [String] Markdown content.
     #
-    # @return [String] Markdown with convertible blocks normalized.
-    def normalize_definition_list_code_blocks(markdown)
-      markdown.gsub(/```[^\n]*\n(.+?)\n```/m) do
+    # @return [String] Markdown with definition lists normalized.
+    def normalize_definition_lists(markdown)
+      markdown.gsub(%r{```[^\n]*\n(.+?)\n```|</dl>\n(?=\S)}m) do
         body = Regexp.last_match(1)
+        next "</dl>\n\n" unless body
+
         converted = convert_definition_list_block(body)
         converted || Regexp.last_match
       end
