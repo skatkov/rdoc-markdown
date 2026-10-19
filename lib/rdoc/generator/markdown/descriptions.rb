@@ -149,11 +149,13 @@ module RDoc::Generator::Markdown::Descriptions
   # @param method [RDoc::AnyMethod] Target method.
   # @param current_class [RDoc::Context] Class or module currently being rendered.
   #
-  # @return [String, nil] Anchor or relative Markdown link target, or nil when the target page is omitted.
+  # @return [String, nil] Anchor or relative Markdown link target, or nil when the target method or page is omitted.
   def method_link(method, current_class:)
     return unless method.display?
 
     target_parent = method.parent
+    return unless target_parent.method_list.include?(method)
+
     target_path = generation_state.class_output_paths[target_parent.full_name]
     return unless target_path
 
