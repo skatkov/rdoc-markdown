@@ -1,15 +1,8 @@
 # RDoc-Markdown
 RDoc plugin to generate markdown documentation and search index file (CSV).
 
-> [!CAUTION]
-> This gem relies on multiple hacks to generate "plausible" markdown documentation. This is **NOT PRODUCTION READY** — use at your own risk.
->
-> RDoc maintainers are actively working on markdown support, things will improve with time...
-
 ## Motivation
-Markdown has become the de facto documentation standard. We can render markdown files on any device, possibly on a thermometer with a screen. And everyone knows markdown...
-
-It's a pity that RDoc can't output a proper markdown file. Somebody has to try to build it.
+Markdown has become the de facto documentation standard. Rdoc should be able to output it too.
 
 ## Installation
 
