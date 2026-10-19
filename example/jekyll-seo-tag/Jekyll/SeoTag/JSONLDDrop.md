@@ -16,7 +16,7 @@ Not documented.
 ### `image()`<a id="method-i-image"></a>
 Not documented.
 ### `mainEntityOfPage()`<a id="method-i-mainEntityOfPage"></a>
-Alias for: [`main_entity`](#method-i-main_entity)
+Alias for: `main_entity`
 ### `publisher()`<a id="method-i-publisher"></a>
 Not documented.
 ### `to_json(state = nil)`<a id="method-i-to_json"></a>

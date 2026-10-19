@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Keep generated method and section headings readable after raw HTML descriptions.
+- Leave alias targets unlinked when RDoc has removed the canonical method from the generated documentation.
 - Preserve literal HTML, ERB templates, heredocs, and entity strings in code examples.
 
 ## 0.20.2
