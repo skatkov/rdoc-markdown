@@ -12,6 +12,7 @@ require "fileutils"
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
 
+  require_relative "markdown/code_protection"
   require_relative "markdown/conversion"
   require_relative "markdown/crossref"
   require_relative "markdown/descriptions"
@@ -105,10 +106,10 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Final Markdown ending with one newline.
   def finalize_markdown(content, current_output_path:)
-    normalized = normalize_internal_links(
-      content.lines.map(&:rstrip).join("\n"),
-      current_output_path: current_output_path
-    ).sub(/\n{3,}/, "\n\n").gsub(/^(#+ .+)\n\n/, "\\1\n")
+    linked = normalize_internal_links(content, current_output_path: current_output_path)
+    normalized = CodeProtection.rewrite(linked) do |prose|
+      prose.lines.map(&:rstrip).join("\n").sub(/\n{3,}/, "\n\n").gsub(/^(#+ .+)\n\n/, "\\1\n")
+    end
     "#{normalized}\n"
   end
 
