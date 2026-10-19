@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep generated method and section headings readable after raw HTML descriptions.
 - Preserve literal HTML, ERB templates, heredocs, and entity strings in code examples.
 
 ## 0.20.2

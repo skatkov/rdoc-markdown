@@ -29,6 +29,7 @@
 <%- group_heading_level = section_heading_level + 1 -%>
 <%- member_heading_level = group_heading_level + 1 -%>
 <%- unless section_title.empty? -%>
+
 <%= "#" * section_heading_level %> <%= section_title %>
 <%- end -%>
 <%- section_description = section_description(section, heading_level_offset: section_heading_level) -%>
@@ -61,6 +62,7 @@
 
 <%= "#" * group_heading_level %> <%= visibility.capitalize %> <%= type.capitalize %> Methods
 <% methods.each do |method| -%>
+
 <%= "#" * member_heading_level %> `<%= method_signature(method) %>`<%= anchor(method.aref) %>
 <%= method_description(method, current_class: klass, heading_level_offset: member_heading_level) %>
 <% end -%>

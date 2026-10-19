@@ -6,6 +6,7 @@ require "commonmarker"
 require "nokogiri"
 require "rdoc/rdoc"
 require "rdoc/markdown"
+require_relative "support/markdown_validator"
 
 class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_classfiles"
@@ -118,6 +119,43 @@ class TestClassDocs < Minitest::Test
     assert_includes markdown, "## Attributes\n### `blob` [RW]"
     assert_includes markdown, "## Public Instance Methods\n### `metadata()`"
     assert_includes markdown, "#### Result"
+  end
+
+  def test_generate_keeps_canonical_method_sections_after_html_descriptions
+    klass = build_rdoc_class(full_name: "Node")
+    klass.add_method(rdoc_method("clone", comment: "[Returns]\n  A copy."))
+    canonical = rdoc_method("content", comment: "[Returns]\n  The text content.")
+    klass.add_method(canonical)
+    aliased = rdoc_method("inner_text")
+    aliased.is_alias_for = canonical
+    klass.add_method(aliased)
+
+    dir = generate_from_store([klass])
+    markdown = File.read(File.join(dir, "Node.md"))
+    headings = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("h3").map(&:text)
+
+    assert_includes markdown, "</dl>\n\n### `content()`"
+    assert_includes headings, "clone()"
+    assert_includes headings, "content()"
+    assert_includes headings, "inner_text()"
+    assert_includes markdown, "Alias for: [`content`](#method-i-content)"
+    assert_includes index_entries(dir), ["Node.content", "Method", "Node.md#method-i-content"]
+    assert_eql 1, MarkdownValidator.new(dir).validate!
+  end
+
+  def test_generate_keeps_named_sections_after_html_method_descriptions
+    klass = build_rdoc_class(full_name: "Node")
+    klass.add_method(rdoc_method("content", comment: "[Returns]\n  The text content."))
+    klass.set_current_section("Navigation", nil)
+    klass.add_method(rdoc_method("parent"))
+
+    dir = generate_from_store([klass])
+    markdown = File.read(File.join(dir, "Node.md"))
+    headings = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("h2").map(&:text)
+
+    assert_includes markdown, "</dl>\n\n## Navigation"
+    assert_includes headings, "Navigation"
+    assert_eql 1, MarkdownValidator.new(dir).validate!
   end
 
   def test_generate_keeps_source_backed_empty_classes
