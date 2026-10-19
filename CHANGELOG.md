@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve documented bracket lookup and assignment arguments in method headings without changing their anchors.
+
 ## 0.20.1
 
 - Don't offset headings for commets 
