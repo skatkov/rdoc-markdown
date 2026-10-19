@@ -11,34 +11,54 @@ module RDoc::Generator::Markdown::Signatures
   #
   # @param method [RDoc::AnyMethod] Method object to render.
   #
-  # @return [String] Normalized method signature.
+  # @return [String] Complete signature including the method name or documented receiver.
   def method_signature(method)
     RDoc::Generator::Markdown::Signatures.render_method_signature(method, store)
   end
 
   private :method_signature
 
-  # Builds a method signature from RDoc and store metadata.
+  # Builds a complete method heading signature from RDoc and store metadata.
   #
   # @param method [RDoc::AnyMethod] Method object to render.
   # @param store [RDoc::Store] Documentation store with sidecar signatures.
   #
-  # @return [String] Normalized method signature.
+  # @return [String] Complete signature including the method name or documented receiver.
   def self.render_method_signature(method, store)
-    signatures = method.type_signature_lines || store.rbs_signature_for(method) || [method.param_seq]
+    signatures = method.type_signature_lines || store.rbs_signature_for(method)
+    if !signatures && (call_seq = bracket_call_sequence(method))
+      return call_seq.lines.map { |line| normalize_signature(line) }.join(" | ")
+    end
+    signatures ||= [method.param_seq]
 
     signatures = signatures.filter_map do |signature|
       next unless signature&.match?(/\S/)
 
-      signature = signature.gsub("->", " -> ")
-      signature = signature.gsub(/\s+/, " ").strip
+      signature = normalize_signature(signature)
       signature = " #{signature}" if signature.start_with?("->")
       merge_method_signature_arguments(signature, method.params)
     end
 
-    return "()" if signatures.empty?
+    signature = signatures.empty? ? "()" : signatures.join(" | ")
+    "#{method.name}#{signature}"
+  end
 
-    signatures.join(" | ")
+  # Returns the original call syntax for bracket operators, when documented.
+  #
+  # @param method [RDoc::AnyMethod] Method object to render.
+  #
+  # @return [String, nil] Documented bracket calls, or nil for other signatures.
+  def self.bracket_call_sequence(method)
+    method.call_seq if ["[]", "[]="].include?(method.name)
+  end
+
+  # Normalizes spacing in a signature without changing its call syntax.
+  #
+  # @param signature [String] Signature or complete call sequence.
+  #
+  # @return [String] Signature with consistent arrow and whitespace formatting.
+  def self.normalize_signature(signature)
+    signature.gsub("->", " -> ").gsub(/\s+/, " ").strip
   end
 
   # Merges RDoc parameter names into a type-only signature.

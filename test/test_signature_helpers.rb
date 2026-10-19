@@ -8,21 +8,68 @@ require "rdoc/markdown"
 class TestSignatureHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown::Signatures*"
 
-  def generated_class_doc(methods)
+  def generated_class_doc(methods, rbs_signatures: {})
     dir = stable_tmpdir("signature-docs")
     klass = build_rdoc_class(full_name: "SignatureExamples", description: "Signature docs")
     methods.each { |method| klass.add_method(method) }
 
-    RDoc::Generator::Markdown.new(
-      rdoc_store(classes: [klass], pages: []),
-      generator_options(op_dir: dir)
-    ).generate
+    store = rdoc_store(classes: [klass], pages: [])
+    store.merge_rbs_signatures(rbs_signatures)
+    RDoc::Generator::Markdown.new(store, generator_options(op_dir: dir)).generate
 
     File.read(File.join(dir, "SignatureExamples.md"))
   end
 
   def visible_method(name, signature: nil, params: nil)
     rdoc_method(name, visible: true, signature: signature, params: params)
+  end
+
+  def bracket_method(name, call_seq, params:)
+    visible_method(name, params: params).tap do |method|
+      method.call_seq = call_seq
+      method.singleton = true
+    end
+  end
+
+  def test_bracket_call_sequences_preserve_documented_arguments_and_anchors
+    lookup = bracket_method("[]", "ENV[name] -> value", params: "(p1)")
+    assignment = bracket_method("[]=", "ENV[name] = value -> value", params: "(p1, p2)")
+
+    doc = generated_class_doc([lookup, assignment])
+
+    assert_includes doc, '### `ENV[name] -> value`<a id="method-c-5B-5D"></a>'
+    assert_includes doc, '### `ENV[name] = value -> value`<a id="method-c-5B-5D-3D"></a>'
+  end
+
+  def test_bracket_call_sequences_preserve_multiple_arguments_and_overloads
+    lookup = bracket_method("[]", <<~CALL_SEQ, params: "(p1, p2)")
+      matrix[row, column]->value
+      matrix[ rows, columns ]  ->  Array[Integer]
+    CALL_SEQ
+
+    doc = generated_class_doc([lookup])
+
+    assert_includes doc, '### `matrix[row, column] -> value | matrix[ rows, columns ] -> Array[Integer]`<a id="method-c-5B-5D"></a>'
+  end
+
+  def test_bracket_call_sequences_do_not_override_type_signatures
+    lookup = bracket_method("[]", "ENV[name] -> value", params: "(name)")
+    lookup.type_signature_lines = ["(String) -> String?"]
+    assignment = bracket_method("[]=", "ENV[name] = value -> value", params: "(name, value)")
+
+    doc = generated_class_doc([lookup, assignment], rbs_signatures: {
+      "SignatureExamples.[]" => ["(Symbol) -> untyped"],
+      "SignatureExamples.[]=" => ["(String, String) -> String"]
+    })
+
+    assert_includes method_headings(doc), "[](name: String) -> String?"
+    assert_includes method_headings(doc), "[]=(name: String, value: String) -> String"
+  end
+
+  def test_bracket_methods_without_call_sequences_use_parsed_parameters
+    doc = generated_class_doc([visible_method("[]", params: "(key)")])
+
+    assert_includes method_headings(doc), "[](key)"
   end
 
   def test_method_signatures_are_rendered_from_public_generation
