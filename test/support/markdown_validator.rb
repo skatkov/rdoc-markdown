@@ -1,7 +1,12 @@
 # frozen_string_literal: true
 
-require "cgi"
 require "commonmarker"
+require "csv"
+require "nokogiri"
+# standard:disable Lint/RedundantRequireStatement
+require "pathname"
+require "set"
+# standard:enable Lint/RedundantRequireStatement
 require "uri"
 
 class MarkdownValidator
@@ -9,37 +14,45 @@ class MarkdownValidator
 
   def initialize(root_dir)
     @root_dir = File.expand_path(root_dir)
+    @html_cache = {}
     @anchors_cache = {}
+    @sections_cache = {}
   end
 
   def validate!
-    files = Dir[File.join(@root_dir, "**/*.md")].sort
+    files = Dir[File.join(@root_dir, "**/*.{md,markdown}")].sort
     raise ValidationError, "No markdown files found in #{@root_dir}" if files.empty?
 
     files.each { |file| validate_file(file) }
+    Dir[File.join(@root_dir, "**/index.csv")].sort.each { |file| validate_index!(file) }
     files.size
   end
 
   private
 
   def validate_file(file)
-    content = File.read(file)
-
-    document = parse_gfm!(content, file)
-
-    document.walk do |node|
-      next unless node.type == :link
-
-      target = node.url
-      raise ValidationError, "empty anchor link found in #{relative_path(file)}" if target == "#" && node.first_child.nil?
-      next if target.match?(%r{\A(?:https?://|mailto:|#)})
+    html_for(file).css("a[href]").each do |link|
+      target = link["href"]
+      raise ValidationError, "empty anchor link found in #{relative_path(file)}" if target == "#" && link.children.empty?
+      next if target.match?(%r{\A(?:https?://|mailto:)}i)
 
       raise ValidationError, "local .html link found in #{relative_path(file)}" if target.sub(/[?#].*\z/, "").end_with?(".html")
       validate_local_link!(file, target)
     end
   end
 
-  def validate_local_link!(source_file, target)
+  def validate_index!(file)
+    CSV.foreach(file, headers: true).with_index(2) do |row, number|
+      target = row["path"]
+      raise ValidationError, "missing path in #{relative_path(file)} at row #{number}" if target.nil? || target.empty?
+
+      validate_local_link!(file, target, section: true)
+    end
+  rescue CSV::MalformedCSVError => e
+    raise ValidationError, "invalid #{relative_path(file)}: #{e.message}"
+  end
+
+  def validate_local_link!(source_file, target, section: false)
     base_target = target.sub(/[?#].*\z/, "")
     fragment = target[/#(.+)\z/, 1]
 
@@ -57,49 +70,32 @@ class MarkdownValidator
     return if fragment.nil? || fragment.empty?
 
     anchor = URI::DEFAULT_PARSER.unescape(fragment)
-    anchors = anchors_for(target_file)
+    section ||= anchor.match?(/\A(?:method|attribute)-[ic]-/)
+    anchors = section ? sections_for(target_file) : anchors_for(target_file)
     return if anchors.include?(anchor)
 
+    kind = section ? "heading section" : "anchor"
     raise ValidationError,
-      "missing anchor ##{anchor} in #{relative_path(target_file)} (from #{relative_path(source_file)})"
+      "missing #{kind} ##{anchor} in #{relative_path(target_file)} (from #{relative_path(source_file)})"
   end
 
   def anchors_for(file)
-    @anchors_cache[file] ||= begin
-      content = File.read(file)
-      anchors = Set.new(content.scan(/<a\s+id="([^"]+)"/).flatten)
-      headings = Hash.new(0)
-
-      content.each_line do |line|
-        match = line.match(/^\s{0,3}#+\s+(.+?)\s*$/)
-        next unless match
-
-        heading = match[1].sub(/\s+#+\s*\z/, "")
-        slug = github_slug(heading)
-        next if slug.empty?
-
-        index = headings[slug]
-        headings[slug] += 1
-
-        anchors << (index.zero? ? slug : "#{slug}-#{index}")
-      end
-
-      anchors
-    end
+    @anchors_cache[file] ||= html_for(file).css("[id]").map { |node| node["id"] }.to_set
   end
 
-  def github_slug(heading)
-    text = heading.dup
-    text.gsub!(/`([^`]*)`/, '\\1')
-    text.gsub!(/\[([^\]]+)\]\([^)]+\)/, '\\1')
-    text.gsub!(/<[^>]+>/, "")
-    text = CGI.unescapeHTML(text)
-    text.downcase!
-    text.gsub!(/[^\p{Alnum}\- _]/u, "")
-    text.tr!(" ", "-")
-    text.squeeze!("-")
-    text.gsub!(/\A-+|-+\z/, "")
-    text
+  def sections_for(file)
+    # Only Markdown headings receive source positions from CommonMarker. Raw
+    # HTML anchors (including swallowed method headings) are not read sections.
+    @sections_cache[file] ||= html_for(file)
+      .css("h1[data-sourcepos], h2[data-sourcepos], h3[data-sourcepos], h4[data-sourcepos], h5[data-sourcepos], h6[data-sourcepos]")
+      .css("[id]").map { |node| node["id"] }.to_set
+  end
+
+  def html_for(file)
+    @html_cache[file] ||= begin
+      document = parse_gfm!(File.read(file), file)
+      Nokogiri::HTML.fragment(document.to_html(options: {render: {unsafe: true, sourcepos: true}}))
+    end
   end
 
   def parse_gfm!(content, file)

@@ -60,6 +60,12 @@ To validate generated markdown against GitHub Flavored Markdown and check local 
 rake markdown:validate
 ```
 
+Validation also checks same-document fragment links and every `index.csv` target.
+Indexed fragments and method/attribute links must point to parsed Markdown heading
+sections: an anchor appearing only in a code example or a raw HTML block is not
+enough. This catches method headings swallowed by an unterminated Markdown HTML
+block, including aliases that link back to those methods.
+
 To lint markdown ERB templates:
 
 ```
