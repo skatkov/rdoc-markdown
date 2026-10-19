@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.20.2
+
 - Preserve documented bracket lookup and assignment arguments in method headings without changing their anchors.
 
 ## 0.20.1
