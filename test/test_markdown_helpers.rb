@@ -353,15 +353,42 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "=== Deep"
   end
 
-  def test_verbatim_pre_blocks_are_normalized_without_attributes
+  def test_verbatim_pre_blocks_preserve_literal_html
     page = rdoc_page(relative_name: "pre-block.rdoc", comment: "= Heading\n\n    <b>bold</b>\n    a<br>b<BR/>c<br />d\n")
 
     markdown = read_generated("pre-block_rdoc.md", pages: [page])
 
-    assert_includes markdown, "```\n**bold** a\nb\nc\nd\n```"
-    refute_includes markdown, "<br>"
-    refute_includes markdown, "<BR/>"
-    refute_includes markdown, "<br />"
+    assert_includes markdown, "```\n<b>bold</b>\na<br>b<BR/>c<br />d\n```"
+  end
+
+  def test_rdoc_code_examples_preserve_erb_heredocs_and_literal_entities
+    code = <<~RUBY.chomp
+      require 'erb'
+      template = <<~TEMPLATE
+        <b><%= arg1 %> &lt;div&gt; &amp;</b>
+      TEMPLATE
+      erb = ERB.new(template)
+    RUBY
+    page = rdoc_page(
+      relative_name: "erb-example.rdoc",
+      comment: "= Example\n\n#{code.lines.map { |line| "    #{line}" }.join}\n"
+    )
+
+    markdown = read_generated("erb-example_rdoc.md", pages: [page])
+
+    assert_includes markdown, "```ruby\n#{code}\n```"
+  end
+
+  def test_pre_blocks_remove_highlighting_without_reparsing_the_code
+    page = raw_html_page(
+      relative_name: "highlighted-template.rdoc",
+      html: '<pre class="ruby"><span class="ruby-identifier">template</span> = ' \
+            '<span class="ruby-string">\'&lt;b&gt;&lt;%= arg1 %&gt;&lt;/b&gt; &amp;lt;div&amp;gt; &amp;amp;\'</span></pre>'
+    )
+
+    markdown = read_generated("highlighted-template_rdoc.md", pages: [page])
+
+    assert_equal "```ruby\ntemplate = '<b><%= arg1 %></b> &lt;div&gt; &amp;'\n```\n", markdown
   end
 
   def test_rdoc_ruby_pre_blocks_preserve_language_metadata

@@ -64,7 +64,7 @@ class RDoc::Generator::Markdown::Conversion
       fragment.css("pre").each do |pre|
         language = pre["class"].to_s[/\A(?!highlight\z)[A-Za-z][A-Za-z0-9_+-]*\z/]
         pre["class"] = "brush: #{language};" if language
-        pre.inner_html = pre.text
+        pre.content = pre.text
       end
     end
 
