@@ -671,6 +671,52 @@ class TestMarkdownHelpers < Minitest::Test
     assert_eql 1, MarkdownValidator.new(dir).validate!
   end
 
+  def test_method_heading_offsets_preserve_literal_code_examples
+    code = <<~RUBY.chomp
+      uri = URI.parse("http://www.ruby-lang.org/")
+      # => #<URI::HTTP http://www.ruby-lang.org/>
+      uri.scheme
+      # => "http"
+      ## Keep this comment too.
+    RUBY
+    klass = build_rdoc_class(full_name: "UriExamples")
+    klass.add_method(rdoc_method(
+      "parse",
+      comment: "= Before\n\n#{code.lines.map { |line| "    #{line}" }.join}\n\n== After"
+    ))
+
+    markdown = read_generated("UriExamples.md", classes: [klass])
+
+    assert_includes markdown, "#### Before"
+    assert_includes markdown, "```ruby\n#{code}\n```"
+    assert_includes markdown, "##### After"
+  end
+
+  def test_heading_offsets_only_change_html_headings_not_preformatted_text
+    html = "<h1>Before</h1><pre># Literal heading\n## Literal subheading\n#\tTab comment</pre>" \
+      "<h2>Between</h2><pre class=\"ruby\"># =&gt; &quot;http&quot;</pre><h3>After</h3>"
+
+    markdown = RDoc::Generator::Markdown::Conversion.markdownify(html, heading_level_offset: 3)
+
+    assert_equal <<~MARKDOWN.chomp, markdown
+      #### Before
+
+      ```
+      # Literal heading
+      ## Literal subheading
+      #\tTab comment
+      ```
+
+      ##### Between
+
+      ```ruby
+      # => "http"
+      ```
+
+      ###### After
+    MARKDOWN
+  end
+
   def test_every_definition_list_is_separated_from_following_markdown
     page = raw_html_page(
       relative_name: "definition-lists.rdoc",

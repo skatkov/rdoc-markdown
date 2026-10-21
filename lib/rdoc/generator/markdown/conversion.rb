@@ -9,15 +9,13 @@ class RDoc::Generator::Markdown::Conversion
   #
   # @return [String] Markdown with normalized links and no trailing whitespace.
   def self.markdownify(input, heading_level_offset: 0)
-    fragment = normalized_html_fragment(input)
+    fragment = normalized_html_fragment(input, heading_level_offset)
     anchor_aliases = tokenize_legacy_anchors(fragment.css("span.legacy-anchor[id]"))
     document = fragment.document
     fragment.css("a").each { |link| normalize_link(link, document) }
     markdown = ReverseMarkdown.convert(fragment, github_flavored: true).dup
     markdown.gsub!(Regexp.union(anchor_aliases.keys), anchor_aliases)
-    normalize_definition_lists(markdown).rstrip.gsub(/^(#+)(\s)/) do
-      "#{"#" * [Regexp.last_match(1).length + heading_level_offset, 6].min}#{Regexp.last_match(2)}"
-    end
+    normalize_definition_lists(markdown).rstrip
   end
 
   class << self
@@ -26,9 +24,10 @@ class RDoc::Generator::Markdown::Conversion
     # Normalizes HTML constructs that reverse_markdown cannot preserve directly.
     #
     # @param input [String] RDoc HTML fragment.
+    # @param heading_level_offset [Integer] Heading levels to add to actual HTML headings.
     #
     # @return [Nokogiri::HTML4::DocumentFragment] Normalized fragment.
-    def normalized_html_fragment(input)
+    def normalized_html_fragment(input, heading_level_offset)
       fragment = Nokogiri::HTML.fragment(input)
       context_anchors, content_anchors = fragment.css("span.legacy-anchor[id]").partition do |span|
         context_anchor?(span)
@@ -41,7 +40,7 @@ class RDoc::Generator::Markdown::Conversion
       normalize_pre_blocks(fragment)
       document = fragment.document
       fragment.css("h1, h2, h3, h4, h5, h6").each do |heading|
-        normalize_heading_link(heading, document)
+        normalize_heading(heading, document, heading_level_offset)
       end
       fragment
     end
@@ -68,13 +67,15 @@ class RDoc::Generator::Markdown::Conversion
       end
     end
 
-    # Normalizes one heading's leading fragment link.
+    # Normalizes one heading's level and leading fragment link.
     #
     # @param heading [Nokogiri::XML::Element] Heading element.
     # @param document [Nokogiri::HTML4::Document] Owning document.
+    # @param heading_level_offset [Integer] Heading levels to add, capped at six.
     #
     # @return [void]
-    def normalize_heading_link(heading, document)
+    def normalize_heading(heading, document, heading_level_offset)
+      heading.name = "h#{[Integer(heading.name.delete_prefix("h")) + heading_level_offset, 6].min}"
       link = heading.xpath("./a[starts-with(@href, '#') and string-length(@href) > 1]").find do |anchor|
         leading_heading_link?(anchor)
       end

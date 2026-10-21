@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Preserve hash-prefixed comments and literal Markdown headings in code examples when offsetting documentation headings.
 - Keep generated method and section headings readable after raw HTML descriptions.
 - Validate search-index targets and same-document links against parsed Markdown headings and anchors, including alias targets.
 - Leave alias targets unlinked when RDoc has removed the canonical method from the generated documentation.
