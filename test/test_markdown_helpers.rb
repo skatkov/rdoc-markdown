@@ -850,7 +850,7 @@ class TestMarkdownHelpers < Minitest::Test
 
       assert_includes markdown, "Alias for: `secret`"
       refute_includes markdown, "Alias for: [`secret`]"
-      refute_includes index_entries(dir).map(&:first), "#{owner_name}.secret"
+      refute_includes index_entries(dir).map(&:first), "#{owner_name}#secret"
     end
   end
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Distinguish instance methods (`Class#method`) from class methods (`Class.method`) in search-index names, without changing their document paths or anchors.
+
 ## 0.21.1
 
 - Preserve hash-prefixed comments and literal Markdown headings in code examples when offsetting documentation headings.

@@ -92,13 +92,13 @@ class TestGenerator < Minitest::Test
     assert_equal 15, result.count
     expected = [
       {name: "Bird", type: "Class", path: "Bird.md"},
-      {name: "Bird.speak", type: "Method", path: "Bird.md#method-i-speak"},
-      {name: "Bird.fly", type: "Method", path: "Bird.md#method-i-fly"},
+      {name: "Bird#speak", type: "Method", path: "Bird.md#method-i-speak"},
+      {name: "Bird#fly", type: "Method", path: "Bird.md#method-i-fly"},
       {name: "Duck", type: "Class", path: "Duck.md"},
-      {name: "Duck.speak", type: "Method", path: "Duck.md#method-i-speak"},
+      {name: "Duck#speak", type: "Method", path: "Duck.md#method-i-speak"},
       {name: "Duck.rubber_ducks", type: "Method", path: "Duck.md#method-c-rubber_ducks"},
       {name: "Duck.new", type: "Method", path: "Duck.md#method-c-new"},
-      {name: "Duck.useful?", type: "Method", path: "Duck.md#method-i-useful-3F"},
+      {name: "Duck#useful?", type: "Method", path: "Duck.md#method-i-useful-3F"},
       {name: "Duck.MAX_VELOCITY", type: "Constant", path: "Duck.md#MAX_VELOCITY"},
       {name: "Duck.domestic", type: "Attribute", path: "Duck.md#attribute-i-domestic"},
       {name: "Duck.rubber", type: "Attribute", path: "Duck.md#attribute-i-rubber"},
@@ -109,7 +109,7 @@ class TestGenerator < Minitest::Test
         path: "Object.md#DEFAULT_DUCK_VELOCITY"
       },
       {name: "Waterfowl", type: "Module", path: "Waterfowl.md"},
-      {name: "Waterfowl.swim", type: "Method", path: "Waterfowl.md#method-i-swim"}
+      {name: "Waterfowl#swim", type: "Method", path: "Waterfowl.md#method-i-swim"}
     ]
 
     assert_equal(expected, result)
@@ -186,12 +186,12 @@ class TestGenerator < Minitest::Test
     entries = index_entries(dir)
 
     assert_includes thing_doc, "### `real_one()`"
-    assert_includes entries, ["Root::Thing.real_one", "Method", "Root/Thing.md#method-i-real_one"]
+    assert_includes entries, ["Root::Thing#real_one", "Method", "Root/Thing.md#method-i-real_one"]
 
     assert_includes nested_thing_doc, "#### `synthetic()`"
     assert_includes nested_thing_doc, "## Synthetic category"
     assert_includes entries,
-      ["Root::Inner::Root::Thing.synthetic", "Method", "Root/Inner/Root/Thing.md#method-i-synthetic"]
+      ["Root::Inner::Root::Thing#synthetic", "Method", "Root/Inner/Root/Thing.md#method-i-synthetic"]
     assert_includes File.read(File.join(dir, "Child.md")),
       "| **Inherits** | [Root::Inner::Root::Thing](Root/Inner/Root/Thing.md) |"
     assert_includes File.read(File.join(dir, "UnlinkedChild.md")),
@@ -236,7 +236,7 @@ class TestGenerator < Minitest::Test
     end
 
     assert_equal 16, result.count
-    assert_includes result, {name: "Duck.quack", type: "Method", path: "Duck.md#method-i-quack"}
+    assert_includes result, {name: "Duck#quack", type: "Method", path: "Duck.md#method-i-quack"}
   end
 
   def test_generator_preserves_args_metadata_alongside_call_seq
@@ -431,7 +431,7 @@ class TestGenerator < Minitest::Test
     refute_includes visible_doc, "hidden_method"
     refute_includes visible_doc, "private_method"
     assert_includes entries, ["Visible", "Class", "Visible.md"]
-    assert_includes entries, ["Visible.public_method", "Method", "Visible.md#method-i-public_method"]
+    assert_includes entries, ["Visible#public_method", "Method", "Visible.md#method-i-public_method"]
     refute(entries.any? { |name, _type, _path| name.include?("Hidden") })
     refute(entries.any? { |name, _type, _path| name.include?("hidden_method") })
     refute(entries.any? { |name, _type, _path| name.include?("private_method") })

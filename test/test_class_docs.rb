@@ -139,7 +139,7 @@ class TestClassDocs < Minitest::Test
     assert_includes headings, "content()"
     assert_includes headings, "inner_text()"
     assert_includes markdown, "Alias for: [`content`](#method-i-content)"
-    assert_includes index_entries(dir), ["Node.content", "Method", "Node.md#method-i-content"]
+    assert_includes index_entries(dir), ["Node#content", "Method", "Node.md#method-i-content"]
     assert_eql 1, MarkdownValidator.new(dir).validate!
   end
 
@@ -391,6 +391,9 @@ class TestClassDocs < Minitest::Test
   def test_emit_csv_index_writes_rows_for_visible_members_and_pages
     klass = build_rdoc_class(full_name: "Csv::Thing", description: "CSV doc")
     klass.add_method(rdoc_method("run", visible: true))
+    class_method = rdoc_method("run")
+    class_method.singleton = true
+    klass.add_method(class_method)
     klass.add_method(rdoc_method("hidden", visible: false))
     klass.add_constant(rdoc_constant("BETA", visible: true))
     klass.add_constant(rdoc_constant("HIDDEN", visible: false))
@@ -405,8 +408,11 @@ class TestClassDocs < Minitest::Test
     entries = rows.map { |row| [row["name"], row["type"], row["path"]] }
 
     assert_includes entries, ["Csv::Thing", "Class", "Csv/Thing.md"]
-    assert_includes entries, ["Csv::Thing.run", "Method", "Csv/Thing.md#method-i-run"]
-    refute_includes entries, ["Csv::Thing.hidden", "Method", "Csv/Thing.md#method-i-hidden"]
+    assert_eql [
+      ["Csv::Thing#run", "Method", "Csv/Thing.md#method-i-run"],
+      ["Csv::Thing.run", "Method", "Csv/Thing.md#method-c-run"]
+    ], entries.select { |_name, type, _path| type == "Method" }
+    refute_includes entries, ["Csv::Thing#hidden", "Method", "Csv/Thing.md#method-i-hidden"]
     assert_includes entries, ["docs/guide.rdoc", "File", "docs/guide_rdoc.md"]
 
     assert_eql [

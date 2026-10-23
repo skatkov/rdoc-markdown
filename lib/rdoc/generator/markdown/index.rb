@@ -34,7 +34,8 @@ module RDoc::Generator::Markdown::Index
     csv << [class_name, klass.type.capitalize, output_path]
 
     klass.method_list.select(&:display?).each do |method|
-      csv << ["#{class_name}.#{method.name}", "Method", "#{output_path}##{method.aref}"]
+      separator = method.singleton ? "." : "#"
+      csv << ["#{class_name}#{separator}#{method.name}", "Method", "#{output_path}##{method.aref}"]
     end
     klass.constants.select(&:display?).sort.each do |const|
       name = const.name
