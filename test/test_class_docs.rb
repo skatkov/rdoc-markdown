@@ -404,15 +404,13 @@ class TestClassDocs < Minitest::Test
     page = rdoc_page(relative_name: 'docs\guide.rdoc', comment: "Guide page")
     dir = generate_from_store([klass], pages: [page])
 
-    rows = CSV.parse(File.read(File.join(dir, "index.csv")), headers: true)
-    entries = rows.map { |row| [row["name"], row["type"], row["path"]] }
+    entries = index_entries(dir)
 
     assert_includes entries, ["Csv::Thing", "Class", "Csv/Thing.md"]
     assert_eql [
       ["Csv::Thing#run", "Method", "Csv/Thing.md#method-i-run"],
       ["Csv::Thing.run", "Method", "Csv/Thing.md#method-c-run"]
     ], entries.select { |_name, type, _path| type == "Method" }
-    refute_includes entries, ["Csv::Thing#hidden", "Method", "Csv/Thing.md#method-i-hidden"]
     assert_includes entries, ["docs/guide.rdoc", "File", "docs/guide_rdoc.md"]
 
     assert_eql [

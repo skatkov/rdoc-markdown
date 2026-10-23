@@ -80,36 +80,24 @@ class TestGenerator < Minitest::Test
     refute_match(/\[↑\]\(#top\)/, bird_doc)
     assert_includes bird_doc, "#### Example"
 
-    csv_data = File.read("#{dir}/index.csv")
-    result = CSV.parse(csv_data, headers: true).map do |row|
-      {
-        name: row["name"],
-        type: row["type"],
-        path: row["path"]
-      }
-    end
+    result = index_entries(dir)
 
-    assert_equal 15, result.count
     expected = [
-      {name: "Bird", type: "Class", path: "Bird.md"},
-      {name: "Bird#speak", type: "Method", path: "Bird.md#method-i-speak"},
-      {name: "Bird#fly", type: "Method", path: "Bird.md#method-i-fly"},
-      {name: "Duck", type: "Class", path: "Duck.md"},
-      {name: "Duck#speak", type: "Method", path: "Duck.md#method-i-speak"},
-      {name: "Duck.rubber_ducks", type: "Method", path: "Duck.md#method-c-rubber_ducks"},
-      {name: "Duck.new", type: "Method", path: "Duck.md#method-c-new"},
-      {name: "Duck#useful?", type: "Method", path: "Duck.md#method-i-useful-3F"},
-      {name: "Duck.MAX_VELOCITY", type: "Constant", path: "Duck.md#MAX_VELOCITY"},
-      {name: "Duck.domestic", type: "Attribute", path: "Duck.md#attribute-i-domestic"},
-      {name: "Duck.rubber", type: "Attribute", path: "Duck.md#attribute-i-rubber"},
-      {name: "Object", type: "Class", path: "Object.md"},
-      {
-        name: "Object.DEFAULT_DUCK_VELOCITY",
-        type: "Constant",
-        path: "Object.md#DEFAULT_DUCK_VELOCITY"
-      },
-      {name: "Waterfowl", type: "Module", path: "Waterfowl.md"},
-      {name: "Waterfowl#swim", type: "Method", path: "Waterfowl.md#method-i-swim"}
+      ["Bird", "Class", "Bird.md"],
+      ["Bird#speak", "Method", "Bird.md#method-i-speak"],
+      ["Bird#fly", "Method", "Bird.md#method-i-fly"],
+      ["Duck", "Class", "Duck.md"],
+      ["Duck#speak", "Method", "Duck.md#method-i-speak"],
+      ["Duck.rubber_ducks", "Method", "Duck.md#method-c-rubber_ducks"],
+      ["Duck.new", "Method", "Duck.md#method-c-new"],
+      ["Duck#useful?", "Method", "Duck.md#method-i-useful-3F"],
+      ["Duck.MAX_VELOCITY", "Constant", "Duck.md#MAX_VELOCITY"],
+      ["Duck.domestic", "Attribute", "Duck.md#attribute-i-domestic"],
+      ["Duck.rubber", "Attribute", "Duck.md#attribute-i-rubber"],
+      ["Object", "Class", "Object.md"],
+      ["Object.DEFAULT_DUCK_VELOCITY", "Constant", "Object.md#DEFAULT_DUCK_VELOCITY"],
+      ["Waterfowl", "Module", "Waterfowl.md"],
+      ["Waterfowl#swim", "Method", "Waterfowl.md#method-i-swim"]
     ]
 
     assert_equal(expected, result)
@@ -226,17 +214,10 @@ class TestGenerator < Minitest::Test
     assert_includes duck_doc, "### Private Instance Methods"
     assert_includes duck_doc, '<a id="method-i-quack"></a>'
 
-    csv_data = File.read("#{dir}/index.csv")
-    result = CSV.parse(csv_data, headers: true).map do |row|
-      {
-        name: row["name"],
-        type: row["type"],
-        path: row["path"]
-      }
-    end
+    result = index_entries(dir)
 
     assert_equal 16, result.count
-    assert_includes result, {name: "Duck#quack", type: "Method", path: "Duck.md#method-i-quack"}
+    assert_includes result, ["Duck#quack", "Method", "Duck.md#method-i-quack"]
   end
 
   def test_generator_preserves_args_metadata_alongside_call_seq
