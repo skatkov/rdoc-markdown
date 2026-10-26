@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Show linked “Also known as” lists for documented method aliases, without exposing hidden or omitted aliases.
+- Skip detached RDoc aliases without crashing documentation generation.
 
 ## 0.21.2
 

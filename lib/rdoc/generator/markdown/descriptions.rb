@@ -169,6 +169,7 @@ module RDoc::Generator::Markdown::Descriptions
     return unless method.display?
 
     target_parent = method.parent
+    return unless target_parent
     return unless target_parent.method_list.include?(method)
 
     target_path = generation_state.class_output_paths[target_parent.full_name]
