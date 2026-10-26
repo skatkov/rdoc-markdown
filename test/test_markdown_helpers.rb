@@ -783,6 +783,25 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "Alias for: [`find`](../OtherAliases.md#method-i-find)"
   end
 
+  def test_methods_do_not_list_aliases_without_generated_sections
+    klass = build_rdoc_class(full_name: "Aliases")
+    canonical = rdoc_method("original")
+    hidden = rdoc_method("hidden", visible: false)
+    removed = rdoc_method("removed")
+    klass.add_method(canonical)
+    klass.add_method(hidden)
+    klass.add_method(removed)
+    removed.visibility = :private
+    canonical.aliases.concat([hidden, removed])
+
+    markdown = read_generated("Aliases.md", classes: [klass])
+
+    assert_includes markdown, "### `original()`"
+    refute_includes markdown, "Also known as:"
+    refute_includes markdown, "hidden"
+    refute_includes markdown, "removed"
+  end
+
   def test_method_aliases_do_not_link_to_omitted_owners
     aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
     hidden_owner = build_rdoc_class(full_name: "HiddenOwner", description: "Hidden docs")

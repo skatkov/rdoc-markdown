@@ -103,6 +103,50 @@ class TestGenerator < Minitest::Test
     assert_equal(expected, result)
   end
 
+  def test_generator_lists_documented_method_aliases
+    _workspace, root = project_fixture(
+      "method-aliases",
+      "lib/aliases.rb" => <<~RUBY
+        class DocumentedAliases
+          # Checks a key.
+          def key?(key); end
+          alias has_key? key?
+          alias include? key?
+
+          # :stopdoc:
+          alias stopped_alias key?
+          # :startdoc:
+          alias nodoc_alias key? # :nodoc:
+          alias private_alias key?
+          private :private_alias
+
+          # Loads a value.
+          def self.load(value); end
+          class << self
+            alias restore load
+          end
+        end
+      RUBY
+    )
+
+    dir = run_generator(File.join(root, "lib/aliases.rb"), "Method aliases")
+    markdown = File.read(File.join(dir, "DocumentedAliases.md"))
+    entries = index_entries(dir)
+
+    assert_includes markdown, "### `key?(key)`<a id=\"method-i-key-3F\"></a>\nChecks a key.\n\n" \
+      "Also known as: [`has_key?`](#method-i-has_key-3F), [`include?`](#method-i-include-3F)"
+    assert_includes markdown, "Also known as: [`restore`](#method-c-restore)"
+    assert_includes markdown, "Alias for: [`key?`](#method-i-key-3F)"
+    assert_includes markdown, "Alias for: [`load`](#method-c-load)"
+    assert_equal 2, markdown.scan("Also known as:").count
+    assert_includes entries, ["DocumentedAliases#has_key?", "Method", "DocumentedAliases.md#method-i-has_key-3F"]
+    assert_includes entries, ["DocumentedAliases.restore", "Method", "DocumentedAliases.md#method-c-restore"]
+    %w[stopped_alias nodoc_alias private_alias].each do |name|
+      refute_includes markdown, name
+      refute_includes entries.map(&:first), "DocumentedAliases##{name}"
+    end
+  end
+
   def test_generator_renders_class_metadata_for_reopened_classes
     _workspace, root = project_fixture(
       "class-metadata",
