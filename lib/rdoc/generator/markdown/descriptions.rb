@@ -138,6 +138,9 @@ module RDoc::Generator::Markdown::Descriptions
   # @return [String, nil] Linked alias list, or nil when none are emitted.
   def method_aliases(method)
     links = method.aliases.filter_map do |aka|
+      # RDoc's module_function copies share alias arrays with their instance methods.
+      next unless aka.is_alias_for.equal?(method)
+
       link = method_link(aka, current_class: method.parent)
       "[`#{aka.name}`](#{link})" if link
     end

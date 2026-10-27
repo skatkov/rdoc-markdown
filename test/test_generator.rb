@@ -147,6 +147,27 @@ class TestGenerator < Minitest::Test
     end
   end
 
+  def test_generator_does_not_list_instance_aliases_on_module_function_copies
+    _workspace, root = project_fixture(
+      "module-function-aliases",
+      "lib/aliases.rb" => <<~RUBY
+        module FunctionAliases
+          # Runs an operation.
+          def run; end
+          alias execute run
+          module_function :run
+        end
+      RUBY
+    )
+
+    dir = run_generator(File.join(root, "lib/aliases.rb"), "Module function aliases")
+    markdown = File.read(File.join(dir, "FunctionAliases.md"))
+
+    assert_includes markdown, "### `run()`<a id=\"method-c-run\"></a>\nRuns an operation."
+    assert_includes markdown, "### `execute()`<a id=\"method-i-execute\"></a>"
+    refute_includes markdown, "Also known as:"
+  end
+
   def test_generator_renders_class_metadata_for_reopened_classes
     _workspace, root = project_fixture(
       "class-metadata",

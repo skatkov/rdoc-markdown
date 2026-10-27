@@ -786,13 +786,11 @@ class TestMarkdownHelpers < Minitest::Test
   def test_methods_do_not_list_aliases_without_generated_sections
     klass = build_rdoc_class(full_name: "Aliases")
     canonical = rdoc_method("original")
-    hidden = rdoc_method("hidden", visible: false)
-    removed = rdoc_method("removed")
     klass.add_method(canonical)
-    klass.add_method(hidden)
-    klass.add_method(removed)
+    hidden = canonical.add_alias(RDoc::Alias.new("original", "hidden", ""), klass)
+    hidden.done_documenting = true
+    removed = canonical.add_alias(RDoc::Alias.new("original", "removed", ""), klass)
     removed.visibility = :private
-    canonical.aliases.concat([hidden, removed])
 
     markdown = read_generated("Aliases.md", classes: [klass])
 
