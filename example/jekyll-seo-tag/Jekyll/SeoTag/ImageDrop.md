@@ -23,9 +23,9 @@ page - The page hash (e.g., Page#to\_liquid) context - the Liquid::Context
 
 ## Public Instance Methods
 ### `path()`<a id="method-i-path"></a>
-Called path for backwards compatability, this is really the escaped, absolute URL representing the page’s image Returns nil if no image path can be determined
-
 Also known as: [`to_s`](#method-i-to_s)
+
+Called path for backwards compatability, this is really the escaped, absolute URL representing the page’s image Returns nil if no image path can be determined
 
 ### `to_s()`<a id="method-i-to_s"></a>
 Alias for: [`path`](#method-i-path)

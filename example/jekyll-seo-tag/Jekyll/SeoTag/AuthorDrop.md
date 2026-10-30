@@ -24,9 +24,9 @@ page - The page hash (e.g., Page#to\_liquid) site - The Jekyll::Drops::SiteDrop
 
 ## Public Instance Methods
 ### `name()`<a id="method-i-name"></a>
-[`AuthorDrop#to_s`](AuthorDrop.md#method-i-to_s) should return name, allowing the author drop to safely replace `page.author`, if necessary, and remain backwards compatible
-
 Also known as: [`to_s`](#method-i-to_s)
+
+[`AuthorDrop#to_s`](AuthorDrop.md#method-i-to_s) should return name, allowing the author drop to safely replace `page.author`, if necessary, and remain backwards compatible
 
 ### `to_s()`<a id="method-i-to_s"></a>
 Alias for: [`name`](#method-i-name)

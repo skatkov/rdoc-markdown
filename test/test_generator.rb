@@ -133,9 +133,10 @@ class TestGenerator < Minitest::Test
     markdown = File.read(File.join(dir, "DocumentedAliases.md"))
     entries = index_entries(dir)
 
-    assert_includes markdown, "### `key?(key)`<a id=\"method-i-key-3F\"></a>\nChecks a key.\n\n" \
-      "Also known as: [`has_key?`](#method-i-has_key-3F), [`include?`](#method-i-include-3F)"
-    assert_includes markdown, "Also known as: [`restore`](#method-c-restore)"
+    assert_includes markdown, "### `key?(key)`<a id=\"method-i-key-3F\"></a>\nAlso known as: " \
+      "[`has_key?`](#method-i-has_key-3F), [`include?`](#method-i-include-3F)\n\nChecks a key."
+    assert_includes markdown, "### `load(value)`<a id=\"method-c-load\"></a>\n" \
+      "Also known as: [`restore`](#method-c-restore)\n\nLoads a value."
     assert_includes markdown, "Alias for: [`key?`](#method-i-key-3F)"
     assert_includes markdown, "Alias for: [`load`](#method-c-load)"
     assert_equal 2, markdown.scan("Also known as:").count
