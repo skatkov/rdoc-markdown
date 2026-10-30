@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- Show linked “Also known as” lists for documented method aliases, without exposing hidden or omitted aliases.
-- Skip detached RDoc aliases without crashing documentation generation.
-- Keep method-alias lists scoped to their canonical method when RDoc copies methods with `module_function`.
+- Show documented method aliases below method headings.
 
 ## 0.21.2
 
