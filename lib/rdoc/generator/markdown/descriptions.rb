@@ -131,6 +131,24 @@ module RDoc::Generator::Markdown::Descriptions
     alias_description(aliased_method, method_link(aliased_method, current_class: current_class))
   end
 
+  # Lists aliases that have generated documentation sections.
+  #
+  # @param method [RDoc::AnyMethod] Canonical method.
+  #
+  # @return [String, nil] Linked alias list, or nil when none are emitted.
+  def method_aliases(method)
+    links = method.aliases.filter_map do |aka|
+      # RDoc's module_function copies share alias arrays with their instance methods.
+      next unless aka.is_alias_for.equal?(method)
+
+      link = method_link(aka, current_class: method.parent)
+      "[`#{aka.name}`](#{link})" if link
+    end
+    return if links.empty?
+
+    "Also known as: #{links.join(", ")}"
+  end
+
   # Formats an alias fallback with an optional target link.
   #
   # @param aliased_method [RDoc::AnyMethod] Alias target.
@@ -154,6 +172,7 @@ module RDoc::Generator::Markdown::Descriptions
     return unless method.display?
 
     target_parent = method.parent
+    return unless target_parent
     return unless target_parent.method_list.include?(method)
 
     target_path = generation_state.class_output_paths[target_parent.full_name]

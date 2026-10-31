@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show documented method aliases below method headings.
+
 ## 0.21.2
 
 - Distinguish instance methods (`Class#method`) from class methods (`Class.method`) in search-index names, without changing their document paths or anchors.

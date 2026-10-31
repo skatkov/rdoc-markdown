@@ -783,6 +783,40 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "Alias for: [`find`](../OtherAliases.md#method-i-find)"
   end
 
+  def test_methods_do_not_list_aliases_without_generated_sections
+    klass = build_rdoc_class(full_name: "Aliases")
+    canonical = rdoc_method("original")
+    klass.add_method(canonical)
+    hidden = canonical.add_alias(RDoc::Alias.new("original", "hidden", ""), klass)
+    hidden.done_documenting = true
+    removed = canonical.add_alias(RDoc::Alias.new("original", "removed", ""), klass)
+    removed.visibility = :private
+
+    markdown = read_generated("Aliases.md", classes: [klass])
+
+    assert_includes markdown, "### `original()`"
+    refute_includes markdown, "Also known as:"
+    refute_includes markdown, "hidden"
+    refute_includes markdown, "removed"
+  end
+
+  def test_method_alias_lists_skip_detached_aliases
+    klass = build_rdoc_class(full_name: "Aliases")
+    canonical = rdoc_method("original", comment: "Original docs.")
+    klass.add_method(canonical)
+    detached = canonical.add_alias(RDoc::Alias.new("original", "detached", ""))
+    canonical.add_alias(RDoc::Alias.new("original", "available", ""), klass)
+
+    assert_nil detached.parent
+
+    dir = generate_markdown(classes: [klass])
+    markdown = File.read(File.join(dir, "Aliases.md"))
+
+    assert_includes markdown, "Also known as: [`available`](#method-i-available)"
+    refute_includes markdown, "detached"
+    assert_eql 1, MarkdownValidator.new(dir).validate!
+  end
+
   def test_method_aliases_do_not_link_to_omitted_owners
     aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
     hidden_owner = build_rdoc_class(full_name: "HiddenOwner", description: "Hidden docs")

@@ -64,6 +64,11 @@
 <% methods.each do |method| -%>
 
 <%= "#" * member_heading_level %> `<%= method_signature(method) %>`<%= anchor(method.aref) %>
+<%- aliases = method_aliases(method) -%>
+<%- if aliases -%>
+<%= aliases %>
+
+<%- end -%>
 <%= method_description(method, current_class: klass, heading_level_offset: member_heading_level) %>
 <% end -%>
 <% end -%>
