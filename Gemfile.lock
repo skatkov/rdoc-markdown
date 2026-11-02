@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/skatkov/fork_reverse_markdown.git
-  revision: ed47606dbbefdd5c4c919badb350fa7610c8ea7f
-  ref: ed47606dbbefdd5c4c919badb350fa7610c8ea7f
+  revision: faff54bc4e8408cfbd8ee922306a07406dd7e742
+  ref: faff54bc4e8408cfbd8ee922306a07406dd7e742
   specs:
     reverse_markdown (3.0.3)
       nokogiri

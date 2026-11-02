@@ -6,7 +6,7 @@ source "https://rubygems.org"
 gemspec
 
 gem "reverse_markdown", git: "https://github.com/skatkov/fork_reverse_markdown.git",
-  ref: "ed47606dbbefdd5c4c919badb350fa7610c8ea7f"
+  ref: "faff54bc4e8408cfbd8ee922306a07406dd7e742"
 
 gem "erb_lint", require: false
 gem "reek", require: false
