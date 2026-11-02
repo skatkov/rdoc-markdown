@@ -328,6 +328,41 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "~~old~~"
   end
 
+  def test_method_descriptions_preserve_nested_source_and_destination_type_lists
+    klass = rdoc_class("IO")
+    method = rdoc_method("copy_stream", comment: <<~'RDOC')
+      - The given +src+ must be one of the following:
+
+        - The path to a readable file, from which source data is to be read.
+        - An \IO-like object, opened for reading and capable of responding
+          to method +:readpartial+ or method +:read+.
+
+      - The given +dst+ must be one of the following:
+
+        - The path to a writable file, to which data is to be written.
+        - An \IO-like object, opened for writing and capable of responding
+          to method +:write+.
+    RDOC
+    method.singleton = true
+    klass.add_method(method)
+
+    markdown = read_generated("IO.md", classes: [klass])
+
+    assert_includes markdown, <<~MARKDOWN
+      - The given `src` must be one of the following:
+
+        - The path to a readable file, from which source data is to be read.
+
+        - An IO-like object, opened for reading and capable of responding to method `:readpartial` or method `:read`.
+
+      - The given `dst` must be one of the following:
+
+        - The path to a writable file, to which data is to be written.
+
+        - An IO-like object, opened for writing and capable of responding to method `:write`.
+    MARKDOWN
+  end
+
   def test_markdown_unknown_tags_pass_through
     page = raw_html_page(
       relative_name: "unknown-tags.rdoc",
