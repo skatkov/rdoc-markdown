@@ -16,6 +16,19 @@ If Bundler is not being used to manage dependencies, install the gem by executin
 
     $ gem install rdoc-markdown
 
+### Temporary converter fork
+
+This project pins a `reverse_markdown` fork for native Nokogiri fragments,
+literal code preservation, and nested lists. Until these fixes are released
+upstream, add the same override when using rdoc-markdown in another bundle:
+
+```ruby
+gem "reverse_markdown", git: "https://github.com/skatkov/fork_reverse_markdown.git",
+  ref: "ed47606dbbefdd5c4c919badb350fa7610c8ea7f"
+```
+
+A standalone `gem install` does not select this fork.
+
 
 ## Usage
 RDoc will auto-detect the rdoc-markdown plugin if it is installed. You just need to instruct RDoc to produce markdown output instead of standard HTML through the `format` parameter.

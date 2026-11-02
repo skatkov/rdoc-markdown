@@ -54,7 +54,7 @@ class RDoc::Generator::Markdown::Conversion
       span.next_element&.name == "h1" && span["id"].match?(/\A(?:class|module)-/)
     end
 
-    # Preserves simple language classes and literal preformatted text.
+    # Normalizes simple language classes without modifying preformatted content.
     #
     # @param fragment [Nokogiri::HTML4::DocumentFragment] HTML fragment.
     #
@@ -63,7 +63,6 @@ class RDoc::Generator::Markdown::Conversion
       fragment.css("pre").each do |pre|
         language = pre["class"].to_s[/\A(?!highlight\z)[A-Za-z][A-Za-z0-9_+-]*\z/]
         pre["class"] = "brush: #{language};" if language
-        pre.content = pre.text
       end
     end
 
