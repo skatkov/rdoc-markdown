@@ -11,6 +11,7 @@ class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#initialize"
   cover "RDoc::Generator::Markdown::Conversion*"
   cover "RDoc::Generator::Markdown::Descriptions*"
+  cover "RDoc::Generator::Markdown::Formatter*"
   cover "RDoc::Generator::Markdown#debug"
   cover "RDoc::Generator::Markdown::Paths*"
   cover "RDoc::Generator::Markdown::CrossrefExtension*"
@@ -33,7 +34,7 @@ class TestMarkdownHelpers < Minitest::Test
 
   def raw_html_page(relative_name:, html:)
     rdoc_page(relative_name: relative_name, comment: "placeholder").tap do |page|
-      page.define_singleton_method(:description) { html }
+      page.comment = RDoc::Comment.from_document(RDoc::Markup::Document.new(RDoc::Markup::Raw.new(html)))
     end
   end
 
@@ -265,6 +266,21 @@ class TestMarkdownHelpers < Minitest::Test
     assert_equal "Section body", section_comment.text
   end
 
+  def test_native_reopened_class_comments_keep_their_individual_markup_formats
+    klass = rdoc_class("MixedMarkup", comment: "= RDoc heading")
+    comment = RDoc::Comment.new("# Markdown heading\n\n[Link](https://example.test)")
+    comment.format = "markdown"
+    klass.add_comment(comment, rdoc_file(klass.store, name: "extra.rb"))
+
+    markdown = read_generated("MixedMarkup.md", classes: [klass])
+
+    assert_includes markdown, "# RDoc heading"
+    assert_includes markdown, "# Markdown heading"
+    assert_includes markdown, "[Link](https://example.test)"
+    assert_equal 1, markdown.scan("# RDoc heading").length
+    assert_equal 1, markdown.scan("# Markdown heading").length
+  end
+
   def test_localized_markdown_sections_keep_their_markup_format
     source = "A [link](https://example.test)"
     translation = "Translated [link](https://example.test)"
@@ -326,6 +342,10 @@ class TestMarkdownHelpers < Minitest::Test
     markdown = read_generated("github-flavored_rdoc.md", pages: [page])
 
     assert_includes markdown, "~~old~~"
+  end
+
+  def test_html_conversion_keeps_heading_levels_by_default
+    assert_equal "# Topic", RDoc::Generator::Markdown::Conversion.markdownify("<h1>Topic</h1>")
   end
 
   def test_markdown_unknown_tags_pass_through
@@ -398,6 +418,125 @@ class TestMarkdownHelpers < Minitest::Test
     markdown = read_generated("ruby-block_rdoc.md", pages: [page])
 
     assert_includes markdown, "```ruby\nrequire 'erb'\nputs :ok\n```"
+  end
+
+  def test_native_code_blocks_do_not_pass_through_the_html_formatter
+    code = 'link_sanitizer.sanitize(\'<a href="example.com">Only the link text will be kept.</a>\')'
+    page = rdoc_page(relative_name: "native-code.rdoc", comment: "= Example\n\n    #{code}\n")
+    html_code_calls = 0
+    trace = TracePoint.new(:call) do |event|
+      html_code_calls += 1 if event.method_id == :accept_verbatim && RDoc::Markup::ToHtml === event.self
+    end
+
+    markdown = trace.enable { read_generated("native-code_rdoc.md", pages: [page]) }
+    rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+    assert_equal 0, html_code_calls
+    assert_equal "#{code}\n", rendered.at_css("pre code").text
+    assert_includes markdown, "```ruby\n#{code}\n```"
+  end
+
+  def test_native_code_blocks_preserve_explicit_languages_and_embedded_fences
+    code = "```ruby\nputs :ok\n```\n````\n<b>&lt;literal&gt;</b>"
+    verbatim = RDoc::Markup::Verbatim.new("#{code}\n")
+    verbatim.format = :text
+    page = rdoc_page(relative_name: "native-fences.rdoc", comment: "")
+    page.comment = RDoc::Comment.from_document(RDoc::Markup::Document.new(verbatim))
+
+    markdown = read_generated("native-fences_rdoc.md", pages: [page])
+    rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+    assert_equal "`````text\n#{code}\n`````\n", markdown
+    assert_equal "#{code}\n", rendered.at_css("pre code").text
+  end
+
+  def test_native_headings_keep_distinct_duplicate_anchor_ids
+    page = rdoc_page(relative_name: "native-headings.rdoc", comment: "= Topic\n\n= Topic\n\n= Topic")
+
+    markdown = read_generated("native-headings_rdoc.md", pages: [page])
+
+    assert_equal <<~MARKDOWN, markdown
+      # Topic<a id="label-Topic"></a>
+      # Topic<a id="label-Topic-1"></a><a id="topic-1"></a>
+      # Topic<a id="label-Topic-2"></a><a id="topic-2"></a>
+    MARKDOWN
+  end
+
+  def test_native_code_blocks_honor_explicit_ruby_formats_even_for_invalid_ruby
+    [:rb, :ruby].each do |format|
+      verbatim = RDoc::Markup::Verbatim.new("not valid ruby <\n")
+      verbatim.format = format
+      page = rdoc_page(relative_name: "native-#{format}.rdoc", comment: "")
+      page.comment = RDoc::Comment.from_document(RDoc::Markup::Document.new(verbatim))
+
+      assert_equal "```ruby\nnot valid ruby <\n```\n",
+        read_generated("native-#{format}_rdoc.md", pages: [page])
+    end
+  end
+
+  def test_native_code_blocks_do_not_infer_ruby_over_explicit_languages
+    {text: "puts :ok", json: '{"ok": true}', r: "1"}.each do |format, code|
+      verbatim = RDoc::Markup::Verbatim.new("#{code}\n")
+      verbatim.format = format
+      page = rdoc_page(relative_name: "explicit-#{format}.rdoc", comment: "")
+      page.comment = RDoc::Comment.from_document(RDoc::Markup::Document.new(verbatim))
+
+      assert_equal "```#{format}\n#{code}\n```\n",
+        read_generated("explicit-#{format}_rdoc.md", pages: [page])
+    end
+  end
+
+  def test_native_raw_html_does_not_swallow_following_paragraphs
+    document = RDoc::Markup::Document.new(
+      RDoc::Markup::Raw.new("<dl><dt>Term</dt><dd>Definition</dd></dl>"),
+      RDoc::Markup::Paragraph.new("Following paragraph.")
+    )
+    page = rdoc_page(relative_name: "native-html.rdoc", comment: "")
+    page.comment = RDoc::Comment.from_document(document)
+
+    markdown = read_generated("native-html_rdoc.md", pages: [page])
+    rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown, options: {render: {unsafe: true}}))
+
+    assert_includes markdown, "</dl>\n\nFollowing paragraph."
+    assert_equal "Following paragraph.", rendered.at_css("dl + p").text
+  end
+
+  def test_native_documents_preserve_block_quotes_and_following_paragraphs
+    page = rdoc_page(relative_name: "native-quote.rdoc", comment: "")
+    page.comment.format = "markdown"
+    page.comment.text = "> A quoted +value+.\n\nAfter the quotation."
+
+    markdown = read_generated("native-quote_rdoc.md", pages: [page])
+    rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+    assert_equal "A quoted +value+.", rendered.at_css("blockquote p").text
+    assert_equal "After the quotation.", rendered.css("p").last.text
+    assert_equal 1, rendered.css("blockquote").length
+  end
+
+  def test_native_paragraphs_preserve_rdoc_line_break_handling
+    page = rdoc_page(relative_name: "native-paragraphs.rdoc", comment: "")
+    page.comment.format = "markdown"
+    page.comment.text = "first line\nsecond line\n\n日本語\nの文章\n\nhard line  \nbreak"
+
+    markdown = read_generated("native-paragraphs_rdoc.md", pages: [page])
+
+    assert_includes markdown, "first line second line"
+    assert_includes markdown, "日本語の文章"
+    assert_includes markdown, "hard line\n break"
+  end
+
+  def test_native_tables_do_not_swallow_following_paragraphs
+    page = rdoc_page(relative_name: "native-table.rdoc", comment: "")
+    page.comment.format = "markdown"
+    page.comment.text = "| a | b |\n| --- | --- |\n| x | y |\n\nAfter the table."
+
+    markdown = read_generated("native-table_rdoc.md", pages: [page])
+    rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+    assert_equal ["a", "b"], rendered.css("th").map(&:text)
+    assert_equal ["x", "y"], rendered.css("td").map(&:text)
+    assert_equal "After the table.", rendered.at_css("table + p").text
   end
 
   def test_pre_block_language_classes_are_preserved
@@ -494,6 +633,15 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "- \n"
     refute_includes markdown, "* speak"
     refute_includes markdown, "* swim"
+  end
+
+  def test_html_definition_list_code_blocks_keep_the_legacy_shorthand
+    page = raw_html_page(
+      relative_name: "html-definition-code.rdoc",
+      html: "<pre>bird::\n* speak</pre>"
+    )
+
+    assert_equal "bird:\n- speak\n", read_generated("html-definition-code_rdoc.md", pages: [page])
   end
 
   def test_internal_links_are_rewritten_relative_to_generated_output
@@ -741,6 +889,13 @@ class TestMarkdownHelpers < Minitest::Test
     markdown = read_generated("literal-definition-list_rdoc.md", pages: [page])
 
     assert_eql "```text\n</dl>\nnot a new paragraph\n```\n", markdown
+
+    unlabelled = raw_html_page(
+      relative_name: "unlabelled-definition-list.rdoc",
+      html: "<pre>&lt;/dl&gt;\nnot a new paragraph</pre>"
+    )
+    assert_equal "```\n</dl>\nnot a new paragraph\n```\n",
+      read_generated("unlabelled-definition-list_rdoc.md", pages: [unlabelled])
   end
 
   def test_markdown_method_descriptions_preserve_explicit_heading_levels

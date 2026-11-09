@@ -33,16 +33,18 @@ module RDoc::Generator::Markdown::Descriptions
   # Renders an RDoc description with links limited to emitted objects.
   #
   # @param code_object [RDoc::CodeObject, RDoc::Context::Section] Object whose description is rendered.
+  # @param heading_level_offset [Integer] Levels to add to comment headings.
   #
-  # @return [String] HTML description.
-  def render_description(code_object)
+  # @return [String] Markdown description.
+  def render_description(code_object, heading_level_offset:)
     formatter = description_formatter(code_object)
     formatter.extend(RDoc::Generator::Markdown::CrossrefExtension)
     formatter.with_markdown_cross_references(
       RDoc::CrossReference.new(formatter.context),
       generation_state.markdown_output_object_ids
     ) do
-      render_formatted_description(code_object, formatter, options.locale)
+      markdown_formatter = RDoc::Generator::Markdown::Formatter.new(formatter, heading_level_offset: heading_level_offset)
+      render_formatted_description(code_object, markdown_formatter, options.locale).rstrip
     end
   end
 
@@ -63,9 +65,13 @@ module RDoc::Generator::Markdown::Descriptions
   # @param formatter [RDoc::Markup::Formatter] Formatter receiving parsed markup.
   # @param locale [RDoc::I18n::Locale, nil] Translation locale.
   #
-  # @return [String] Formatted HTML description.
+  # @return [String] Formatted Markdown description.
   def render_formatted_description(code_object, formatter, locale)
-    return code_object.description unless RDoc::Context::Section === code_object
+    unless RDoc::Context::Section === code_object
+      comment = (RDoc::ClassModule === code_object) ? code_object.comment_location : code_object.comment
+      comment = RDoc::I18n::Text.new(comment).translate(locale) if locale
+      return code_object.parse(comment).accept(formatter)
+    end
 
     documents = code_object.comments.map { |comment| localized_comment_document(comment, locale) }
     RDoc::Markup::Document.new(*documents).accept(formatter)
@@ -93,12 +99,10 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [String] Rendered description or fallback text.
   def describe(code_object, fallback: nil, heading_level_offset: 0)
-    description = render_description(code_object)
-    return fallback.to_s if description.empty?
-
     comment = code_object.comment
     heading_level_offset = 0 if RDoc::Comment === comment && comment.format == "markdown"
-    RDoc::Generator::Markdown::Conversion.markdownify(description, heading_level_offset: heading_level_offset)
+    description = render_description(code_object, heading_level_offset: heading_level_offset)
+    description.empty? ? fallback.to_s : description
   end
 
   # Renders a section description as Markdown.
@@ -108,10 +112,7 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [String] Rendered section description.
   def section_description(section, heading_level_offset:)
-    RDoc::Generator::Markdown::Conversion.markdownify(
-      render_description(section),
-      heading_level_offset: heading_level_offset
-    )
+    render_description(section, heading_level_offset: heading_level_offset)
   end
 
   # Renders a method description or an alias fallback.

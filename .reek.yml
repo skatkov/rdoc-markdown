@@ -15,6 +15,7 @@ detectors:
     exclude:
       - RDoc::Generator::Markdown::Conversion
       - RDoc::Generator::Markdown::Descriptions
+      - RDoc::Generator::Markdown::Formatter#accept_verbatim
   LongParameterList:
     exclude:
       - RDoc::Generator::Markdown::CrossrefExtension#link

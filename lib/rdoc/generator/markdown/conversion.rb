@@ -18,6 +18,20 @@ class RDoc::Generator::Markdown::Conversion
     normalize_definition_lists(markdown).rstrip
   end
 
+  # Emits literal code directly, retaining the legacy definition-list shorthand.
+  #
+  # @param text [String] Literal code, without trailing whitespace.
+  # @param language [String, Symbol, nil] Optional code language.
+  # @return [String] Fenced code or a normalized legacy definition list.
+  def self.verbatim(text, language:)
+    converted = convert_definition_list_block(text)
+    return converted if converted
+
+    fence = "```"
+    fence += "`" while text.include?(fence)
+    "#{fence}#{language}\n#{text}\n#{fence}"
+  end
+
   class << self
     private
 
