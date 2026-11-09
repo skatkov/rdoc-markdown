@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep underscored identifiers such as `refute_predicate` fully linked when RDoc splits the label, and render split indexing expressions such as `automatic_tax[enabled]` as code instead of broken links.
 - Show documented method aliases below method headings.
 
 ## 0.21.2
