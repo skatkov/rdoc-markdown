@@ -158,6 +158,41 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[some-value](:invalid)"
   end
 
+  def test_identifiers_split_by_rdoc_single_word_links_are_rejoined
+    page = rdoc_page(
+      relative_name: "split-links.rdoc",
+      comment: "Alias for: refute_predicate[https://example.com/a#refute_predicate]\n\n" \
+               "refute_in_delta[https://example.com/d] some_file[some_file.html] a_bc[https://example.com/ab] " \
+               "automatic_tax[enabled] options_hash[:key] amount_details[line_items] matrix_row[i]\n\n" \
+               "plain[https://example.com/p] trailing_ {two words}[https://example.com/w] {License}[LICENSE]"
+    )
+
+    markdown = read_generated("split-links_rdoc.md", pages: [page])
+
+    assert_equal <<~MARKDOWN, markdown
+      Alias for: [refute\\_predicate](https://example.com/a#refute_predicate)
+
+      [refute\\_in\\_delta](https://example.com/d) [some\\_file](some_file.md) [a\\_bc](https://example.com/ab) `automatic_tax[enabled]` `options_hash[:key]` `amount_details[line_items]` `matrix_row[i]`
+
+      [plain](https://example.com/p) trailing\\_ [two words](https://example.com/w) [License](LICENSE)
+    MARKDOWN
+  end
+
+  def test_links_without_a_split_identifier_before_them_are_unchanged
+    page = raw_html_page(
+      relative_name: "unsplit-links.rdoc",
+      html: '<p>x _<a href="https://example.com/u">u</a> ' \
+            '<code>y_</code><a href="https://example.com/c">c</a> ' \
+            'z_<a href="https://example.com/w">two words</a> ' \
+            '<a href="Foo.html"><code>Foo</code></a></p>'
+    )
+
+    markdown = read_generated("unsplit-links_rdoc.md", pages: [page])
+
+    assert_equal "x \\_[u](https://example.com/u) `y_`[c](https://example.com/c) " \
+                 "z\\_[two words](https://example.com/w) [`Foo`](Foo.md)\n", markdown
+  end
+
   def test_markdown_examples_are_not_treated_as_generated_links
     page = raw_html_page(
       relative_name: "markdown-examples.rdoc",

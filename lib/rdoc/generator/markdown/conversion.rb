@@ -119,16 +119,36 @@ class RDoc::Generator::Markdown::Conversion
     #
     # @return [void]
     def normalize_link(link, document)
-      receiver = link.text
+      prefix = split_identifier_prefix(link)
+      receiver = "#{prefix}#{link.text}"
       href = link["href"].to_s
+      link.content = receiver if prefix
 
-      if index_reference?(receiver, href)
+      if index_reference?(receiver, href) || (prefix && href.match?(/\A[A-Za-z_]\w*\z/))
         link.replace(document.create_element("code") { |code| code.content = "#{receiver}[#{href}]" })
       elsif href.start_with?("www.")
         link["href"] = "https://#{href}"
       elsif !href.match?(/\A(?:https?:\/\/|mailto:|#)/i)
         link["href"] = normalized_link_target(href)
       end
+    end
+
+    # Detaches the identifier start that RDoc leaves before a single-word link.
+    #
+    # RDoc's +label[url]+ shorthand stops single-word labels at underscores, so
+    # +refute_predicate[url]+ becomes +refute_+ followed by a +predicate+ link.
+    #
+    # @param link [Nokogiri::XML::Element] Link element.
+    #
+    # @return [String, nil] Identifier prefix removed from the preceding text.
+    def split_identifier_prefix(link)
+      previous = link.previous
+      return unless previous&.text? && link.text.match?(/\A[[:alnum:]]+\z/)
+
+      text = previous.content
+      prefix = text[/[[:alnum:]][[:alnum:]_]*_\z/]
+      previous.content = text.delete_suffix(prefix) if prefix
+      prefix
     end
 
     # Checks whether RDoc encoded an indexing expression as a link.
