@@ -73,8 +73,7 @@ class TestGenerator < Minitest::Test
     assert_includes duck_doc, "#### `useful? -> bool`"
     assert_includes duck_doc, '<a id="method-i-useful-3F"></a>'
     refute_includes duck_doc, "### Public Instance Methods\n\n"
-    assert_includes duck_doc, "```\nbird::\n\n  * speak\n  * fly"
-    refute_includes duck_doc, "bird:\n\n- speak\n- fly"
+    assert_includes duck_doc, "bird:\n\n- speak\n- fly\n\nwaterfowl:\n\n- swim"
 
     bird_doc = File.read("#{dir}/Bird.md")
     refute_includes bird_doc, "| **Includes** |"

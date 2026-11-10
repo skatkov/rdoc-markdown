@@ -82,6 +82,8 @@ class RDoc::Generator::Markdown
     def accept_verbatim(verbatim)
       text = verbatim.text
       language = verbatim.format
+      example = definition_list_example(text) unless language || definition_body
+      return res << example << "\n\n" if example
       ruby_code = verbatim.ruby? || (!language && Prism.parse_success?(text))
       language = "ruby" if ruby_code
       if definition_body
@@ -133,6 +135,17 @@ class RDoc::Generator::Markdown
     end
 
     private
+
+    # Restores main's Markdown lists for complete indented term-and-bullet examples.
+    # @param text [String] Unclassified verbatim content.
+    # @return [String, nil] Markdown list, or nil when any line is ordinary code.
+    def definition_list_example(text)
+      lines = text.lines.map(&:strip)
+      valid_lines = lines.all? { |line| line.empty? || line.end_with?("::") || line.match?(/\A\*\s/) }
+      return unless lines.first&.end_with?("::") && valid_lines && lines.grep(/\A\*\s/).any?
+
+      lines.map { |line| line.sub(/::\z/, ":").sub(/\A\*\s/, "- ") }.join("\n")
+    end
 
     # Nested lists stay in the final HTML definition container, like main.
     # @param type [Symbol] Validated ordinary list type.

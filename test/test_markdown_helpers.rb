@@ -57,7 +57,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[ParentClass](../Foo.md#top)"
     assert_includes markdown, "[ModulePath](Bar.md)"
     assert_includes markdown, "[ParentModule](../Bar.md#top)"
-    assert_equal "bird::\n* speak\n", Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).at_css("pre code").text
+    assert_equal ["speak"], Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("ul > li").map(&:text)
     assert_equal "\n", markdown[-1]
   end
 
@@ -353,7 +353,7 @@ class TestMarkdownHelpers < Minitest::Test
     refute_includes markdown, "- plain text"
   end
 
-  def test_definition_list_blocks_preserve_blank_lines
+  def test_definition_list_examples_render_as_lists_and_preserve_paragraph_boundaries
     page = rdoc_page(
       relative_name: "spaced-definition.rdoc",
       comment: "= Heading\n\n  bird::\n\n    * speak\n    * fly\n\nBetween\n\n  waterfowl::\n\n    * swim\n"
@@ -361,12 +361,7 @@ class TestMarkdownHelpers < Minitest::Test
 
     markdown = read_generated("spaced-definition_rdoc.md", pages: [page])
 
-    blocks = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("pre code").map(&:text)
-    assert_equal 2, blocks.length
-    assert_includes blocks.first, "bird::"
-    assert_includes blocks.first, "* speak"
-    assert_includes blocks.last, "waterfowl::"
-    assert_includes blocks.last, "* swim"
+    assert_includes markdown, "bird:\n\n- speak\n- fly\n\nBetween\n\nwaterfowl:\n\n- swim"
   end
 
   def test_html_definition_list_lookalikes_remain_literal_code

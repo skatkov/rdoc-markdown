@@ -140,6 +140,33 @@ class TestMarkdownNativeCallbacks < Minitest::Test
     assert_equal "Invalid list type: :INVALID", error.message
   end
 
+  def test_definition_list_examples_do_not_replace_explicit_code_or_definition_body_code
+    code = RDoc::Markup::Verbatim.new("bird::\n\n  * speak\n")
+    code.format = :text
+
+    assert_equal "```text\nbird::\n\n  * speak\n```\n\n", RDoc::Markup::Document.new(code).accept(formatter)
+
+    code.format = nil
+    list = RDoc::Markup::List.new(:LABEL, RDoc::Markup::ListItem.new("Example", code))
+    markdown = RDoc::Markup::Document.new(list).accept(formatter)
+    html = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown, options: {render: {unsafe: true}}))
+
+    assert_equal "bird::\n\n  * speak\n", html.at_css("dd pre").text
+    assert_empty html.css("dd li")
+  end
+
+  def test_non_definition_code_blocks_remain_literal
+    {
+      "" => "```ruby\n\n```\n\n",
+      "* speak\n* fly\n" => "```\n* speak\n* fly\n```\n\n",
+      "bird::\nwaterfowl::\n" => "```\nbird::\nwaterfowl::\n```\n\n",
+      "bird::\n* speak\nplain text\n" => "```ruby\nbird::\n* speak\nplain text\n```\n\n"
+    }.each do |text, expected|
+      document = RDoc::Markup::Document.new(RDoc::Markup::Verbatim.new(text))
+      assert_equal expected, document.accept(formatter)
+    end
+  end
+
   def test_nested_definition_lists_keep_their_terms_and_descriptions
     [:LABEL, :NOTE].each do |type|
       inner = RDoc::Markup::List.new(type, RDoc::Markup::ListItem.new("Inner", RDoc::Markup::Paragraph.new("Inner body.")))
