@@ -89,6 +89,16 @@ class TestMarkdownReferences < Minitest::Test
     assert_equal "`Missing`", visitor.attributes("+Missing+")
   end
 
+  def test_unresolved_qualified_method_references_remain_code_without_inventing_links
+    visitor = formatter
+
+    assert_equal "page - The page hash (e.g., `Page#to_liquid`) site - The Jekyll::Drops::SiteDrop",
+      visitor.attributes("page - The page hash (e.g., Page#to_liquid) site - The Jekyll::Drops::SiteDrop")
+    assert_equal "`Target#missing_method`", visitor.attributes("Target#missing_method")
+    assert_equal '\#missing\_method', visitor.attributes("#missing_method")
+    assert_equal '[Page\#to\_liquid](https://example.test)', visitor.attributes("{Page#to_liquid}[https://example.test]")
+  end
+
   def test_inline_code_keeps_file_references_literal_like_main
     visitor = formatter
 

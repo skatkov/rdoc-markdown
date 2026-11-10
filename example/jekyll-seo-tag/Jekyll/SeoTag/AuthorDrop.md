@@ -20,7 +20,7 @@ If the result from the name search is a string, we’ll also check for additiona
 ### `new(page: nil, site: nil)`<a id="method-c-new"></a>
 Initialize a new [`AuthorDrop`](AuthorDrop.md)
 
-page - The page hash (e.g., Page\#to\_liquid) site - The Jekyll::Drops::SiteDrop
+page - The page hash (e.g., `Page#to_liquid`) site - The Jekyll::Drops::SiteDrop
 
 ## Public Instance Methods
 ### `name()`<a id="method-i-name"></a>

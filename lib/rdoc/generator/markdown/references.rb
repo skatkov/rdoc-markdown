@@ -17,7 +17,7 @@ class RDoc::Generator::Markdown
       return text if in_link_label? || options.autolink_excluded_words&.include?(name)
       return text if name.match?(/@[\w-]+\.[\w-]/)
 
-      reference_link(name) || text
+      reference_link(name) || ((name.include?("#") && !name.start_with?("#")) ? Syntax.code(name) : text)
     end
 
     # Formats automatic URLs without linking URLs inside link labels.

@@ -19,7 +19,7 @@ A drop representing the page image The image path will be pulled from:
 ### `new(page: nil, context: nil)`<a id="method-c-new"></a>
 Initialize a new [`ImageDrop`](ImageDrop.md)
 
-page - The page hash (e.g., Page\#to\_liquid) context - the Liquid::Context
+page - The page hash (e.g., `Page#to_liquid`) context - the Liquid::Context
 
 ## Public Instance Methods
 ### `path()`<a id="method-i-path"></a>
