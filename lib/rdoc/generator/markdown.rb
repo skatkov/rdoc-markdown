@@ -155,11 +155,6 @@ class RDoc::Generator::Markdown
   #
   # @return [void]
   def setup
-    output_dir = options.op_dir
-    unless output_dir.instance_of?(String)
-      raise TypeError, "RDoc markdown output directory must be a String"
-    end
-
     classes = Selection.classes(store)
     class_output_paths = classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
     pages = Selection.pages(store)
@@ -168,7 +163,7 @@ class RDoc::Generator::Markdown
       warn "rdoc-markdown: several inputs write #{path}; only the last one is kept" unless known_output_paths.add?(path)
     end
 
-    @output_dir = output_dir
+    @output_dir = options.op_dir
     @generation_state = GenerationState.new(
       classes: classes,
       pages: pages,
