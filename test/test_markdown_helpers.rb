@@ -72,6 +72,15 @@ class TestMarkdownHelpers < Minitest::Test
     assert_equal '# Topic<a id="label-Topic"></a><a id="class-example-label-Topic"></a>' + "\n", markdown
   end
 
+  def test_internal_links_inside_code_are_left_alone
+    markdown = "[a](docs/guide.md) `[b](docs/guide.md)` ``x`[c](docs/guide.md)`` \\` [d](docs/guide.md) \\`\n" \
+      "```ruby\nrender(\"[e](docs/guide.md)\")\n```\n[f](docs/guide.md)"
+
+    assert_equal "[a](guide.md) `[b](docs/guide.md)` ``x`[c](docs/guide.md)`` \\` [d](guide.md) \\`\n" \
+      "```ruby\nrender(\"[e](docs/guide.md)\")\n```\n[f](guide.md)",
+      rewrite_internal_links(markdown, Set["docs/guide.md"])
+  end
+
   def test_markdown_examples_are_not_treated_as_generated_links
     page = raw_html_page(
       relative_name: "markdown-examples.rdoc",

@@ -32,6 +32,7 @@ module RDoc::Generator::Markdown::Paths
   private :page_output_path, :output_path_for
 
   # Rewrites links using explicit generated-path state.
+  # Code spans and fences are skipped; prose backticks are always escaped.
   #
   # @param markdown [String] Markdown content.
   # @param current_output_path [String] Output path for the current file.
@@ -41,8 +42,10 @@ module RDoc::Generator::Markdown::Paths
   def self.rewrite_internal_links(markdown, current_output_path, state)
     current_dir = Pathname.new(current_output_path).dirname
 
-    markdown.gsub(%r{\]\(([^)]+)\)}) do
-      target = Regexp.last_match(1)
+    markdown.gsub(/(?<!\\)(`+).+?\1|\]\(([^)]+)\)/m) do
+      next $& if $1
+
+      target = $2
       path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
 
