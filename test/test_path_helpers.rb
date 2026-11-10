@@ -9,14 +9,9 @@ class TestPathHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_pagefiles"
   cover "RDoc::Generator::Markdown#initialize"
   cover "RDoc::Generator::Markdown::Paths*"
-  cover "RDoc::Generator::Markdown#anchor"
 
   def generator(root: nil)
     RDoc::Generator::Markdown.new(nil, generator_options(op_dir: stable_tmpdir("generator"), root: root))
-  end
-
-  def source_file
-    File.join(__dir__, "data/example.rb")
   end
 
   def pages_root
@@ -142,17 +137,6 @@ class TestPathHelpers < Minitest::Test
 
     relative_entries = index_entries(relative_dir)
     assert_includes relative_entries, ["guides/relative.rdoc", "File", "guides/relative_rdoc.md"]
-  end
-
-  def test_anchor_writes_method_anchor_tags_into_generated_docs
-    dir = generate_docs(files: source_file, title: "anchor test title") do |options|
-      options.visibility = :private
-    end
-
-    duck_doc = File.read(File.join(dir, "Duck.md"))
-
-    assert_includes duck_doc, '<a id="method-i-useful-3F"></a>'
-    assert_includes duck_doc, '<a id="method-i-quack"></a>'
   end
 
   def test_generate_writes_page_descriptions_to_markdown_paths

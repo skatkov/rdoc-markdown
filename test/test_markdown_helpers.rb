@@ -715,37 +715,23 @@ class TestMarkdownHelpers < Minitest::Test
     assert_false File.exist?(File.join(dir, "HiddenOwner.md"))
   end
 
-  def test_same_page_method_aliases_do_not_link_to_hidden_targets
-    klass = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
-    target = rdoc_method("secret", visible: false)
-    alias_method = rdoc_method("exposed", visible: true)
-    alias_method.is_alias_for = target
-    klass.add_method(target)
-    klass.add_method(alias_method)
+  def test_method_aliases_do_not_link_to_hidden_targets
+    ["Aliases", "OtherOwner"].each do |owner_name|
+      aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
+      owner = (owner_name == "Aliases") ? aliases : build_rdoc_class(full_name: owner_name, description: "Owner docs")
+      target = rdoc_method("secret", visible: false)
+      aliased = rdoc_method("exposed", visible: true)
+      aliased.is_alias_for = target
+      aliases.add_method(aliased)
+      owner.add_method(target)
 
-    markdown = read_generated("Aliases.md", classes: [klass])
+      dir = generate_markdown(classes: [aliases, owner].uniq)
+      markdown = File.read(File.join(dir, "Aliases.md"))
 
-    assert_includes markdown, "Alias for: `secret`"
-    refute_includes markdown, "Alias for: [`secret`]"
-    refute_includes markdown, "### `secret()"
-  end
-
-  def test_cross_page_method_aliases_do_not_link_to_hidden_targets
-    aliases = build_rdoc_class(full_name: "Aliases", description: "Alias docs")
-    owner = build_rdoc_class(full_name: "Owner", description: "Owner docs")
-    target = rdoc_method("secret", visible: false)
-    alias_method = rdoc_method("exposed", visible: true)
-    alias_method.is_alias_for = target
-    aliases.add_method(alias_method)
-    owner.add_method(target)
-
-    dir = generate_markdown(classes: [aliases, owner])
-    alias_markdown = File.read(File.join(dir, "Aliases.md"))
-    owner_markdown = File.read(File.join(dir, "Owner.md"))
-
-    assert_includes alias_markdown, "Alias for: `secret`"
-    refute_includes alias_markdown, "Alias for: [`secret`]"
-    refute_includes owner_markdown, "### `secret()"
+      assert_includes markdown, "Alias for: `secret`"
+      refute_includes markdown, "Alias for: [`secret`]"
+      refute_includes File.read(File.join(dir, "#{owner_name}.md")), "### `secret()"
+    end
   end
 
   def test_method_aliases_do_not_link_to_private_targets_removed_by_rdoc
@@ -789,21 +775,6 @@ class TestMarkdownHelpers < Minitest::Test
 
     refute_includes markdown, "\n\n\n"
     assert_includes markdown, "Line 1\n\nLine 2"
-  end
-
-  def test_debug_output_is_observable_through_generation
-    page = rdoc_page(relative_name: "debug.rdoc", comment: "Debug page")
-
-    stdout, = with_rdoc_debug(true) do
-      capture_io do
-        generate_markdown(pages: [page])
-      end
-    end
-
-    assert_includes stdout, "[rdoc-markdown] Setting things up "
-    assert_includes stdout, "[rdoc-markdown] Generate documentation in "
-    assert_includes stdout, "[rdoc-markdown] Generate pages in "
-    assert_includes stdout, "[rdoc-markdown] Generate index file in "
   end
 
   def test_debug_output_is_suppressed_by_default

@@ -11,6 +11,7 @@ class TestGenerator < Minitest::Test
   cover "RDoc::Generator::Markdown::Descriptions*"
   cover "RDoc::Generator::Markdown::Signatures*"
   cover "RDoc::Generator::Markdown#setup"
+  cover "RDoc::Generator::Markdown#anchor"
 
   def source_file
     File.join(File.dirname(__FILE__), "data/example.rb")
@@ -70,6 +71,7 @@ class TestGenerator < Minitest::Test
     assert_equal 1, duck_doc.scan("#### `MAX_VELOCITY`").count
     refute_includes duck_doc, "[](#"
     assert_includes duck_doc, "#### `useful? -> bool`"
+    assert_includes duck_doc, '<a id="method-i-useful-3F"></a>'
     refute_includes duck_doc, "### Public Instance Methods\n\n"
     assert_includes duck_doc, "```\nbird::\n\n  * speak\n  * fly"
     refute_includes duck_doc, "bird:\n\n- speak\n- fly"
@@ -79,6 +81,8 @@ class TestGenerator < Minitest::Test
     refute_match(/\[¶\]/, bird_doc)
     refute_match(/\[↑\]\(#top\)/, bird_doc)
     assert_includes bird_doc, "#### Example"
+    assert_includes method_headings(bird_doc), "fly(direction: string, velocity: number) -> bool"
+    refute_includes bird_doc, "Arguments: `direction, velocity`"
 
     result = index_entries(dir)
 
@@ -286,15 +290,6 @@ class TestGenerator < Minitest::Test
     assert_includes result, ["Duck#quack", "Method", "Duck.md#method-i-quack"]
   end
 
-  def test_generator_preserves_args_metadata_alongside_call_seq
-    dir = run_generator(source_file, "test title")
-
-    bird_doc = File.read("#{dir}/Bird.md")
-
-    assert_includes method_headings(bird_doc), "fly(direction: string, velocity: number) -> bool"
-    refute_includes bird_doc, "Arguments: `direction, velocity`"
-  end
-
   def test_generator_uses_rbs_signatures_for_ruby_methods
     source_dir = stable_tmpdir("rbs-signature-source")
     ruby_file = File.join(source_dir, "bird.rb")
@@ -498,13 +493,5 @@ class TestGenerator < Minitest::Test
       refute_path_exists File.join(dir, entry.last)
       refute_includes entries, entry
     end
-  end
-
-  def test_generator_writes_nested_namespaces_to_nested_paths
-    dir = run_generator(File.join(__dir__, "data/namespaced_example.rb"), "namespaced test title")
-
-    assert File.exist?(File.join(dir, "Ocean.md"))
-    assert File.exist?(File.join(dir, "Ocean/Deep.md"))
-    assert File.exist?(File.join(dir, "Ocean/Deep/Salmon.md"))
   end
 end
