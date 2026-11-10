@@ -10,10 +10,6 @@ class TestPathHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#initialize"
   cover "RDoc::Generator::Markdown::Paths*"
 
-  def generator(root: nil)
-    RDoc::Generator::Markdown.new(nil, generator_options(op_dir: stable_tmpdir("generator"), root: root))
-  end
-
   def pages_root
     File.join(__dir__, "data/pages")
   end
@@ -40,13 +36,6 @@ class TestPathHelpers < Minitest::Test
     generator = RDoc::Generator::Markdown.new(store, generator_options(op_dir: dir, root: root))
     generator.generate
     dir
-  end
-
-  def test_initialize_leaves_classes_unset
-    markdown_generator = generator
-
-    assert_nil markdown_generator.classes
-    assert_nil markdown_generator.pages
   end
 
   def test_turn_to_path_writes_nested_namespaces_to_nested_paths

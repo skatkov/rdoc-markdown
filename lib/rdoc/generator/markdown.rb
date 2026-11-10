@@ -44,20 +44,6 @@ class RDoc::Generator::Markdown
   # @return [RDoc::Store]
   attr_reader :store
 
-  # Classes and modules selected for output.
-  #
-  # @return [Array<RDoc::Context>, nil]
-  def classes
-    generation_state&.classes
-  end
-
-  # Text files selected for output.
-  #
-  # @return [Array<RDoc::TopLevel>, nil]
-  def pages
-    generation_state&.pages
-  end
-
   # Creates a generator for an RDoc store and options.
   #
   # @param store [RDoc::Store] Source documentation store.
@@ -88,6 +74,20 @@ class RDoc::Generator::Markdown
   private
 
   attr_reader :generation_state, :options, :source_dir, :output_dir
+
+  # Classes and modules selected for output.
+  #
+  # @return [Array<RDoc::Context>]
+  def classes
+    generation_state.classes
+  end
+
+  # Text files selected for output.
+  #
+  # @return [Array<RDoc::TopLevel>]
+  def pages
+    generation_state.pages
+  end
 
   # Applies final whitespace and link normalization before writing Markdown.
   # Blank-line cleanup skips code: a fence is longer than any backtick run it contains.
