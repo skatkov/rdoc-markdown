@@ -6,6 +6,7 @@ require "rdoc/markdown"
 class TestMarkdownReferences < Minitest::Test
   cover "RDoc::Generator::Markdown::References*"
   cover "RDoc::Generator::Markdown::Inline*"
+  cover "RDoc::Generator::Markdown::MarkdownLinks*"
 
   def formatter(show_hash: false, hyperlink_all: false)
     options = RDoc::Options.new
@@ -79,6 +80,7 @@ class TestMarkdownReferences < Minitest::Test
     visitor = formatter
 
     assert_equal "[`Target`](Target.md)", visitor.attributes("+Target+")
+    assert_equal "[`Target`](Target.md) and `<title>`", visitor.attributes("`Target` and `<title>`")
     assert_equal "`run`", visitor.attributes("+run+")
     assert_equal "[`run`](Source.md#method-i-run)", formatter(hyperlink_all: true).attributes("+run+")
     assert_equal "[`run`](Source.md#method-i-run)", formatter(hyperlink_all: true).attributes("run")

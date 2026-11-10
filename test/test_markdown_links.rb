@@ -27,6 +27,21 @@ class TestMarkdownLinks < Minitest::Test
     assert_equal ["One.md", "Two.md"], html.css("a").map { |node| node["href"] }
   end
 
+  def test_backtick_code_keeps_html_tags_literal_before_quote_and_escape_conversion
+    source = "Should the `<title>` tag be generated for this page?"
+    assert_equal source, formatter.attributes(source)
+    assert_equal "“`<title>`”", formatter.attributes('"`<title>`"')
+
+    html = render('`<title>` `</title>` `<meta name="a&b">` `` `<code>` ``')
+    assert_equal ["<title>", "</title>", '<meta name="a&b">', "`<code>`"], html.css("code").map(&:text)
+    assert_empty html.css("title, meta")
+    assert_equal "café `<title>`", formatter.attributes("café `<title>`".encode(Encoding::ISO_8859_1))
+    assert_equal "`<title>`", render("<code>`<title>`</code>").at_css("code").text
+    linked = render("[`<title>`](Thing.html)")
+    assert_equal "<title>", linked.at_css("a code").text
+    assert_equal "Thing.md", linked.at_css("a")["href"]
+  end
+
   def test_nested_labels_parentheses_titles_and_spaces_use_the_markdown_parser
     html = render('[outer [inner] and *bold* +code+](https://example.test/a_(b) "A title")')
     assert_equal "https://example.test/a_(b)", html.at_css("a")["href"]
@@ -131,10 +146,13 @@ class TestMarkdownLinks < Minitest::Test
     assert_equal (0..10).map { |index| "Thing#{index}.md" }, render(text).css("a").map { |node| node["href"] }
   end
 
-  def test_source_without_markdown_links_keeps_its_encoding
-    text = "café".encode(Encoding::ISO_8859_1)
-    assert_equal text, RDoc::Generator::Markdown::MarkdownLinks.new(text).source
-    assert_equal Encoding::ISO_8859_1, RDoc::Generator::Markdown::MarkdownLinks.new(text).source.encoding
+  def test_source_without_protected_markdown_keeps_its_encoding
+    ["café", "café `word`", "café <title>"].each do |source|
+      text = source.encode(Encoding::ISO_8859_1)
+      prepared = RDoc::Generator::Markdown::MarkdownLinks.new(text).source
+      assert_equal text, prepared
+      assert_equal Encoding::ISO_8859_1, prepared.encoding
+    end
   end
 
   def test_links_after_multiple_unicode_lines_use_accumulated_byte_offsets

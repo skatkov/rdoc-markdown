@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 class RDoc::Generator::Markdown
-  # Protects Markdown links while RDoc parses the surrounding inline markup.
+  # Protects Markdown links and tag-like code while RDoc parses surrounding markup.
   class MarkdownLinks
-    # Both the parsed target and original RDoc label are needed at the boundary.
+    # Keeps the typed node and original RDoc label together at the boundary.
     Link = Data.define(:node, :label)
 
-    # RDoc source with collision-free link tokens instead of Markdown link syntax.
+    # RDoc source with collision-free tokens protecting Markdown links and code.
     # @return [String] Prepared inline RDoc source.
     attr_reader :source
 
@@ -15,20 +15,20 @@ class RDoc::Generator::Markdown
     def initialize(text)
       @source = text
       @nodes = {}
-      return unless text.include?("](")
+      return if !(text.include?("](") || (text.include?("`") && text.include?("<")))
 
       @source = text.encode(Encoding::UTF_8)
       @line_offsets = [0]
       @source.each_line { |line| @line_offsets << @line_offsets.last + line.bytesize }
       @literal_ranges = literal_ranges
       buffer = @source.b
-      link_edits.reverse_each { |range, token| buffer[range] = token }
+      inline_edits.reverse_each { |range, token| buffer[range] = token }
       @source = buffer.force_encoding(Encoding::UTF_8)
     end
 
     # Looks up only tokens created for this exact input.
     # @param token [String] Inline parser token.
-    # @return [Link, nil] Parsed Markdown link and its original label.
+    # @return [Link, nil] Protected Markdown node and its original label.
     def [](token)
       @nodes[token]
     end
@@ -48,15 +48,15 @@ class RDoc::Generator::Markdown
 
     private
 
-    # Uses source byte positions; links inside outer links/images stay together.
+    # Uses source byte positions; inline nodes inside outer links stay together.
     # @return [Array<Array(Range, String)>] Nonoverlapping source replacements.
-    def link_edits
+    def inline_edits
       prefix = "RDocMarkdown"
       prefix += "X" while @source.include?(prefix)
       edits = []
       covered_until = nil
       Commonmarker.parse(@source).walk do |node|
-        range = link_range(node)
+        range = inline_range(node)
         next if !range || (covered_until && range.begin < covered_until)
 
         token = "\0#{prefix}#{@nodes.length}\0"
@@ -67,17 +67,18 @@ class RDoc::Generator::Markdown
       edits
     end
 
-    # Keeps native RDoc links and literal code ahead of Markdown interpretation.
+    # Keeps native RDoc links and code-tag boundaries ahead of Markdown spans.
     # @param node [Commonmarker::Node] Candidate Markdown node.
-    # @return [Range<Integer>, nil] Replaceable Markdown link source range.
-    def link_range(node)
+    # @return [Range<Integer>, nil] Replaceable Markdown link or tag-like code range.
+    def inline_range(node)
       type = node.type
-      return unless [:link, :image].include?(type)
+      return unless [:link, :image, :code].include?(type)
+      return if type == :code && !node.string_content.include?("<")
 
       range = source_range(node)
       first = range.begin
       bytes = @source.b
-      return unless bytes[range].start_with?("[", "![")
+      return unless bytes[range].start_with?("[", "![", "`")
 
       previous = bytes[first - 1] unless first.zero?
       return if type == :link && previous&.match?(/[A-Za-z0-9}]/)

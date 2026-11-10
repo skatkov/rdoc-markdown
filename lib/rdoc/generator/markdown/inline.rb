@@ -60,16 +60,19 @@ class RDoc::Generator::Markdown
       super(@markdown_links.source)
     end
 
-    # Inserts parsed Markdown links without nesting links inside an outer label.
+    # Emits protected Markdown links and literal tag-like code without nested links.
     # @param token [String] Protected Markdown token or literal user input.
     # @return [String] Native Markdown or escaped literal text.
     def handle_regexp_markdown(token)
       link = @markdown_links&.[](token)
       return token unless link
 
-      label = dup.markdown_label(link.label)
       node = link.node
-      link_node = node.type == :link
+      type = node.type
+      return Syntax.code(node.string_content) if type == :code
+
+      label = dup.markdown_label(link.label)
+      link_node = type == :link
       target = rendering.reference.resolve(node.url) if link_node
       node.url = target.as_href(rendering.context.path) if target && emitted_reference?(target)
       (in_link_label? && link_node) ? label : MarkdownLinks.render(link, label)

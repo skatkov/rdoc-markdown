@@ -75,7 +75,7 @@ Not documented.
 Page title with site title or description appended rubocop:disable Metrics/CyclomaticComplexity
 
 ### `title?()`<a id="method-i-title-3F"></a>
-Should the ‘\<title\>\` tag be generated for this page?
+Should the `<title>` tag be generated for this page?
 
 ### `type()`<a id="method-i-type"></a>
 Not documented.
