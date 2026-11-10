@@ -25,14 +25,12 @@ class RDoc::Generator::Markdown
   include Descriptions
   include Index
   include Paths
-  include Signatures
 
   # Directory containing ERB templates.
   TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
 
   # Prepared objects and lookup tables used during one generation run.
   GenerationState = Data.define(
-    :output_dir,
     :classes,
     :pages,
     :class_output_paths,
@@ -89,7 +87,7 @@ class RDoc::Generator::Markdown
 
   private
 
-  attr_reader :generation_state, :options, :source_dir
+  attr_reader :generation_state, :options, :source_dir, :output_dir
 
   # Builds an HTML anchor tag.
   #
@@ -173,8 +171,8 @@ class RDoc::Generator::Markdown
     class_output_paths = classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
     pages = Selection.pages(store)
 
+    @output_dir = output_dir
     @generation_state = GenerationState.new(
-      output_dir: output_dir,
       classes: classes,
       pages: pages,
       class_output_paths: class_output_paths,
@@ -182,12 +180,5 @@ class RDoc::Generator::Markdown
       known_output_paths: class_output_paths.values.to_set.merge(pages.map { |page| page_output_path(page) }),
       root_path_segment: Pathname.new(options.root || ".").basename
     )
-  end
-
-  # Returns the prepared output directory.
-  #
-  # @return [String] Output directory.
-  def output_dir
-    generation_state.output_dir
   end
 end

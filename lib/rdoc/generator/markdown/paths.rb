@@ -9,7 +9,7 @@ module RDoc::Generator::Markdown::Paths
   # @return [String] Relative Markdown path.
   def page_output_path(page)
     relative_name = page.relative_name
-    source_path = normalize_input_path_for_output(relative_name)
+    source_path = RDoc::Generator::Markdown::Paths.normalize_input_path(relative_name, source_dir)
     return source_path if relative_name.match?(/\.(?:md|markdown)\z/i)
 
     dirname = File.dirname(source_path)
@@ -71,17 +71,6 @@ module RDoc::Generator::Markdown::Paths
         .map { |candidate| current_dir.join(candidate).cleanpath.to_s }
         .find { |candidate| state.known_output_paths.include?(candidate) }
   end
-
-  # Normalizes an input filename into an output-relative source path.
-  #
-  # @param path [String] RDoc input path.
-  #
-  # @return [String] Normalized path without root prefixes.
-  def normalize_input_path_for_output(path)
-    RDoc::Generator::Markdown::Paths.normalize_input_path(path, source_dir)
-  end
-
-  private :normalize_input_path_for_output
 
   # Normalizes an input path against an explicit source directory.
   #

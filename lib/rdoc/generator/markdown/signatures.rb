@@ -7,17 +7,6 @@ module RDoc::Generator::Markdown::Signatures
     "(" => ")", "[" => "]", "{" => "}"
   }.freeze
 
-  # Builds the visible method signature used in headings.
-  #
-  # @param method [RDoc::AnyMethod] Method object to render.
-  #
-  # @return [String] Complete signature including the method name or documented receiver.
-  def method_signature(method)
-    RDoc::Generator::Markdown::Signatures.render_method_signature(method, store)
-  end
-
-  private :method_signature
-
   # Builds a complete method heading signature from RDoc and store metadata.
   #
   # @param method [RDoc::AnyMethod] Method object to render.

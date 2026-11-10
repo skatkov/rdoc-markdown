@@ -63,7 +63,7 @@
 <%= "#" * group_heading_level %> <%= visibility.capitalize %> <%= type.capitalize %> Methods
 <% methods.each do |method| -%>
 
-<%= "#" * member_heading_level %> `<%= method_signature(method) %>`<%= anchor(method.aref) %>
+<%= "#" * member_heading_level %> `<%= Signatures.render_method_signature(method, store) %>`<%= anchor(method.aref) %>
 <%- aliases = method_aliases(method) -%>
 <%- if aliases -%>
 <%= aliases %>
