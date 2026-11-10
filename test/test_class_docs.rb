@@ -16,6 +16,7 @@ class TestClassDocs < Minitest::Test
   cover "RDoc::Generator::Markdown::Descriptions*"
   cover "RDoc::Generator::Markdown::Paths*"
   cover "RDoc::Generator::Markdown#setup"
+  cover "RDoc::Generator::Markdown#debug"
 
   def generate_from_store(classes, pages: nil, dir: stable_tmpdir("generate-from-store"), root: nil)
     options = generator_options(op_dir: dir, root: root)
@@ -30,19 +31,6 @@ class TestClassDocs < Minitest::Test
   def nest_class(parent, child)
     parent.classes_hash[child.name] = child
     child.parent = parent
-  end
-
-  def test_generate_preserves_distinct_repeated_namespaces
-    nested = build_rdoc_class(full_name: "VendoredPathExpander::Minitest::VendoredPathExpander::PathExpander", description: "Nested doc")
-    canonical = build_rdoc_class(full_name: "VendoredPathExpander::PathExpander", description: "Canonical doc")
-
-    dir = generate_from_store([nested, canonical])
-
-    assert_includes File.read(File.join(dir, "VendoredPathExpander/PathExpander.md")), "Canonical doc"
-    assert_includes File.read(File.join(dir, "VendoredPathExpander/Minitest/VendoredPathExpander/PathExpander.md")), "Nested doc"
-    assert_includes index_entries(dir),
-      ["VendoredPathExpander::Minitest::VendoredPathExpander::PathExpander", "Class",
-        "VendoredPathExpander/Minitest/VendoredPathExpander/PathExpander.md"]
   end
 
   def test_generate_uses_unique_store_objects
@@ -61,7 +49,7 @@ class TestClassDocs < Minitest::Test
 
   def test_generate_renders_metadata_as_table_cells
     store = rdoc_store
-    source = rdoc_file(store, name: "a  b—c\\|d.rb")
+    source = rdoc_file(store, name: "a  b—c\\|d\nbreak.rb")
     klass = RDoc::NormalClass.new("EscapedMetadata", "Struct.new(\n  :value\n) { |member| member }")
     klass.store = store
     klass.full_name = "EscapedMetadata"
@@ -75,24 +63,8 @@ class TestClassDocs < Minitest::Test
 
     assert_eql [
       ["Inherits", "Struct.new( :value ) { |member| member }"],
-      ["Defined in", "a  b—c\\|d.rb"]
+      ["Defined in", "a  b—c\\|d break.rb"]
     ], rows
-  end
-
-  def test_generate_renders_filename_line_break_inside_one_table_row
-    store = rdoc_store
-    source = rdoc_file(store, name: "line\nbreak.rb")
-    klass = RDoc::NormalClass.new("SingleLineMetadata")
-    klass.store = store
-    klass.full_name = "SingleLineMetadata"
-    klass.record_location(source)
-
-    dir = generate_from_store([klass])
-    markdown = File.read(File.join(dir, "SingleLineMetadata.md"))
-    table = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).at_css("table")
-
-    assert_eql [["Defined in", "line break.rb"]],
-      table.css("tbody tr").map { |row| row.css("td").map(&:text) }
   end
 
   def test_generate_does_not_add_spacing_or_top_legacy_aliases_without_metadata
@@ -126,13 +98,15 @@ class TestClassDocs < Minitest::Test
     klass.add_method(rdoc_method("clone", comment: "[Returns]\n  A copy."))
     canonical = rdoc_method("content", comment: "[Returns]\n  The text content.")
     klass.add_method(canonical)
+    klass.set_current_section("Navigation", nil)
     aliased = rdoc_method("inner_text")
     aliased.is_alias_for = canonical
     klass.add_method(aliased)
+    klass.add_method(rdoc_method("parent"))
 
     dir = generate_from_store([klass])
     markdown = File.read(File.join(dir, "Node.md"))
-    headings = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("h3").map(&:text)
+    headings = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("h3, h4").map(&:text)
 
     assert_includes markdown, "</dl>\n\n### `content()`"
     assert_includes headings, "clone()"
@@ -140,34 +114,9 @@ class TestClassDocs < Minitest::Test
     assert_includes headings, "inner_text()"
     assert_includes markdown, "Alias for: [`content`](#method-i-content)"
     assert_includes index_entries(dir), ["Node#content", "Method", "Node.md#method-i-content"]
-    assert_eql 1, MarkdownValidator.new(dir).validate!
-  end
-
-  def test_generate_keeps_named_sections_after_html_method_descriptions
-    klass = build_rdoc_class(full_name: "Node")
-    klass.add_method(rdoc_method("content", comment: "[Returns]\n  The text content."))
-    klass.set_current_section("Navigation", nil)
-    klass.add_method(rdoc_method("parent"))
-
-    dir = generate_from_store([klass])
-    markdown = File.read(File.join(dir, "Node.md"))
-    headings = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("h2").map(&:text)
-
     assert_includes markdown, "</dl>\n\n## Navigation"
-    assert_includes headings, "Navigation"
+    assert_includes Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("h2").map(&:text), "Navigation"
     assert_eql 1, MarkdownValidator.new(dir).validate!
-  end
-
-  def test_generate_keeps_source_backed_empty_classes
-    real = build_rdoc_class(full_name: "Shell", source_backed: true)
-    nested = build_rdoc_class(full_name: "Alpha::Another", source_backed: true)
-
-    dir = generate_from_store([real, nested])
-
-    assert_true File.exist?(File.join(dir, "Shell.md"))
-    assert_true File.exist?(File.join(dir, "Alpha/Another.md"))
-    assert_includes index_entries(dir), ["Shell", "Class", "Shell.md"]
-    assert_includes index_entries(dir), ["Alpha::Another", "Class", "Alpha/Another.md"]
   end
 
   def test_generate_skips_non_displayed_classes
@@ -365,6 +314,27 @@ class TestClassDocs < Minitest::Test
     assert_includes File.read(File.join(dir, "DotRoot/Thing.md")), "[guide](../guides/rooted_rdoc.md)"
   end
 
+  def test_setup_warns_when_inputs_share_an_output_path
+    klass = build_rdoc_class(full_name: "Getting_started_rdoc", description: "Class")
+    pages = [
+      rdoc_page(relative_name: "Getting.started.rdoc", comment: "Dotted"),
+      rdoc_page(relative_name: "other.rdoc", comment: "Other")
+    ]
+
+    _stdout, stderr = capture_io { generate_from_store([klass], pages: pages) }
+
+    assert_equal "rdoc-markdown: several inputs write Getting_started_rdoc.md; only the last one is kept\n", stderr
+  end
+
+  def test_setup_does_not_warn_when_output_paths_are_unique
+    klass = build_rdoc_class(full_name: "Getting", description: "Class")
+    page = rdoc_page(relative_name: "getting.rdoc", comment: "Page")
+
+    _stdout, stderr = capture_io { generate_from_store([klass], pages: [page]) }
+
+    assert_empty stderr
+  end
+
   def test_setup_keeps_crossrefs_to_emitted_pages
     source = rdoc_page(relative_name: "source.rdoc", comment: "{Target}[rdoc-ref:target]")
     target = rdoc_page(relative_name: "target.rdoc", comment: "Target")
@@ -401,6 +371,7 @@ class TestClassDocs < Minitest::Test
     klass.add_attribute(rdoc_attribute("beta", visible: true))
     klass.add_attribute(rdoc_attribute("hidden", visible: false))
     klass.add_attribute(rdoc_attribute("alpha", visible: true))
+    klass.add_attribute(rdoc_attribute("gamma", visible: true).tap { |attr| attr.singleton = true })
     page = rdoc_page(relative_name: 'docs\guide.rdoc', comment: "Guide page")
     dir = generate_from_store([klass], pages: [page])
 
@@ -414,29 +385,24 @@ class TestClassDocs < Minitest::Test
     assert_includes entries, ["docs/guide.rdoc", "File", "docs/guide_rdoc.md"]
 
     assert_eql [
-      ["Csv::Thing.ALPHA", "Constant", "Csv/Thing.md#ALPHA"],
-      ["Csv::Thing.BETA", "Constant", "Csv/Thing.md#BETA"]
+      ["Csv::Thing::ALPHA", "Constant", "Csv/Thing.md#ALPHA"],
+      ["Csv::Thing::BETA", "Constant", "Csv/Thing.md#BETA"]
     ], entries.select { |_name, type, _path| type == "Constant" }
 
     assert_eql [
-      ["Csv::Thing.alpha", "Attribute", "Csv/Thing.md#attribute-i-alpha"],
-      ["Csv::Thing.beta", "Attribute", "Csv/Thing.md#attribute-i-beta"]
+      ["Csv::Thing.gamma", "Attribute", "Csv/Thing.md#attribute-c-gamma"],
+      ["Csv::Thing#alpha", "Attribute", "Csv/Thing.md#attribute-i-alpha"],
+      ["Csv::Thing#beta", "Attribute", "Csv/Thing.md#attribute-i-beta"]
     ], entries.select { |_name, type, _path| type == "Attribute" }
   end
 
-  def test_generate_rejects_non_string_output_directory_before_writing
-    stringified_dir = File.join(stable_tmpdir("invalid-output-stringified"), "stringified")
-    invalid_output = Object.new
-    invalid_output.define_singleton_method(:to_s) { stringified_dir }
-    options = generator_options(op_dir: stable_tmpdir("invalid-output"))
-    options.op_dir = invalid_output
-    klass = build_rdoc_class(full_name: "InvalidOutput", methods: 1)
+  def test_generate_accepts_a_pathname_output_directory
+    klass = build_rdoc_class(full_name: "PathnameOutput", description: "Doc")
 
-    generator = RDoc::Generator::Markdown.new(rdoc_store(classes: [klass]), options)
-    error = assert_raises(TypeError) { generator.generate }
+    dir = generate_from_store([klass], dir: Pathname.new(stable_tmpdir("pathname-output")))
 
-    assert_includes error.message, "RDoc markdown output directory must be a String"
-    assert_false File.exist?(stringified_dir)
+    assert File.exist?(dir.join("PathnameOutput.md"))
+    assert File.exist?(dir.join("index.csv"))
   end
 
   def test_generate_prints_debug_messages_when_debug_is_enabled

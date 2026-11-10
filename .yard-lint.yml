@@ -4,8 +4,6 @@ inherit_gem:
 AllValidators:
   Exclude:
     - '\.git'
-    - ".erb_linters"
-    - ".erb_linters/**/*"
     - "coverage"
     - "coverage/**/*"
     - "tmp"

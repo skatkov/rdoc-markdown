@@ -9,15 +9,6 @@ class TestPathHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#emit_pagefiles"
   cover "RDoc::Generator::Markdown#initialize"
   cover "RDoc::Generator::Markdown::Paths*"
-  cover "RDoc::Generator::Markdown#anchor"
-
-  def generator(root: nil)
-    RDoc::Generator::Markdown.new(nil, generator_options(op_dir: stable_tmpdir("generator"), root: root))
-  end
-
-  def source_file
-    File.join(__dir__, "data/example.rb")
-  end
 
   def pages_root
     File.join(__dir__, "data/pages")
@@ -45,13 +36,6 @@ class TestPathHelpers < Minitest::Test
     generator = RDoc::Generator::Markdown.new(store, generator_options(op_dir: dir, root: root))
     generator.generate
     dir
-  end
-
-  def test_initialize_leaves_classes_unset
-    markdown_generator = generator
-
-    assert_nil markdown_generator.classes
-    assert_nil markdown_generator.pages
   end
 
   def test_turn_to_path_writes_nested_namespaces_to_nested_paths
@@ -144,21 +128,11 @@ class TestPathHelpers < Minitest::Test
     assert_includes relative_entries, ["guides/relative.rdoc", "File", "guides/relative_rdoc.md"]
   end
 
-  def test_anchor_writes_method_anchor_tags_into_generated_docs
-    dir = generate_docs(files: source_file, title: "anchor test title") do |options|
-      options.visibility = :private
-    end
-
-    duck_doc = File.read(File.join(dir, "Duck.md"))
-
-    assert_includes duck_doc, '<a id="method-i-useful-3F"></a>'
-    assert_includes duck_doc, '<a id="method-i-quack"></a>'
-  end
-
   def test_generate_writes_page_descriptions_to_markdown_paths
     store = rdoc_store
     rdoc_page(store, relative_name: "./docs/dot.rdoc", comment: "Dot path")
     rdoc_page(store, relative_name: "/docs/absolute.rdoc", comment: "Absolute path")
+    rdoc_page(store, relative_name: "../../up/docs/../parent.rdoc", comment: "Parent path")
     rdoc_page(store, relative_name: 'docs\\windows.rdoc', comment: "Windows path")
     rdoc_page(store, relative_name: "guides/intro.rdoc", comment: "= Intro")
     rdoc_page(store, relative_name: "docs/getting_started.rdoc", comment: "= Intro")
@@ -171,10 +145,26 @@ class TestPathHelpers < Minitest::Test
     assert_eql "Dot path\n", File.read(File.join(dir, "docs/dot_rdoc.md"))
     assert_eql "Absolute path\n", File.read(File.join(dir, "docs/absolute_rdoc.md"))
     assert_eql "Windows path\n", File.read(File.join(dir, "docs/windows_rdoc.md"))
+    assert_eql "Parent path\n", File.read(File.join(dir, "up/docs/../parent_rdoc.md"))
 
     entries = index_entries(dir)
     assert_includes entries, ["docs/dot.rdoc", "File", "docs/dot_rdoc.md"]
     assert_includes entries, ["docs/absolute.rdoc", "File", "docs/absolute_rdoc.md"]
     assert_includes entries.map(&:last), "docs/windows_rdoc.md"
+  end
+
+  def test_pages_outside_root_are_written_inside_the_output_directory
+    workspace, root = project_fixture("outside-root-pages", "docs/inside.rdoc" => "Inside")
+    File.write(File.join(workspace, "notes.md"), "# Notes")
+    FileUtils.mkdir_p(File.join(workspace, "shared"))
+    File.write(File.join(workspace, "shared", "guide.rdoc"), "Guide")
+
+    dir = Dir.chdir(root) { generate_docs(files: %w[docs/inside.rdoc ../notes.md ../shared/guide.rdoc], title: "outside") }
+
+    assert_equal "# Notes", File.read(File.join(dir, "notes.md"))
+    assert_equal "Guide\n", File.read(File.join(dir, "shared/guide_rdoc.md"))
+    refute File.exist?(File.join(workspace, "shared", "guide_rdoc.md"))
+    assert_includes index_entries(dir), ["notes.md", "File", "notes.md"]
+    assert_includes index_entries(dir), ["shared/guide.rdoc", "File", "shared/guide_rdoc.md"]
   end
 end

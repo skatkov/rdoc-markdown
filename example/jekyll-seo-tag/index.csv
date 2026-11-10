@@ -4,9 +4,9 @@ Jekyll::SeoTag,Class,Jekyll/SeoTag.md
 Jekyll::SeoTag.new,Method,Jekyll/SeoTag.md#method-c-new
 Jekyll::SeoTag#render,Method,Jekyll/SeoTag.md#method-i-render
 Jekyll::SeoTag.template,Method,Jekyll/SeoTag.md#method-c-template
-Jekyll::SeoTag.MINIFY_REGEX,Constant,Jekyll/SeoTag.md#MINIFY_REGEX
-Jekyll::SeoTag.VERSION,Constant,Jekyll/SeoTag.md#VERSION
-Jekyll::SeoTag.context,Attribute,Jekyll/SeoTag.md#attribute-i-context
+Jekyll::SeoTag::MINIFY_REGEX,Constant,Jekyll/SeoTag.md#MINIFY_REGEX
+Jekyll::SeoTag::VERSION,Constant,Jekyll/SeoTag.md#VERSION
+Jekyll::SeoTag#context,Attribute,Jekyll/SeoTag.md#attribute-i-context
 Jekyll::SeoTag::AuthorDrop,Class,Jekyll/SeoTag/AuthorDrop.md
 Jekyll::SeoTag::AuthorDrop.new,Method,Jekyll/SeoTag/AuthorDrop.md#method-c-new
 Jekyll::SeoTag::AuthorDrop#name,Method,Jekyll/SeoTag/AuthorDrop.md#method-i-name
@@ -35,9 +35,9 @@ Jekyll::SeoTag::Drop#logo,Method,Jekyll/SeoTag/Drop.md#method-i-logo
 Jekyll::SeoTag::Drop#page_lang,Method,Jekyll/SeoTag/Drop.md#method-i-page_lang
 Jekyll::SeoTag::Drop#page_locale,Method,Jekyll/SeoTag/Drop.md#method-i-page_locale
 Jekyll::SeoTag::Drop#canonical_url,Method,Jekyll/SeoTag/Drop.md#method-i-canonical_url
-Jekyll::SeoTag::Drop.FORMAT_STRING_METHODS,Constant,Jekyll/SeoTag/Drop.md#FORMAT_STRING_METHODS
-Jekyll::SeoTag::Drop.HOMEPAGE_OR_ABOUT_REGEX,Constant,Jekyll/SeoTag/Drop.md#HOMEPAGE_OR_ABOUT_REGEX
-Jekyll::SeoTag::Drop.TITLE_SEPARATOR,Constant,Jekyll/SeoTag/Drop.md#TITLE_SEPARATOR
+Jekyll::SeoTag::Drop::FORMAT_STRING_METHODS,Constant,Jekyll/SeoTag/Drop.md#FORMAT_STRING_METHODS
+Jekyll::SeoTag::Drop::HOMEPAGE_OR_ABOUT_REGEX,Constant,Jekyll/SeoTag/Drop.md#HOMEPAGE_OR_ABOUT_REGEX
+Jekyll::SeoTag::Drop::TITLE_SEPARATOR,Constant,Jekyll/SeoTag/Drop.md#TITLE_SEPARATOR
 Jekyll::SeoTag::Filters,Class,Jekyll/SeoTag/Filters.md
 Jekyll::SeoTag::Filters.new,Method,Jekyll/SeoTag/Filters.md#method-c-new
 Jekyll::SeoTag::ImageDrop,Class,Jekyll/SeoTag/ImageDrop.md
@@ -46,7 +46,7 @@ Jekyll::SeoTag::ImageDrop#path,Method,Jekyll/SeoTag/ImageDrop.md#method-i-path
 Jekyll::SeoTag::ImageDrop#to_s,Method,Jekyll/SeoTag/ImageDrop.md#method-i-to_s
 Jekyll::SeoTag::JSONLD,Module,Jekyll/SeoTag/JSONLD.md
 Jekyll::SeoTag::JSONLD#json_ld,Method,Jekyll/SeoTag/JSONLD.md#method-i-json_ld
-Jekyll::SeoTag::JSONLD.METHODS_KEYS,Constant,Jekyll/SeoTag/JSONLD.md#METHODS_KEYS
+Jekyll::SeoTag::JSONLD::METHODS_KEYS,Constant,Jekyll/SeoTag/JSONLD.md#METHODS_KEYS
 Jekyll::SeoTag::JSONLDDrop,Class,Jekyll/SeoTag/JSONLDDrop.md
 Jekyll::SeoTag::JSONLDDrop.new,Method,Jekyll/SeoTag/JSONLDDrop.md#method-c-new
 Jekyll::SeoTag::JSONLDDrop#fallback_data,Method,Jekyll/SeoTag/JSONLDDrop.md#method-i-fallback_data

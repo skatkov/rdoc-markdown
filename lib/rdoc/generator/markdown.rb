@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
 require "erb"
-# standard:disable Lint/RedundantRequireStatement
-require "set"
-# standard:enable Lint/RedundantRequireStatement
-require "reverse_markdown"
+require "nokogiri"
 require "csv"
 require "fileutils"
 
@@ -12,9 +9,11 @@ require "fileutils"
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
 
-  require_relative "markdown/conversion"
-  require_relative "markdown/crossref"
+  require_relative "markdown/syntax"
+  require_relative "markdown/references"
+  require_relative "markdown/html_input"
   require_relative "markdown/descriptions"
+  require_relative "markdown/formatter"
   require_relative "markdown/index"
   require_relative "markdown/paths"
   require_relative "markdown/selection"
@@ -23,14 +22,12 @@ class RDoc::Generator::Markdown
   include Descriptions
   include Index
   include Paths
-  include Signatures
 
   # Directory containing ERB templates.
   TEMPLATE_DIR = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "templates"))
 
   # Prepared objects and lookup tables used during one generation run.
   GenerationState = Data.define(
-    :output_dir,
     :classes,
     :pages,
     :class_output_paths,
@@ -43,20 +40,6 @@ class RDoc::Generator::Markdown
   #
   # @return [RDoc::Store]
   attr_reader :store
-
-  # Classes and modules selected for output.
-  #
-  # @return [Array<RDoc::Context>, nil]
-  def classes
-    generation_state&.classes
-  end
-
-  # Text files selected for output.
-  #
-  # @return [Array<RDoc::TopLevel>, nil]
-  def pages
-    generation_state&.pages
-  end
 
   # Creates a generator for an RDoc store and options.
   #
@@ -87,28 +70,35 @@ class RDoc::Generator::Markdown
 
   private
 
-  attr_reader :generation_state, :options, :source_dir
+  attr_reader :generation_state, :options, :source_dir, :output_dir
 
-  # Builds an HTML anchor tag.
+  # Classes and modules selected for output.
   #
-  # @param id [String] Fragment identifier for the generated anchor.
+  # @return [Array<RDoc::Context>]
+  def classes
+    generation_state.classes
+  end
+
+  # Text files selected for output.
   #
-  # @return [String] HTML anchor tag.
-  def anchor(id)
-    %(<a id="#{id}"></a>)
+  # @return [Array<RDoc::TopLevel>]
+  def pages
+    generation_state.pages
   end
 
   # Applies final whitespace and link normalization before writing Markdown.
+  # Blank-line cleanup skips code: a fence is longer than any backtick run it contains.
   #
   # @param content [String] Markdown content.
   # @param current_output_path [String] Output path for the file being written.
   #
   # @return [String] Final Markdown ending with one newline.
   def finalize_markdown(content, current_output_path:)
-    normalized = normalize_internal_links(
+    normalized = Paths.rewrite_internal_links(
       content.lines.map(&:rstrip).join("\n"),
-      current_output_path: current_output_path
-    ).sub(/\n{3,}/, "\n\n").gsub(/^(#+ .+)\n\n/, "\\1\n")
+      current_output_path, generation_state
+    ).gsub(/(`{3,}).+?\1|\n{3,}/m) { ($1) ? $& : "\n\n" }
+      .gsub(/(`{3,}).+?\1|^(#+ [^\n]+)\n\n/m) { ($2) ? "#{$2}\n" : $& }
     "#{normalized}\n"
   end
 
@@ -153,7 +143,7 @@ class RDoc::Generator::Markdown
 
       next FileUtils.cp(File.expand_path(page.absolute_name, source_dir), out_file) if page.relative_name.match?(/\.(?:md|markdown)\z/i)
 
-      content = Conversion.markdownify(render_description(page))
+      content = describe(page)
       File.write(out_file, finalize_markdown(content, current_output_path: output_path))
     end
   end
@@ -162,30 +152,22 @@ class RDoc::Generator::Markdown
   #
   # @return [void]
   def setup
-    output_dir = options.op_dir
-    unless output_dir.instance_of?(String)
-      raise TypeError, "RDoc markdown output directory must be a String"
-    end
-
     classes = Selection.classes(store)
     class_output_paths = classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
     pages = Selection.pages(store)
+    known_output_paths = Set.new
+    (class_output_paths.values + pages.map { |page| page_output_path(page) }).each do |path|
+      warn "rdoc-markdown: several inputs write #{path}; only the last one is kept" unless known_output_paths.add?(path)
+    end
 
+    @output_dir = options.op_dir
     @generation_state = GenerationState.new(
-      output_dir: output_dir,
       classes: classes,
       pages: pages,
       class_output_paths: class_output_paths,
       markdown_output_object_ids: (classes + pages).to_set(&:object_id),
-      known_output_paths: class_output_paths.values.to_set.merge(pages.map { |page| page_output_path(page) }),
+      known_output_paths: known_output_paths,
       root_path_segment: Pathname.new(options.root || ".").basename
     )
-  end
-
-  # Returns the prepared output directory.
-  #
-  # @return [String] Output directory.
-  def output_dir
-    generation_state.output_dir
   end
 end

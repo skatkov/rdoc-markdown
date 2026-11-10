@@ -2,15 +2,6 @@
 
 # Resolves source and generated documentation paths.
 module RDoc::Generator::Markdown::Paths
-  # Converts a qualified object name into a Markdown path.
-  #
-  # @param class_name [String] Qualified class or module name.
-  #
-  # @return [String] Relative Markdown path.
-  def turn_to_path(class_name)
-    "#{class_name.gsub("::", "/")}.md"
-  end
-
   # Builds the Markdown output path for an RDoc page.
   #
   # @param page [RDoc::TopLevel] Page object to render.
@@ -18,7 +9,7 @@ module RDoc::Generator::Markdown::Paths
   # @return [String] Relative Markdown path.
   def page_output_path(page)
     relative_name = page.relative_name
-    source_path = normalize_input_path_for_output(relative_name)
+    source_path = RDoc::Generator::Markdown::Paths.normalize_input_path(relative_name, source_dir)
     return source_path if relative_name.match?(/\.(?:md|markdown)\z/i)
 
     dirname = File.dirname(source_path)
@@ -35,26 +26,13 @@ module RDoc::Generator::Markdown::Paths
   #
   # @return [String] Relative Markdown path.
   def output_path_for(code_object)
-    turn_to_path(code_object.full_name)
+    "#{code_object.full_name.gsub("::", "/")}.md"
   end
 
-  # Rewrites local Markdown links relative to the current output file.
-  #
-  # @param markdown [String] Markdown content.
-  # @param current_output_path [String] Output path for the file being written.
-  #
-  # @return [String] Markdown with normalized internal links.
-  def normalize_internal_links(markdown, current_output_path:)
-    RDoc::Generator::Markdown::Paths.rewrite_internal_links(
-      markdown,
-      current_output_path,
-      generation_state
-    )
-  end
-
-  private :turn_to_path, :page_output_path, :output_path_for, :normalize_internal_links
+  private :page_output_path, :output_path_for
 
   # Rewrites links using explicit generated-path state.
+  # Code spans and fences are skipped; prose backticks are always escaped.
   #
   # @param markdown [String] Markdown content.
   # @param current_output_path [String] Output path for the current file.
@@ -64,8 +42,10 @@ module RDoc::Generator::Markdown::Paths
   def self.rewrite_internal_links(markdown, current_output_path, state)
     current_dir = Pathname.new(current_output_path).dirname
 
-    markdown.gsub(%r{\]\(([^)]+)\)}) do
-      target = Regexp.last_match(1)
+    markdown.gsub(/(?<!\\)(`+).+?\1|\]\(([^)]+)\)/m) do
+      next $& if $1
+
+      target = $2
       path = target.sub(/[?#].*\z/, "")
       suffix = target[path.length..]
 
@@ -95,27 +75,16 @@ module RDoc::Generator::Markdown::Paths
         .find { |candidate| state.known_output_paths.include?(candidate) }
   end
 
-  # Normalizes an input filename into an output-relative source path.
-  #
-  # @param path [String] RDoc input path.
-  #
-  # @return [String] Normalized path without root prefixes.
-  def normalize_input_path_for_output(path)
-    RDoc::Generator::Markdown::Paths.normalize_input_path(path, source_dir)
-  end
-
-  private :normalize_input_path_for_output
-
   # Normalizes an input path against an explicit source directory.
   #
   # @param path [String] RDoc input path.
   # @param source_dir [String] Absolute documentation source directory.
   #
-  # @return [String] Normalized path without root prefixes.
+  # @return [String] Normalized path without root or parent-directory prefixes.
   def self.normalize_input_path(path, source_dir)
     normalized = path.tr("\\", "/").sub(%r{\A\./}, "")
     normalized = normalized.sub(%r{\A#{Regexp.escape(source_dir)}/}, "")
-    normalized = normalized.sub(%r{\A/}, "")
+    normalized = normalized.sub(%r{\A(?:\.\./|/)+}, "")
 
     root_basename = File.basename(source_dir)
     normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, "")

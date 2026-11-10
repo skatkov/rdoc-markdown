@@ -33,42 +33,25 @@ module RDoc::Generator::Markdown::Descriptions
   # Renders an RDoc description with links limited to emitted objects.
   #
   # @param code_object [RDoc::CodeObject, RDoc::Context::Section] Object whose description is rendered.
+  # @param heading_level_offset [Integer] Levels to add to comment headings.
   #
-  # @return [String] HTML description.
-  def render_description(code_object)
-    formatter = description_formatter(code_object)
-    formatter.extend(RDoc::Generator::Markdown::CrossrefExtension)
-    formatter.with_markdown_cross_references(
-      RDoc::CrossReference.new(formatter.context),
-      generation_state.markdown_output_object_ids
-    ) do
-      render_formatted_description(code_object, formatter, options.locale)
+  # @return [String] Markdown description.
+  def render_description(code_object, heading_level_offset:)
+    formatter = RDoc::Generator::Markdown::Formatter.new(
+      code_object,
+      output_object_ids: generation_state.markdown_output_object_ids,
+      heading_level_offset: heading_level_offset
+    )
+    locale = options.locale
+    document = if RDoc::Context::Section === code_object
+      documents = code_object.comments.map { |comment| localized_comment_document(comment, locale) }
+      RDoc::Markup::Document.new(*documents)
+    else
+      comment = (RDoc::ClassModule === code_object) ? code_object.comment_location : code_object.comment
+      comment = RDoc::I18n::Text.new(comment).translate(locale) if locale
+      code_object.parse(comment)
     end
-  end
-
-  # Returns the formatter appropriate for an object or section.
-  #
-  # @param code_object [RDoc::CodeObject, RDoc::Context::Section] Described object.
-  #
-  # @return [RDoc::Markup::Formatter] Formatter configured for the object.
-  def description_formatter(code_object)
-    return code_object.formatter unless RDoc::Context::Section === code_object
-
-    code_object.parent.formatter.dup.tap { |copy| copy.code_object = code_object }
-  end
-
-  # Renders an object through its configured formatter.
-  #
-  # @param code_object [RDoc::CodeObject, RDoc::Context::Section] Described object.
-  # @param formatter [RDoc::Markup::Formatter] Formatter receiving parsed markup.
-  # @param locale [RDoc::I18n::Locale, nil] Translation locale.
-  #
-  # @return [String] Formatted HTML description.
-  def render_formatted_description(code_object, formatter, locale)
-    return code_object.description unless RDoc::Context::Section === code_object
-
-    documents = code_object.comments.map { |comment| localized_comment_document(comment, locale) }
-    RDoc::Markup::Document.new(*documents).accept(formatter)
+    document.accept(formatter).rstrip
   end
 
   # Parses one section comment, translating a copy when needed.
@@ -93,25 +76,10 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [String] Rendered description or fallback text.
   def describe(code_object, fallback: nil, heading_level_offset: 0)
-    description = render_description(code_object)
-    return fallback.to_s if description.empty?
-
     comment = code_object.comment
     heading_level_offset = 0 if RDoc::Comment === comment && comment.format == "markdown"
-    RDoc::Generator::Markdown::Conversion.markdownify(description, heading_level_offset: heading_level_offset)
-  end
-
-  # Renders a section description as Markdown.
-  #
-  # @param section [RDoc::Context::Section] RDoc section whose description appears before grouped members.
-  # @param heading_level_offset [Integer] Heading levels to add while rendering.
-  #
-  # @return [String] Rendered section description.
-  def section_description(section, heading_level_offset:)
-    RDoc::Generator::Markdown::Conversion.markdownify(
-      render_description(section),
-      heading_level_offset: heading_level_offset
-    )
+    description = render_description(code_object, heading_level_offset: heading_level_offset)
+    description.empty? ? fallback.to_s : description
   end
 
   # Renders a method description or an alias fallback.
@@ -128,7 +96,9 @@ module RDoc::Generator::Markdown::Descriptions
     aliased_method = method.is_alias_for
     return "Not documented." unless aliased_method
 
-    alias_description(aliased_method, method_link(aliased_method, current_class: current_class))
+    name = aliased_method.name
+    link = method_link(aliased_method, current_class: current_class)
+    link ? "Alias for: [`#{name}`](#{link})" : "Alias for: `#{name}`"
   end
 
   # Lists aliases that have generated documentation sections.
@@ -147,19 +117,6 @@ module RDoc::Generator::Markdown::Descriptions
     return if links.empty?
 
     "Also known as: #{links.join(", ")}"
-  end
-
-  # Formats an alias fallback with an optional target link.
-  #
-  # @param aliased_method [RDoc::AnyMethod] Alias target.
-  # @param link [String, nil] Generated link target.
-  #
-  # @return [String] Alias description.
-  def alias_description(aliased_method, link)
-    name = aliased_method.name
-    return "Alias for: `#{name}`" unless link
-
-    "Alias for: [`#{name}`](#{link})"
   end
 
   # Builds a Markdown link target for an aliased method.

@@ -9,8 +9,8 @@ Gem::Specification.new do |spec|
   spec.email = ["github@skatkov.com"]
   spec.license = "GPL-3.0-or-later"
 
-  spec.summary = "RDoc plugin to generate markdown documentation  "
-  spec.description = "RDoc plugin to generate markdown documentation and search index as sqlite database for entire content."
+  spec.summary = "RDoc plugin to generate markdown documentation"
+  spec.description = "RDoc plugin to generate markdown documentation and a CSV search index for its entire content."
   spec.homepage = "https://poshtui.com"
   spec.required_ruby_version = ">= 3.3.0"
 
@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/skatkov/rdoc-markdown"
-  spec.metadata["changelog_uri"] = "https://github.com/skatkov/rdoc-markdown"
+  spec.metadata["changelog_uri"] = "https://github.com/skatkov/rdoc-markdown/blob/main/CHANGELOG.md"
 
   spec.files = Dir["lib/**/*.{rb,erb}", "sig/**/*.rbs", "{CHANGELOG.md,LICENSE,README.md}"]
   spec.require_paths = ["lib"]
@@ -26,13 +26,11 @@ Gem::Specification.new do |spec|
   spec.add_dependency "csv"
   spec.add_dependency "erb"
   spec.add_dependency "rdoc", ">= 8.0"
-  spec.add_dependency "reverse_markdown"
+  spec.add_dependency "nokogiri"
+  spec.add_dependency "commonmarker", "~> 2.8"
 
-  spec.add_development_dependency "bundler", ">= 2.0"
-  spec.add_development_dependency "commonmarker"
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "minitest-strict", "~> 1.0"
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "simplecov"
-  spec.add_development_dependency "ruby-lsp"
 end

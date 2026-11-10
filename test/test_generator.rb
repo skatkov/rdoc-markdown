@@ -11,6 +11,7 @@ class TestGenerator < Minitest::Test
   cover "RDoc::Generator::Markdown::Descriptions*"
   cover "RDoc::Generator::Markdown::Signatures*"
   cover "RDoc::Generator::Markdown#setup"
+  cover "RDoc::Generator::Markdown#anchor"
 
   def source_file
     File.join(File.dirname(__FILE__), "data/example.rb")
@@ -70,15 +71,17 @@ class TestGenerator < Minitest::Test
     assert_equal 1, duck_doc.scan("#### `MAX_VELOCITY`").count
     refute_includes duck_doc, "[](#"
     assert_includes duck_doc, "#### `useful? -> bool`"
+    assert_includes duck_doc, '<a id="method-i-useful-3F"></a>'
     refute_includes duck_doc, "### Public Instance Methods\n\n"
-    assert_includes duck_doc, "bird:\n\n- speak\n- fly"
-    refute_includes duck_doc, "```\nbird::"
+    assert_includes duck_doc, "bird:\n\n- speak\n- fly\n\nwaterfowl:\n\n- swim"
 
     bird_doc = File.read("#{dir}/Bird.md")
     refute_includes bird_doc, "| **Includes** |"
     refute_match(/\[¶\]/, bird_doc)
     refute_match(/\[↑\]\(#top\)/, bird_doc)
     assert_includes bird_doc, "#### Example"
+    assert_includes method_headings(bird_doc), "fly(direction: string, velocity: number) -> bool"
+    refute_includes bird_doc, "Arguments: `direction, velocity`"
 
     result = index_entries(dir)
 
@@ -91,11 +94,11 @@ class TestGenerator < Minitest::Test
       ["Duck.rubber_ducks", "Method", "Duck.md#method-c-rubber_ducks"],
       ["Duck.new", "Method", "Duck.md#method-c-new"],
       ["Duck#useful?", "Method", "Duck.md#method-i-useful-3F"],
-      ["Duck.MAX_VELOCITY", "Constant", "Duck.md#MAX_VELOCITY"],
-      ["Duck.domestic", "Attribute", "Duck.md#attribute-i-domestic"],
-      ["Duck.rubber", "Attribute", "Duck.md#attribute-i-rubber"],
+      ["Duck::MAX_VELOCITY", "Constant", "Duck.md#MAX_VELOCITY"],
+      ["Duck#domestic", "Attribute", "Duck.md#attribute-i-domestic"],
+      ["Duck#rubber", "Attribute", "Duck.md#attribute-i-rubber"],
       ["Object", "Class", "Object.md"],
-      ["Object.DEFAULT_DUCK_VELOCITY", "Constant", "Object.md#DEFAULT_DUCK_VELOCITY"],
+      ["Object::DEFAULT_DUCK_VELOCITY", "Constant", "Object.md#DEFAULT_DUCK_VELOCITY"],
       ["Waterfowl", "Module", "Waterfowl.md"],
       ["Waterfowl#swim", "Method", "Waterfowl.md#method-i-swim"]
     ]
@@ -167,6 +170,45 @@ class TestGenerator < Minitest::Test
     assert_includes markdown, "### `run()`<a id=\"method-c-run\"></a>\nRuns an operation."
     assert_includes markdown, "### `execute()`<a id=\"method-i-execute\"></a>"
     refute_includes markdown, "Also known as:"
+  end
+
+  def test_generator_omits_linter_directives_from_descriptions_but_keeps_code_examples
+    _workspace, root = project_fixture(
+      "linter-directives",
+      "directives.rb" => <<~RUBY
+        # Useful class docs.
+        # rubocop:disable Metrics/ClassLength
+        class DirectiveExamples
+          # Useful method docs.
+          # standard:disable Style/StringLiterals
+          def documented; end
+
+          # rubocop:enable Metrics/CyclomaticComplexity
+          # standard:enable all
+          # rubocop:todo Style/Documentation
+          def undocumented; end
+
+          # Examples:
+          #
+          #   rubocop:disable Metrics/CyclomaticComplexity
+          #   standard:enable all
+          def examples; end
+
+          # Use +rubocop:disable+ or +standard:enable+ in comments.
+          def explain; end
+        end
+      RUBY
+    )
+
+    dir = run_generator(File.join(root, "directives.rb"), "Linter directives")
+    markdown = File.read(File.join(dir, "DirectiveExamples.md"))
+    html = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+    assert_includes html.css("p").map(&:text), "Useful class docs."
+    assert_includes markdown, "### `documented()`<a id=\"method-i-documented\"></a>\nUseful method docs.\n"
+    assert_includes markdown, "### `undocumented()`<a id=\"method-i-undocumented\"></a>\nNot documented."
+    assert_equal "rubocop:disable Metrics/CyclomaticComplexity\nstandard:enable all\n", html.at_css("pre code").text
+    assert_includes markdown, "Use `rubocop:disable` or `standard:enable` in comments."
   end
 
   def test_generator_renders_class_metadata_for_reopened_classes
@@ -284,15 +326,6 @@ class TestGenerator < Minitest::Test
 
     assert_equal 16, result.count
     assert_includes result, ["Duck#quack", "Method", "Duck.md#method-i-quack"]
-  end
-
-  def test_generator_preserves_args_metadata_alongside_call_seq
-    dir = run_generator(source_file, "test title")
-
-    bird_doc = File.read("#{dir}/Bird.md")
-
-    assert_includes method_headings(bird_doc), "fly(direction: string, velocity: number) -> bool"
-    refute_includes bird_doc, "Arguments: `direction, velocity`"
   end
 
   def test_generator_uses_rbs_signatures_for_ruby_methods
@@ -498,13 +531,5 @@ class TestGenerator < Minitest::Test
       refute_path_exists File.join(dir, entry.last)
       refute_includes entries, entry
     end
-  end
-
-  def test_generator_writes_nested_namespaces_to_nested_paths
-    dir = run_generator(File.join(__dir__, "data/namespaced_example.rb"), "namespaced test title")
-
-    assert File.exist?(File.join(dir, "Ocean.md"))
-    assert File.exist?(File.join(dir, "Ocean/Deep.md"))
-    assert File.exist?(File.join(dir, "Ocean/Deep/Salmon.md"))
   end
 end

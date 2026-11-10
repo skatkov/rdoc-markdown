@@ -5,6 +5,24 @@ require "fileutils"
 require "rdoc/rdoc"
 
 module RDocTestHelpers
+  def generate_markdown(classes: [], pages: [], root: nil)
+    dir = stable_tmpdir("generated-markdown")
+    options = generator_options(op_dir: dir, root: root)
+    RDoc::Generator::Markdown.new(rdoc_store(classes: classes, pages: pages, options: options), options).generate
+    dir
+  end
+
+  def read_generated(path, classes: [], pages: [], root: nil)
+    dir = generate_markdown(classes: classes, pages: pages, root: root)
+    File.read(File.join(dir, path))
+  end
+
+  def raw_html_page(relative_name:, html:)
+    rdoc_page(relative_name: relative_name, comment: "").tap do |page|
+      page.comment = RDoc::Comment.from_document(RDoc::Markup::Document.new(RDoc::Markup::Raw.new(html)))
+    end
+  end
+
   def method_headings(markdown)
     markdown.scan(/^#+ `(.+)`<a id="method-[^"]+"><\/a>$/).flatten
   end

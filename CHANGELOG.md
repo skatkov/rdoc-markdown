@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- Preserve nested source/destination type lists in API documentation by pinning the converter fork with native-fragment and literal-code fixes.
-- Show documented method aliases below method headings.
+- BREAKING: Use Ruby notation in search-index names: `Duck.MAX_VELOCITY` becomes `Duck::MAX_VELOCITY`, and instance attributes use `Class#attr` instead of `Class.attr`. Consumers matching index names must update these lookups. Class-level attributes retain `Class.attr`; document paths and anchors are unchanged.
+- Replace `reverse_markdown` and its converter fork with RDoc's native `RDoc::Markup::ToMarkdown` formatter.
 
 ## 0.21.2
 

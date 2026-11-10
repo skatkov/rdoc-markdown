@@ -19,7 +19,7 @@ module RDoc::Generator::Markdown::Index
   def write_index(csv)
     csv << %w[name type path]
     classes.each { |klass| write_class_rows(csv, klass, output_path_for(klass)) }
-    pages.each { |page| csv << [normalize_input_path_for_output(page.relative_name), "File", page_output_path(page)] }
+    pages.each { |page| csv << [RDoc::Generator::Markdown::Paths.normalize_input_path(page.relative_name, source_dir), "File", page_output_path(page)] }
   end
 
   # Writes one class and its visible member rows.
@@ -34,15 +34,14 @@ module RDoc::Generator::Markdown::Index
     csv << [class_name, klass.type.capitalize, output_path]
 
     klass.method_list.select(&:display?).each do |method|
-      separator = method.singleton ? "." : "#"
-      csv << ["#{class_name}#{separator}#{method.name}", "Method", "#{output_path}##{method.aref}"]
+      csv << ["#{class_name}#{method.singleton ? "." : "#"}#{method.name}", "Method", "#{output_path}##{method.aref}"]
     end
     klass.constants.select(&:display?).sort.each do |const|
       name = const.name
-      csv << ["#{class_name}.#{name}", "Constant", "#{output_path}##{name}"]
+      csv << ["#{class_name}::#{name}", "Constant", "#{output_path}##{name}"]
     end
     klass.attributes.select(&:display?).sort.each do |attr|
-      csv << ["#{class_name}.#{attr.name}", "Attribute", "#{output_path}##{attr.aref}"]
+      csv << ["#{class_name}#{attr.singleton ? "." : "#"}#{attr.name}", "Attribute", "#{output_path}##{attr.aref}"]
     end
   end
 end

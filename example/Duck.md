@@ -22,6 +22,7 @@ waterfowl:
 ### Public Instance Methods
 #### `speak() { |speech| ... }`<a id="method-i-speak"></a>
 [`Duck`](Duck.md) overrides generic implementation.
+
 ## Duck extensions
 ### Constants
 #### `MAX_VELOCITY`<a id="MAX_VELOCITY"></a>
@@ -37,6 +38,7 @@ True for rubber ducks.
 ### Public Class Methods
 #### `new(domestic, rubber)`<a id="method-c-new"></a>
 Creates a new duck.
+
 #### `rubber_ducks()`<a id="method-c-rubber_ducks"></a>
 Returns list of all rubber ducks.
 

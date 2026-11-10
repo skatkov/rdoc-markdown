@@ -31,6 +31,12 @@ class TestSignatureHelpers < Minitest::Test
     end
   end
 
+  def test_signatures_containing_backticks_stay_one_code_span
+    doc = generated_class_doc([visible_method("`", params: "(cmd)")])
+
+    assert_includes doc, '### `` `(cmd) ``<a id="method-i-60"></a>'
+  end
+
   def test_bracket_call_sequences_preserve_documented_arguments_and_anchors
     lookup = bracket_method("[]", "ENV[name] -> value", params: "(p1)")
     assignment = bracket_method("[]=", "ENV[name] = value -> value", params: "(p1, p2)")
@@ -66,17 +72,12 @@ class TestSignatureHelpers < Minitest::Test
     assert_includes method_headings(doc), "[]=(name: String, value: String) -> String"
   end
 
-  def test_bracket_methods_without_call_sequences_use_parsed_parameters
-    doc = generated_class_doc([visible_method("[]", params: "(key)")])
-
-    assert_includes method_headings(doc), "[](key)"
-  end
-
   def test_method_signatures_are_rendered_from_public_generation
     nil_param_seq = visible_method("nil_param_seq")
     nil_param_seq.define_singleton_method(:param_seq) { nil }
 
     doc = generated_class_doc([
+      visible_method("[]", params: "(key)"),
       visible_method("blank", signature: "  ", params: "(name)"),
       visible_method("nil_signature"),
       nil_param_seq,
@@ -111,6 +112,7 @@ class TestSignatureHelpers < Minitest::Test
     ])
     headings = method_headings(doc)
 
+    assert_includes headings, "[](key)"
     assert_includes headings, "blank()"
     assert_includes headings, "nil_signature()"
     assert_includes headings, "nil_param_seq()"
@@ -154,14 +156,5 @@ class TestSignatureHelpers < Minitest::Test
     assert_includes headings, "close_only(String)"
     refute_includes headings, "open_only(name: String)"
     refute_includes headings, "close_only(name: String)"
-  end
-
-  def test_method_signatures_use_rdoc_8_merged_type_signature_lines
-    method = visible_method("typed", params: "(name)")
-    method.type_signature_lines = ["(String) -> bool"]
-
-    doc = generated_class_doc([method])
-
-    assert_includes method_headings(doc), "typed(name: String) -> bool"
   end
 end

@@ -16,18 +16,11 @@ If Bundler is not being used to manage dependencies, install the gem by executin
 
     $ gem install rdoc-markdown
 
-### Temporary converter fork
-
-This project pins a `reverse_markdown` fork for native Nokogiri fragments,
-literal code preservation, and nested lists. Until these fixes are released
-upstream, add the same override when using rdoc-markdown in another bundle:
-
-```ruby
-gem "reverse_markdown", git: "https://github.com/skatkov/fork_reverse_markdown.git",
-  ref: "faff54bc4e8408cfbd8ee922306a07406dd7e742"
-```
-
-A standalone `gem install` does not select this fork.
+Comments render directly through RDoc's native Markdown visitor. No
+`reverse_markdown` dependency or converter-fork override is required.
+Commonmarker (`~> 2.8`) is a runtime dependency used for Markdown AST parsing
+and serialization, not HTML rendering. Definition-list HTML is emitted directly;
+native documents never take an HTML-to-Markdown conversion round trip.
 
 
 ## Usage
@@ -45,7 +38,7 @@ gem build rdoc-markdown.gemspec
 ```
 
 ```
-gem install <path-to>/rdoc-markdown-0.1.2.gem
+gem install <path-to>/rdoc-markdown-<version>.gem
 ```
 
 or you can do the same through a Gemfile:
@@ -72,12 +65,6 @@ sections: an anchor appearing only in a code example or a raw HTML block is not
 enough. This catches method headings swallowed by an unterminated Markdown HTML
 block, including aliases that link back to those methods.
 
-To lint markdown ERB templates:
-
-```
-bundle exec rake erb:lint
-```
-
 ### Generate vendored docs
 Use rake tasks to generate markdown output for vendored projects:
 
@@ -99,7 +86,7 @@ Find examples in the [/example](/example/) folder.
 
 ```
 gem build rdoc-markdown.gemspec
-gem push rdoc-markdown-0.1.2.gem
+gem push rdoc-markdown-<version>.gem
 ```
 
 There is a `./bin/publish.sh` script that does that. However, it assumes that you have the [gum library](https://github.com/charmbracelet/gum) installed.

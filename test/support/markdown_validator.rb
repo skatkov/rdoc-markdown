@@ -3,10 +3,7 @@
 require "commonmarker"
 require "csv"
 require "nokogiri"
-# standard:disable Lint/RedundantRequireStatement
-require "pathname"
-require "set"
-# standard:enable Lint/RedundantRequireStatement
+require "pathname" # standard:disable Lint/RedundantRequireStatement -- not core before Ruby 4.0
 require "uri"
 
 class MarkdownValidator
