@@ -7,6 +7,7 @@ require "commonmarker"
 class TestMarkdownLinks < Minitest::Test
   cover "RDoc::Generator::Markdown::MarkdownLinks*"
   cover "RDoc::Generator::Markdown::Inline*"
+  cover "RDoc::Generator::Markdown::Syntax*"
 
   def formatter
     page = rdoc_page(rdoc_store, relative_name: "guide.rdoc", comment: "")

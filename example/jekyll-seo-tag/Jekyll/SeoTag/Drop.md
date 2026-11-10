@@ -48,7 +48,7 @@ Not documented.
 Not documented.
 
 ### `name()`<a id="method-i-name"></a>
-rubocop:enable Metrics/CyclomaticComplexity
+Not documented.
 
 ### `page_lang()`<a id="method-i-page_lang"></a>
 Not documented.
@@ -72,7 +72,7 @@ Not documented.
 Not documented.
 
 ### `title()`<a id="method-i-title"></a>
-Page title with site title or description appended rubocop:disable Metrics/CyclomaticComplexity
+Page title with site title or description appended
 
 ### `title?()`<a id="method-i-title-3F"></a>
 Should the `<title>` tag be generated for this page?

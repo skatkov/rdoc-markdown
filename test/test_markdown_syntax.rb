@@ -8,6 +8,11 @@ class TestMarkdownSyntax < Minitest::Test
 
   Syntax = RDoc::Generator::Markdown::Syntax
 
+  def test_code_ranges_retain_exact_utf8_byte_boundaries
+    source = "é\nbefore\n`rubocop:disable all`\n<code>standard:enable all</code>"
+    assert_equal [32...64, 10...31], Syntax.code_ranges(source)
+  end
+
   def test_ast_text_preserves_inline_content_and_breaks_without_rendering_html
     source = "one *two* `three`\nfour  \nfive<a id=\"marker\"></a> [label](url) ![alt](image)"
     assert_equal "one two three four five label alt", Syntax.node_text(Commonmarker.parse(source))

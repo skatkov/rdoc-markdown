@@ -4,6 +4,49 @@ require "cgi"
 
 # Small GFM primitives shared by native markup and the HTML input boundary.
 module RDoc::Generator::Markdown::Syntax
+  # Maps Commonmarker's one-based UTF-8 byte columns to Ruby byte ranges.
+  # @param node [Commonmarker::Node] Parsed node with source positions.
+  # @param offsets [Array<Integer>] Byte offset of each source line.
+  # @return [Range<Integer>] Half-open source byte range.
+  def self.source_range(node, offsets)
+    start_line, start_column, end_line, end_column = node.source_position.fetch_values(:start_line, :start_column, :end_line, :end_column)
+    first = offsets.fetch(start_line - 1) + start_column - 1
+    last = offsets.fetch(end_line - 1) + end_column
+    first...last
+  end
+
+  # Uses RDoc's code-tag and escape rules to identify literal native source.
+  # @param text [String] Original inline source.
+  # @return [Array<Range<Integer>>] Literal native source byte ranges.
+  def self.native_literal_ranges(text)
+    ranges = []
+    text.b.scan(/\\[\\*_+`{}\[\]<>]|<(code|tt)>(?:\\.|[^\\])*?<\/\1>/) do
+      ranges << Range.new(*Regexp.last_match.offset(0), true)
+    end
+    ranges
+  end
+
+  # Protects native code tags and Markdown code spans during prose cleanup.
+  # @param text [String] Inline source encoded as UTF-8.
+  # @return [Array<Range<Integer>>] Literal source byte ranges.
+  def self.code_ranges(text)
+    offsets = [0]
+    text.each_line { |line| offsets << offsets.last + line.bytesize }
+    ranges = native_literal_ranges(text)
+    Commonmarker.parse(text).walk do |node|
+      ranges << source_range(node, offsets) if node.type == :code
+    end
+    ranges
+  end
+
+  # Checks a byte position against protected source spans.
+  # @param ranges [Array<Range<Integer>>] Literal source ranges.
+  # @param position [Integer] Source byte offset.
+  # @return [Boolean] Whether the position is inside literal content.
+  def self.literal_position?(ranges, position)
+    ranges.any? { |range| range.cover?(position) }
+  end
+
   # Collects visible inline text without rendering Markdown through HTML.
   # @param node [Commonmarker::Node] Parsed heading or image label.
   # @return [String] Plain visible text, including soft and hard breaks.

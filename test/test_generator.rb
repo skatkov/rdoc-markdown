@@ -172,6 +172,45 @@ class TestGenerator < Minitest::Test
     refute_includes markdown, "Also known as:"
   end
 
+  def test_generator_omits_linter_directives_from_descriptions_but_keeps_code_examples
+    _workspace, root = project_fixture(
+      "linter-directives",
+      "directives.rb" => <<~RUBY
+        # Useful class docs.
+        # rubocop:disable Metrics/ClassLength
+        class DirectiveExamples
+          # Useful method docs.
+          # standard:disable Style/StringLiterals
+          def documented; end
+
+          # rubocop:enable Metrics/CyclomaticComplexity
+          # standard:enable all
+          # rubocop:todo Style/Documentation
+          def undocumented; end
+
+          # Examples:
+          #
+          #   rubocop:disable Metrics/CyclomaticComplexity
+          #   standard:enable all
+          def examples; end
+
+          # Use +rubocop:disable+ or +standard:enable+ in comments.
+          def explain; end
+        end
+      RUBY
+    )
+
+    dir = run_generator(File.join(root, "directives.rb"), "Linter directives")
+    markdown = File.read(File.join(dir, "DirectiveExamples.md"))
+    html = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+    assert_includes html.css("p").map(&:text), "Useful class docs."
+    assert_includes markdown, "### `documented()`<a id=\"method-i-documented\"></a>\nUseful method docs.\n"
+    assert_includes markdown, "### `undocumented()`<a id=\"method-i-undocumented\"></a>\nNot documented."
+    assert_equal "rubocop:disable Metrics/CyclomaticComplexity\nstandard:enable all\n", html.at_css("pre code").text
+    assert_includes markdown, "Use `rubocop:disable` or `standard:enable` in comments."
+  end
+
   def test_generator_renders_class_metadata_for_reopened_classes
     _workspace, root = project_fixture(
       "class-metadata",

@@ -20,7 +20,7 @@ class RDoc::Generator::Markdown
       @source = text.encode(Encoding::UTF_8)
       @line_offsets = [0]
       @source.each_line { |line| @line_offsets << @line_offsets.last + line.bytesize }
-      @literal_ranges = literal_ranges
+      @literal_ranges = Syntax.native_literal_ranges(@source)
       buffer = @source.b
       inline_edits.reverse_each { |range, token| buffer[range] = token }
       @source = buffer.force_encoding(Encoding::UTF_8)
@@ -75,26 +75,16 @@ class RDoc::Generator::Markdown
       return unless [:link, :image, :code].include?(type)
       return if type == :code && !node.string_content.include?("<")
 
-      range = source_range(node)
+      range = Syntax.source_range(node, @line_offsets)
       first = range.begin
       bytes = @source.b
       return unless bytes[range].start_with?("[", "![", "`")
 
       previous = bytes[first - 1] unless first.zero?
       return if type == :link && previous&.match?(/[A-Za-z0-9}]/)
-      return if @literal_ranges.any? { |literal| literal.cover?(first) }
+      return if Syntax.literal_position?(@literal_ranges, first)
 
       range
-    end
-
-    # Maps Commonmarker's one-based UTF-8 byte columns to Ruby byte ranges.
-    # @param node [Commonmarker::Node] Parsed node with source positions.
-    # @return [Range<Integer>] Half-open source byte range.
-    def source_range(node)
-      start_line, start_column, end_line, end_column = node.source_position.fetch_values(:start_line, :start_column, :end_line, :end_column)
-      first = @line_offsets.fetch(start_line - 1) + start_column - 1
-      last = @line_offsets.fetch(end_line - 1) + end_column
-      first...last
     end
 
     # Retains RDoc label formatting instead of changing its emphasis conventions.
@@ -104,18 +94,8 @@ class RDoc::Generator::Markdown
       children = node.to_a
       return "" if children.empty?
 
-      range = source_range(children.first).begin...source_range(children.last).end
+      range = Syntax.source_range(children.first, @line_offsets).begin...Syntax.source_range(children.last, @line_offsets).end
       @source.b[range].force_encoding(Encoding::UTF_8)
-    end
-
-    # These are RDoc's code-tag/escape rules, not a second Markdown link parser.
-    # @return [Array<Range<Integer>>] Literal native RDoc code spans.
-    def literal_ranges
-      ranges = []
-      @source.b.scan(/\\[\\*_+`{}\[\]<>]|<(code|tt)>(?:\\.|[^\\])*?<\/\1>/) do
-        ranges << Range.new(*Regexp.last_match.offset(0), true)
-      end
-      ranges
     end
   end
 end

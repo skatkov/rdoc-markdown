@@ -3,6 +3,9 @@
 class RDoc::Generator::Markdown
   # Native block visitors; nested fragments share context, not output buffers.
   module Blocks
+    # Standalone source annotations, not documentation or inline examples.
+    LINTER_DIRECTIVE = /^(?:rubocop|standard):(?:disable|enable|todo)(?:[ \t]+[^\r\n]*)?(?:\r?\n|\z)/
+
     # Visits nested documents and lists without resetting document state.
     #
     # @param document [RDoc::Markup::Document] Parsed comment document.
@@ -112,7 +115,7 @@ class RDoc::Generator::Markdown
     # @param paragraph [RDoc::Markup::Paragraph] Parsed paragraph.
     # @return [void]
     def accept_paragraph(paragraph)
-      text = paragraph.text("<br>\n")
+      text = paragraph_text(paragraph)
       text = text.gsub(/(#{RDoc::Text::SPACE_SEPARATED_LETTER_CLASS})?\K(?:\r?\n)+(?=(?(1)(#{RDoc::Text::SPACE_SEPARATED_LETTER_CLASS})?))/o) { defined?($2) && " " }
       # Main exposes Markdown-style headings in paragraphs, but never in verbatim.
       definition = definition_body
@@ -135,6 +138,34 @@ class RDoc::Generator::Markdown
     end
 
     private
+
+    # Removes source annotations without changing their occurrences inside code.
+    # @param paragraph [RDoc::Markup::Paragraph] Original parsed paragraph.
+    # @return [String] Prose with code and hard breaks preserved.
+    def paragraph_text(paragraph)
+      text_parts = paragraph.parts.map { |part| RDoc::Markup::Paragraph.new(part).text("<br>\n").encode(Encoding::UTF_8) }
+      ranges = Syntax.code_ranges(text_parts.join)
+      prefix = +""
+      text = text_parts.map do |part|
+        offset = prefix.bytesize
+        prefix << part
+        strip_linter_directives(part, offset, ranges)
+      end.join
+      text.force_encoding(paragraph.text.encoding) if text.ascii_only?
+      text
+    end
+
+    # Strips only annotation matches outside literal inline source.
+    # @param text [String] UTF-8 paragraph part.
+    # @param offset [Integer] Original part's source byte offset.
+    # @param ranges [Array<Range<Integer>>] Literal source ranges.
+    # @return [String] Filtered paragraph part.
+    def strip_linter_directives(text, offset, ranges)
+      text.gsub(LINTER_DIRECTIVE) do |line|
+        position = offset + Regexp.last_match.pre_match.bytesize
+        line if Syntax.literal_position?(ranges, position)
+      end
+    end
 
     # Restores main's Markdown lists for complete indented term-and-bullet examples.
     # @param text [String] Unclassified verbatim content.

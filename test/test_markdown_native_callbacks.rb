@@ -9,6 +9,7 @@ class TestMarkdownNativeCallbacks < Minitest::Test
   cover "RDoc::Generator::Markdown::Inline*"
   cover "RDoc::Generator::Markdown::References*"
   cover "RDoc::Generator::Markdown::Formatter*"
+  cover "RDoc::Generator::Markdown::Syntax*"
 
   def formatter(options: RDoc::Options.new, relative_name: "guide.rdoc")
     page = rdoc_page(rdoc_store(options: options), relative_name: relative_name, comment: "")
@@ -22,6 +23,48 @@ class TestMarkdownNativeCallbacks < Minitest::Test
     assert_equal "one second third fourth\n\n", document.accept(visitor)
     assert_equal "latin日本語\n\n", RDoc::Markup::Document.new(RDoc::Markup::Paragraph.new("latin\n日本語")).accept(visitor)
     assert_equal "日本語latin\n\n", RDoc::Markup::Document.new(RDoc::Markup::Paragraph.new("日本語\nlatin")).accept(visitor)
+  end
+
+  def test_only_standalone_linter_directive_lines_are_removed_from_prose
+    {
+      "Before.\nrubocop:disable Metrics/CyclomaticComplexity\nAfter." => "Before. After.\n\n",
+      "standard:disable all\r\nKept." => "Kept.\n\n",
+      "rubocop:enable" => "\n\n",
+      "standard:enable\n" => "\n\n",
+      "rubocop:todo Style/Documentation" => "\n\n",
+      "rubocop:enabled is not a directive." => "rubocop:enabled is not a directive.\n\n",
+      "Mention standard:disable in prose." => "Mention standard:disable in prose.\n\n"
+    }.each do |text, expected|
+      document = RDoc::Markup::Document.new(RDoc::Markup::Paragraph.new(text))
+      assert_equal expected, document.accept(formatter)
+    end
+
+    ["argument's value", "argument's value\nrubocop:disable all"].each do |text|
+      document = RDoc::Markup::Document.new(RDoc::Markup::Paragraph.new(text.encode(Encoding::US_ASCII)))
+      assert_equal "argument's value\n\n", document.accept(formatter)
+    end
+
+    document = RDoc::Markup::Document.new(RDoc::Markup::Paragraph.new("<code>literal</code>", "rubocop:disable all"))
+    assert_equal "`literal`\n\n", document.accept(formatter)
+  end
+
+  def test_linter_directives_inside_multiline_inline_code_are_not_removed
+    %w[code tt].each do |tag|
+      source = "rubocop:disable all\né 日本語 <#{tag}>\nrubocop:disable all\nstandard:enable all\n</#{tag}>\nrubocop:disable all"
+      document = RDoc::Markup.parse(source)
+      html = Nokogiri::HTML.fragment(Commonmarker.to_html(document.accept(formatter)))
+
+      assert_equal "rubocop:disable all standard:enable all", html.at_css("code").text
+      html.at_css("code").remove
+      assert_equal "é 日本語", html.at_css("p").text.strip
+      assert_equal 3, document.parts.first.text.scan("rubocop:disable all").length
+    end
+
+    source = "é `example\nrubocop:disable all\ncommand`\nstandard:enable all".encode(Encoding::ISO_8859_1)
+    document = RDoc::Markup::Document.new(RDoc::Markup::Paragraph.new(source))
+    markdown = document.accept(formatter)
+    assert_includes markdown, "rubocop:disable all"
+    refute_includes markdown, "standard:enable all"
   end
 
   def test_class_subheadings_keep_legacy_aliases_even_when_the_title_does_not
