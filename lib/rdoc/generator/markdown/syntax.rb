@@ -18,11 +18,11 @@ module RDoc::Generator::Markdown::Syntax
     text
   end
 
-  # Collapses HTML prose whitespace and escapes Markdown syntax, not code.
+  # Escapes prose while retaining main's Markdown escape for semicolons.
   # @param text [String] Literal prose, including block-looking definition terms.
   # @return [String] Safe Markdown text.
   def self.escape(text)
-    text.gsub(/[ \t]+/, " ").gsub(/[&\\`*_\[\]<>#]/) { |character| (character == "&") ? "&amp;" : "\\#{character}" }
+    text.gsub(/[ \t]+/, " ").gsub(/[&`*_\[\]<>#]|\\(?!;)/) { |character| (character == "&") ? "&amp;" : "\\#{character}" }
       .sub(/\A(\d+)\.(?=\s)/, '\1\\.')
   end
 

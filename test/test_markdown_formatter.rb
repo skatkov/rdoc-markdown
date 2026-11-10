@@ -38,6 +38,20 @@ class TestMarkdownFormatter < Minitest::Test
     assert_equal "Where `#{code}`.\n", read_generated("instance-code_rdoc.md", pages: [page])
   end
 
+  def test_escaped_semicolons_match_main_in_prose_without_changing_code
+    page = rdoc_page(relative_name: "escaped-punctuation.rdoc", comment:
+      "Returns +true+ if the next row to be read is a header row\\; +false+ otherwise.\n\n" \
+      "[Term]\n  Definition row\\;one\\;two and \\-escaping.\n\n" \
+      "<code>row\\;</code>\n\n    row\\;\n")
+    markdown = read_generated("escaped-punctuation_rdoc.md", pages: [page])
+    html = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown, options: {render: {unsafe: true}}))
+
+    assert_includes markdown, "Returns `true` if the next row to be read is a header row\\; `false` otherwise."
+    assert_equal "Returns true if the next row to be read is a header row; false otherwise.", html.at_css("p").text
+    assert_equal 'Definition row\;one\;two and \-escaping.', html.at_css("dd p").text
+    assert_equal ['row\;', "row\\;\n"], html.css("code").reject { |node| node.text == "true" || node.text == "false" }.map(&:text)
+  end
+
   def test_method_descriptions_preserve_nested_source_and_destination_type_lists
     klass = rdoc_class("IO")
     method = rdoc_method("copy_stream", comment: <<~'RDOC')

@@ -22,6 +22,8 @@ class TestMarkdownSyntax < Minitest::Test
     assert_equal "plain. text", Syntax.escape("plain. text")
     assert_equal "a b c", Syntax.escape("a\t b   c")
     assert_equal "&amp;lt; &amp;amp; &amp;\\#65; &amp;\\#x41;", Syntax.escape("&lt; &amp; &#65; &#x41;")
+    assert_equal 'row\;one\;two', Syntax.escape('row\;one\;two')
+    assert_equal '\\\\- \\\\n', Syntax.escape('\- \n')
   end
 
   def test_code_spans_choose_and_pad_their_delimiters

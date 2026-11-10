@@ -7,6 +7,8 @@ class RDoc::Generator::Markdown
     # @param text [String] Literal content.
     # @return [String] GFM text.
     def convert_string(text)
+      # Final definition HTML keeps literal backslashes before semicolons.
+      text = text.gsub("\\;") { "\\\\;" } if definition_body
       Syntax.escape(text)
     end
 

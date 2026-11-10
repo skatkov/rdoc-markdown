@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Match main's escaped semicolons in prose without adding visible backslashes; keep code and definition-list HTML literal.
 - Parse mixed Markdown links with Commonmarker's AST, now a runtime dependency, while retaining native RDoc label formatting and resolving documentation targets.
 - Restore loose-list spacing, inline definition terms, footnote superscripts, and typography-dependent heading aliases without an HTML conversion round trip.
 - Preserve entity-looking literal text and empty inline code, and avoid adding newlines to non-Ruby definition-list examples.
