@@ -77,11 +77,11 @@ module RDoc::Generator::Markdown::Paths
   # @param path [String] RDoc input path.
   # @param source_dir [String] Absolute documentation source directory.
   #
-  # @return [String] Normalized path without root prefixes.
+  # @return [String] Normalized path without root or parent-directory prefixes.
   def self.normalize_input_path(path, source_dir)
     normalized = path.tr("\\", "/").sub(%r{\A\./}, "")
     normalized = normalized.sub(%r{\A#{Regexp.escape(source_dir)}/}, "")
-    normalized = normalized.sub(%r{\A/}, "")
+    normalized = normalized.sub(%r{\A(?:\.\./|/)+}, "")
 
     root_basename = File.basename(source_dir)
     normalized.sub(%r{\A#{Regexp.escape(root_basename)}/}, "")

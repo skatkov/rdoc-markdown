@@ -143,6 +143,7 @@ class TestPathHelpers < Minitest::Test
     store = rdoc_store
     rdoc_page(store, relative_name: "./docs/dot.rdoc", comment: "Dot path")
     rdoc_page(store, relative_name: "/docs/absolute.rdoc", comment: "Absolute path")
+    rdoc_page(store, relative_name: "../../up/docs/../parent.rdoc", comment: "Parent path")
     rdoc_page(store, relative_name: 'docs\\windows.rdoc', comment: "Windows path")
     rdoc_page(store, relative_name: "guides/intro.rdoc", comment: "= Intro")
     rdoc_page(store, relative_name: "docs/getting_started.rdoc", comment: "= Intro")
@@ -155,10 +156,26 @@ class TestPathHelpers < Minitest::Test
     assert_eql "Dot path\n", File.read(File.join(dir, "docs/dot_rdoc.md"))
     assert_eql "Absolute path\n", File.read(File.join(dir, "docs/absolute_rdoc.md"))
     assert_eql "Windows path\n", File.read(File.join(dir, "docs/windows_rdoc.md"))
+    assert_eql "Parent path\n", File.read(File.join(dir, "up/docs/../parent_rdoc.md"))
 
     entries = index_entries(dir)
     assert_includes entries, ["docs/dot.rdoc", "File", "docs/dot_rdoc.md"]
     assert_includes entries, ["docs/absolute.rdoc", "File", "docs/absolute_rdoc.md"]
     assert_includes entries.map(&:last), "docs/windows_rdoc.md"
+  end
+
+  def test_pages_outside_root_are_written_inside_the_output_directory
+    workspace, root = project_fixture("outside-root-pages", "docs/inside.rdoc" => "Inside")
+    File.write(File.join(workspace, "notes.md"), "# Notes")
+    FileUtils.mkdir_p(File.join(workspace, "shared"))
+    File.write(File.join(workspace, "shared", "guide.rdoc"), "Guide")
+
+    dir = Dir.chdir(root) { generate_docs(files: %w[docs/inside.rdoc ../notes.md ../shared/guide.rdoc], title: "outside") }
+
+    assert_equal "# Notes", File.read(File.join(dir, "notes.md"))
+    assert_equal "Guide\n", File.read(File.join(dir, "shared/guide_rdoc.md"))
+    refute File.exist?(File.join(workspace, "shared", "guide_rdoc.md"))
+    assert_includes index_entries(dir), ["notes.md", "File", "notes.md"]
+    assert_includes index_entries(dir), ["shared/guide.rdoc", "File", "shared/guide_rdoc.md"]
   end
 end
