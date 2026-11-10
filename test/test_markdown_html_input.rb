@@ -18,6 +18,8 @@ class TestMarkdownHtmlInput < Minitest::Test
     assert_equal "`code` `tt`<br>text", render("<p><code>code</code> <tt>tt</tt><br>text</p>")
     assert_equal "transparent", render('<div><span id="ordinary">transparent</span></div>')
     assert_equal "transparent", render('<span href="Thing.html">transparent</span>')
+    assert_equal "transparent", render('<span id="ordinary" class="ordinary">transparent</span>')
+    assert_equal "plain", render("  plain  ")
   end
 
   def test_links_and_explicit_anchors_retain_their_distinct_roles
@@ -50,6 +52,7 @@ class TestMarkdownHtmlInput < Minitest::Test
     assert_equal "#### Topic", render("<h2> Topic </h2>", offset: 2)
     assert_equal "## Topic\n\nBody", render("<h2> Topic </h2><p>Body</p>")
     assert_equal "## Topic<a id=\"old\"></a>", render('<h2>Topic<span class="legacy-anchor" id="old"></span></h2>')
+    assert_equal "## Topic<a id=\"old\"></a>", render('<h2><span class="legacy-anchor" id="old"></span><a href="#topic">Topic</a></h2>')
     assert_equal "# Topic<a id=\"old\"></a>", render('<span class="legacy-anchor" id="old"></span><h1>Topic</h1>')
     assert_equal "# Topic", render('<span class="legacy-anchor" id="class-Topic"></span><h1>Topic</h1>')
     assert_equal "# Topic", render('<span class="legacy-anchor" id="module-Topic"></span><h1>Topic</h1>')

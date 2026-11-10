@@ -18,7 +18,7 @@ class RDoc::Generator::Markdown
     def render(html)
       fragment = Nokogiri::HTML.fragment(html)
       fragment.css("span.legacy-anchor[id]").each { |span| position_anchor(span) }
-      nodes = fragment.children.reject { |node| node.text? && node.text.strip.empty? }
+      nodes = fragment.children.reject { |node| node.text? && !node.text.match?(/\S/) }
       render_nodes(nodes).strip
     end
 
@@ -71,7 +71,7 @@ class RDoc::Generator::Markdown
     # @param node [Nokogiri::XML::Element] Paragraph element.
     # @return [String] Paragraph Markdown.
     def paragraph(node)
-      prefix = (node.previous_element&.name == "span") ? "\n\n" : ""
+      prefix = "\n\n" if node.previous_element&.name == "span"
       "#{prefix}#{render_nodes(node.children)}\n\n"
     end
 
@@ -114,7 +114,7 @@ class RDoc::Generator::Markdown
     # @return [String] Preserved HTML block.
     def preserve_html(node)
       node.css("a[href]").each { |link| link["href"] = Syntax.target(link["href"]) }
-      "#{node.to_html}\n\n"
+      "#{node}\n\n"
     end
 
     # Flattens leading heading self-links and retains their noncanonical aliases.
@@ -133,7 +133,7 @@ class RDoc::Generator::Markdown
         aliases << id unless id == RDoc::Text.to_anchor(node.text)
       end
       text = render_nodes(node.children).strip
-      "#{Syntax.heading(node.name.delete_prefix("h").to_i + @heading_level_offset, text, aliases)}\n\n"
+      "#{Syntax.heading(Integer(node.name.delete_prefix("h")) + @heading_level_offset, text, aliases)}\n\n"
     end
   end
 end

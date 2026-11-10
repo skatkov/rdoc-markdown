@@ -16,7 +16,7 @@ module RDoc::Generator::Markdown::Syntax
   # @param text [String] Literal code.
   # @return [String] Native code span.
   def self.code(text)
-    fence = "`"
+    fence = ""
     fence += "`" while text.include?(fence)
     content = (text.start_with?("`") || text.end_with?("`")) ? " #{text} " : text
     "#{fence}#{content}#{fence}"
