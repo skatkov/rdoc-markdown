@@ -70,7 +70,9 @@ class TestMarkdownReferences < Minitest::Test
     assert_equal "[Heading](Target.md#class-target-some-heading)", visitor.reference_link("Target@Some+Heading", label: "Heading")
     assert_equal "[Method](Target.md#method-i-run-some-heading)", visitor.reference_link("Target#run@Some+Heading", label: "Method")
     assert_equal "[Local](#some-heading)", visitor.reference_link("@Some+Heading", label: "Local")
-    assert_equal "[@Some+Heading](#some-heading)", visitor.reference_link("@Some+Heading")
+    assert_equal "[Some Heading](#some-heading)", visitor.reference_link("@Some+Heading")
+    assert_equal "[A B at `Target`](Target.md#a-b)", visitor.reference_link("Target@A+B")
+    assert_equal "[A\\_B at `Target`](Target.md#class-target-ab)", visitor.reference_link("Target@A_B")
   end
 
   def test_inline_code_resolves_valid_references_but_not_arbitrary_lowercase_words
@@ -80,10 +82,42 @@ class TestMarkdownReferences < Minitest::Test
     assert_equal "`run`", visitor.attributes("+run+")
     assert_equal "[`run`](Source.md#method-i-run)", formatter(hyperlink_all: true).attributes("+run+")
     assert_equal "[`run`](Source.md#method-i-run)", formatter(hyperlink_all: true).attributes("run")
-    assert_equal "[`#run`](Source.md#method-i-run)", visitor.attributes("+#run+")
-    assert_equal "[`#run`](Source.md#method-i-run)", formatter(hyperlink_all: true).attributes("+#run+")
-    assert_equal '[\_guide\_.rdoc](_guide__rdoc.md)', visitor.attributes("+_guide_.rdoc+")
+    assert_equal "[`run`](Source.md#method-i-run)", visitor.attributes("+#run+")
+    assert_equal "[`run`](Source.md#method-i-run)", formatter(hyperlink_all: true).attributes("+#run+")
+    assert_equal "[`#run`](Source.md#method-i-run)", formatter(show_hash: true).attributes("+#run+")
+    assert_equal "`_guide_.rdoc`", visitor.attributes("+_guide_.rdoc+")
     assert_equal "`Missing`", visitor.attributes("+Missing+")
+  end
+
+  def test_inline_code_keeps_file_references_literal_like_main
+    visitor = formatter
+
+    assert_equal "`guide.rdoc`", visitor.attributes("+guide.rdoc+")
+    assert_equal "`source.rb`", visitor.attributes("<code>source.rb</code>")
+    assert_equal "`guide.rdoc@Heading`", visitor.attributes("<code>guide.rdoc@Heading</code>")
+    assert_equal "[guide](guide_rdoc.md)", visitor.reference_link("guide")
+    assert_equal "[`Target`](Target.md)", visitor.attributes("+Target+")
+    assert_equal "[A B at `Target`](Target.md#a-b)", visitor.attributes("<code>Target@A+B</code>")
+    assert_equal "`Target`", visitor.attributes('<code>\Target</code>')
+    assert_equal '`\Missing`', visitor.attributes('<code>\Missing</code>')
+    assert_equal "`prefix Target`", visitor.attributes("<code>prefix Target</code>")
+    assert_equal "`prefix Target#run`", visitor.attributes("<code>prefix Target#run</code>")
+    assert_equal "`(Target#run)`", visitor.attributes("<code>(Target#run)</code>")
+    assert_equal "`Target#run.more`", visitor.attributes("<code>Target#run.more</code>")
+    assert_equal "`Target#run followed by text`", visitor.attributes("<code>Target#run followed by text</code>")
+    assert_equal "`include Target`", visitor.attributes("<code>include Target</code>")
+    assert_equal "`run.more`", formatter(hyperlink_all: true).attributes("<code>run.more</code>")
+  end
+
+  def test_markdown_links_resolve_symbolic_targets_without_autolinking_labels
+    visitor = formatter
+
+    assert_equal '[custom label](Target.md "title")', visitor.attributes('[custom label](Target "title")')
+    assert_equal "[method](Target.md#method-i-run)", visitor.attributes("[method](Target#run)")
+    assert_equal "[guide](guide_rdoc.md)", visitor.attributes("[guide](guide)")
+    assert_equal "[Hidden](Hidden)", visitor.attributes("[Hidden](Hidden)")
+    assert_equal "[missing](Missing)", visitor.attributes("[missing](Missing)")
+    assert_equal "![alt](Target)", visitor.attributes("![alt](Target)")
   end
 
   def test_automatic_reference_exclusions_and_link_labels_never_nest_links

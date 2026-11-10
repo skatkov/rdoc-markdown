@@ -4,11 +4,25 @@ require "cgi"
 
 # Small GFM primitives shared by native markup and the HTML input boundary.
 module RDoc::Generator::Markdown::Syntax
-  # Escapes literal inline text, including block-looking definition terms.
-  # @param text [String] Literal text.
+  # Collects visible inline text without rendering Markdown through HTML.
+  # @param node [Commonmarker::Node] Parsed heading or image label.
+  # @return [String] Plain visible text, including soft and hard breaks.
+  def self.node_text(node)
+    text = +""
+    node.walk do |child|
+      case child.type
+      when :text, :code then text << child.string_content
+      when :softbreak, :linebreak then text << " "
+      end
+    end
+    text
+  end
+
+  # Collapses HTML prose whitespace and escapes Markdown syntax, not code.
+  # @param text [String] Literal prose, including block-looking definition terms.
   # @return [String] Safe Markdown text.
   def self.escape(text)
-    text.gsub(/[\\`*_\[\]<>#]/) { |character| "\\#{character}" }
+    text.gsub(/[ \t]+/, " ").gsub(/[&\\`*_\[\]<>#]/) { |character| (character == "&") ? "&amp;" : "\\#{character}" }
       .sub(/\A(\d+)\.(?=\s)/, '\1\\.')
   end
 
@@ -16,6 +30,8 @@ module RDoc::Generator::Markdown::Syntax
   # @param text [String] Literal code.
   # @return [String] Native code span.
   def self.code(text)
+    return "<code></code>" if text.empty?
+
     fence = ""
     fence += "`" while text.include?(fence)
     content = (text.start_with?("`") || text.end_with?("`")) ? " #{text} " : text

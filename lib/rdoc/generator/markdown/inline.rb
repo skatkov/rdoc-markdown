@@ -21,8 +21,7 @@ class RDoc::Generator::Markdown
     # @param text [String] Literal code.
     # @return [void]
     def handle_TT(text)
-      linked = reference_link(text, label: convert_string(text)) if !@in_link && !text.start_with?("@") && reference_pattern.match?(text)
-      emit_inline(linked || Syntax.code(text))
+      emit_inline(code_reference(text) || Syntax.code(text))
     end
 
     # Emits a tidy link without permitting nested links in its label.
@@ -30,7 +29,13 @@ class RDoc::Generator::Markdown
     # @param url [String] Link target.
     # @return [void]
     def handle_TIDYLINK(nodes, url)
-      emit_inline(gen_url(url, dup.inline_nodes(nodes)))
+      first = nodes.first
+      label = if nodes.size == 1 && String === first && first.match?(/\A[*^]\d+\z/)
+        first[1..]
+      else
+        dup.inline_nodes(nodes)
+      end
+      emit_inline(gen_url(url, label))
     end
 
     # Renders a label in an independent native inline buffer.
@@ -39,8 +44,70 @@ class RDoc::Generator::Markdown
     def inline_nodes(nodes)
       @inline_output = +""
       @in_link = true
+      @quote_converter ||= RDoc::Markup::ToHtml::QuoteConverter.new
       traverse_inline_nodes(nodes)
       @inline_output
+    end
+
+    # Uses RDoc's text-only quote policy without routing nodes through ToHtml.
+    # @param text [String] Inline RDoc source.
+    # @return [String] Inline Markdown with main's punctuation.
+    def handle_inline(text)
+      @quote_converter = RDoc::Markup::ToHtml::QuoteConverter.new
+      @markdown_links = MarkdownLinks.new(text)
+      super(@markdown_links.source)
+    end
+
+    # Inserts parsed Markdown links without nesting links inside an outer label.
+    # @param token [String] Protected Markdown token or literal user input.
+    # @return [String] Native Markdown or escaped literal text.
+    def handle_regexp_markdown(token)
+      link = @markdown_links&.[](token)
+      return token unless link
+
+      label = dup.markdown_label(link.label)
+      node = link.node
+      link_node = node.type == :link
+      target = rendering.reference.resolve(node.url) if link_node
+      node.url = target.as_href(rendering.context.path) if target && emitted_reference?(target)
+      (in_link_label? && link_node) ? label : MarkdownLinks.render(link, label)
+    end
+
+    # Parses an original Markdown label with RDoc's surrounding inline semantics.
+    # @param text [String] Original link label source.
+    # @return [String] Inline Markdown without automatic nested links.
+    def markdown_label(text)
+      @markdown_links = MarkdownLinks.new(text)
+      inline_nodes(RDoc::Markup::InlineParser.new(@markdown_links.source).parse)
+    end
+
+    # Preserves the typography aliases used by RDoc's HTML formatter.
+    # @param text [String] Matched punctuation or symbol shorthand.
+    # @return [String] Unicode punctuation with RDoc's encoding fallback.
+    def handle_regexp_HTML_CHARACTERS(text)
+      name = RDoc::Markup::ToHtml::HTML_CHARACTER_ALIASES.fetch(text)
+      RDoc::Markup::ToHtml::TO_HTML_CHARACTERS[text.encoding].fetch(name)
+    end
+
+    # Converts quotes adjacent to words using RDoc's paragraph-scoped state.
+    # @param text [String] Matched quote.
+    # @return [String] Converted quote or escaped literal.
+    def handle_regexp_QUOTE_AFTER_WORD(text)
+      @quote_converter.convert(text, after_word: true) || convert_string(text)
+    end
+
+    # Converts quotes not adjacent to words using the same paragraph state.
+    # @param text [String] Matched quote.
+    # @return [String] Converted quote or escaped literal.
+    def handle_regexp_QUOTE_NOT_AFTER_WORD(text)
+      @quote_converter.convert(text, after_word: false) || convert_string(text)
+    end
+
+    # Escapes the visible part after RDoc's selective cross-reference suppression.
+    # @param text [String] Suppressed reference prefix.
+    # @return [String] Literal Markdown without the suppression backslash.
+    def handle_regexp_SUPPRESSED_CROSSREF(text)
+      convert_string(text.delete_prefix("\\"))
     end
 
     # Indicates the inline-only boundary where nested links are prohibited.
@@ -74,6 +141,9 @@ class RDoc::Generator::Markdown
     # @return [String] Anchored Markdown reference.
     def label_reference(url, label)
       target, id = url.delete_prefix("rdoc-label:").split(":", 2)
+      if id&.start_with?("foot")
+        return %(<sup><a id="#{CGI.escapeHTML(id)}" href="##{CGI.escapeHTML(target)}">#{label}</a></sup>)
+      end
       anchor = Syntax.anchor(id) if id
       "#{anchor}#{Syntax.link(label, "##{target}")}"
     end
@@ -82,7 +152,14 @@ class RDoc::Generator::Markdown
     # @return [void]
     def configure_inline
       @in_link = false
-      @markup.add_regexp_handling(%r{(?:link:|https?://|mailto:|www\.)[^\s<>]+\w}, :HYPERLINK)
+      @markup.add_regexp_handling(/\0RDocMarkdownX*\d+\0/, :markdown)
+      # ToRdoc suppresses every backslash escape; main suppresses only references.
+      @markup.regexp_handlings.reject! { |_, name| name == :SUPPRESSED_CROSSREF }
+      @markup.add_regexp_handling(/\\(?:[#:A-Z]|[a-z]+_[a-z0-9])/, :SUPPRESSED_CROSSREF)
+      @markup.add_regexp_handling(/(?:link:|https?:|mailto:|ftp:|irc:|www\.)#{RDoc::Markup::ToHtml::URL_CHARACTERS_REGEXP_STR}+\w/o, :HYPERLINK)
+      @markup.add_regexp_handling(Regexp.union(RDoc::Markup::ToHtml::HTML_CHARACTER_ALIASES.keys), :HTML_CHARACTERS)
+      @markup.add_regexp_handling(/\b['"`]/, :QUOTE_AFTER_WORD)
+      @markup.add_regexp_handling(/\B['"`]/, :QUOTE_NOT_AFTER_WORD)
       @markup.add_regexp_handling(RDoc::CrossReference::CROSSREF_REGEXP, :CROSSREF)
       @markup.add_regexp_handling(RDoc::CrossReference::ALL_CROSSREF_REGEXP, :CROSSREF) if options.hyperlink_all
     end

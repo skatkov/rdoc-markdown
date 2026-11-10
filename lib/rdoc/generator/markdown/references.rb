@@ -24,8 +24,10 @@ class RDoc::Generator::Markdown
     # @param url [String] URL candidate.
     # @return [String] Linked or literal Markdown.
     def handle_regexp_HYPERLINK(url)
-      label = convert_string(url)
-      in_link_label? ? label : gen_url(url, label)
+      return convert_string(url) if in_link_label?
+
+      label = convert_string(url.sub(%r{\A(?:link|https?|mailto|ftp|irc):/*}, ""))
+      gen_url(url, label)
     end
 
     # Resolves explicit rdoc-ref schemes; other schemes use ToMarkdown.
@@ -71,6 +73,22 @@ class RDoc::Generator::Markdown
 
     private
 
+    # Main keeps file references inside code spans literal, not prose links.
+    # @param text [String] Inline code candidate.
+    # @return [String, nil] Code-formatted object link or literal-code fallback.
+    def code_reference(text)
+      return if in_link_label?
+
+      name = text.delete_prefix("\\")
+      return unless code_reference_syntax?(name)
+
+      target_name, = split_reference(name)
+      return if RDoc::TopLevel === rendering.reference.resolve(target_name)
+
+      linked = reference_link(name)
+      text.start_with?("\\") ? (Syntax.code(name) if linked) : linked
+    end
+
     # Separates inline-code display policy from target resolution.
     # @param name [String] Reference name.
     # @param label [String, nil] Explicit native label.
@@ -78,15 +96,29 @@ class RDoc::Generator::Markdown
     # @return [String] Native inline Markdown.
     def reference_text(name, label, ref)
       display = options.show_hash ? name : name.delete_prefix("#")
+      target, section = split_reference(display)
+      if section
+        return label if label
+
+        title = convert_string(RDoc::Text.decode_legacy_label(section))
+        return target.empty? ? title : "#{title} at #{Syntax.code(target)}"
+      end
+
       plain = label ? label.delete("\\") : display
       text = label || convert_string(display)
-      (ref && !(RDoc::TopLevel === ref) && (!label || plain == name)) ? Syntax.code(plain) : text
+      (!(RDoc::TopLevel === ref) && (!label || plain == name)) ? Syntax.code(plain) : text
     end
 
     # Matches both explicit method hashes and hyperlink-all method notation.
-    # @return [Regexp] Valid reference syntax for inline code.
-    def reference_pattern
-      options.hyperlink_all ? Regexp.union(RDoc::CrossReference::CROSSREF_REGEXP, RDoc::CrossReference::ALL_CROSSREF_REGEXP) : RDoc::CrossReference::CROSSREF_REGEXP
+    # @param name [String] Complete inline code text without suppression.
+    # @return [Boolean] Whether a reference starts the span and consumes its words.
+    def code_reference_syntax?(name)
+      patterns = [RDoc::CrossReference::CROSSREF_REGEXP]
+      patterns << RDoc::CrossReference::ALL_CROSSREF_REGEXP if options.hyperlink_all
+      patterns.any? do |pattern|
+        match = pattern.match(name)
+        match&.begin(1) == 0 && match.post_match.match?(/\A[[:punct:]\s]*\z/)
+      end
     end
 
     # Separates heading labels without mistaking unary operator method names.

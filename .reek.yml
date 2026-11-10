@@ -1,5 +1,9 @@
 ---
 detectors:
+  # A copied visitor carries its own output-boundary state, like RDoc's buffers.
+  Attribute:
+    exclude:
+      - RDoc::Generator::Markdown::Formatter#definition_body
   # A native reference has a target and a visible label; it needs no wrapper object.
   DataClump:
     exclude:
@@ -16,7 +20,9 @@ detectors:
       - RDoc::Generator::Markdown::Descriptions
       - RDoc::Generator::Markdown::Blocks
       - RDoc::Generator::Markdown::HtmlInput
+      - RDoc::Generator::Markdown::InlineHtml
       - RDoc::Generator::Markdown::References#emitted_reference?
+      - RDoc::Generator::Markdown::References#code_reference_syntax?
   # RDoc's native inline callback protocol owns these parser buffers and names.
   InstanceVariableAssumption:
     exclude:
@@ -26,14 +32,21 @@ detectors:
       - RDoc::Generator::Markdown::Inline#handle_PLAIN_TEXT
       - RDoc::Generator::Markdown::Inline#handle_TT
       - RDoc::Generator::Markdown::Inline#handle_TIDYLINK
+      - RDoc::Generator::Markdown::Inline#handle_regexp_HTML_CHARACTERS
+      - RDoc::Generator::Markdown::Inline#handle_regexp_QUOTE_AFTER_WORD
+      - RDoc::Generator::Markdown::Inline#handle_regexp_QUOTE_NOT_AFTER_WORD
+      - RDoc::Generator::Markdown::Inline#handle_regexp_SUPPRESSED_CROSSREF
       - RDoc::Generator::Markdown::References#handle_regexp_CROSSREF
       - RDoc::Generator::Markdown::References#handle_regexp_HYPERLINK
       - RDoc::Generator::Markdown::References#handle_regexp_RDOCLINK
   TooManyStatements:
     max_statements: 12
+    exclude:
+      - RDoc::Generator::Markdown::InlineHtml#render_node
   TooManyInstanceVariables:
     max_instance_variables: 5
   UtilityFunction:
     public_methods_only: true
     exclude:
       - RDoc::Generator::Markdown::Inline#convert_string
+      - RDoc::Generator::Markdown::Inline#handle_regexp_HTML_CHARACTERS

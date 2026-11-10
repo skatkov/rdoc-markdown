@@ -18,6 +18,9 @@ If Bundler is not being used to manage dependencies, install the gem by executin
 
 Comments render directly through RDoc's native Markdown visitor. No
 `reverse_markdown` dependency or converter-fork override is required.
+Commonmarker (`~> 2.8`) is a runtime dependency used for Markdown AST parsing
+and serialization, not HTML rendering. Definition-list HTML is emitted directly;
+native documents never take an HTML-to-Markdown conversion round trip.
 
 
 ## Usage

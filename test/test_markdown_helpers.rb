@@ -203,7 +203,7 @@ class TestMarkdownHelpers < Minitest::Test
 
   def test_native_reopened_class_comments_keep_their_individual_markup_formats
     klass = rdoc_class("MixedMarkup", comment: "= RDoc heading")
-    comment = RDoc::Comment.new("# Markdown heading\n\n[Link](https://example.test)")
+    comment = RDoc::Comment.new("# Markdown heading\n\n[Link](https://example.test)\n\n[Reference][target]\n\n[target]: https://example.test/reference")
     comment.format = "markdown"
     klass.add_comment(comment, rdoc_file(klass.store, name: "extra.rb"))
 
@@ -212,6 +212,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "# RDoc heading"
     assert_includes markdown, "# Markdown heading"
     assert_includes markdown, "[Link](https://example.test)"
+    assert_includes markdown, "[Reference](https://example.test/reference)"
     assert_equal 1, markdown.scan("# RDoc heading").length
     assert_equal 1, markdown.scan("# Markdown heading").length
   end
@@ -398,9 +399,14 @@ class TestMarkdownHelpers < Minitest::Test
       rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown, options: {render: {unsafe: true}}))
 
       assert_equal ["Term", "code"], rendered.css("dl > dt").map { |term| term.text.strip }
+      assert_empty rendered.css("dt p")
+      assert_equal "code", rendered.at_css("dt code").text
+      assert_includes markdown, "<dt>Term</dt>\n<dt><code>code</code></dt>\n<dd>"
       assert_equal 2, rendered.css("dl > dd").length
-      assert_equal code.text, rendered.at_css("dd pre code").text
+      assert_equal code.text.rstrip, rendered.at_css("dd pre").text
+      assert_equal "brush: text;", rendered.at_css("dd pre")["class"]
       assert_equal "Nested bullet.", rendered.at_css("dd ul li").text.strip
+      assert_equal "Nested bullet.", rendered.at_css("dd ul li p").text
       assert_equal "Extra description.", rendered.css("dd").last.text.strip
       assert_equal ["Before", "After"], rendered.css("h2").map(&:text)
       assert_equal "rdoc-list #{type.to_s.downcase}-list", rendered.at_css("dl")["class"]

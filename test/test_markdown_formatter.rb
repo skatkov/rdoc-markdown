@@ -13,7 +13,7 @@ class TestMarkdownFormatter < Minitest::Test
   def test_automatic_urls_are_linked_without_the_rails_fixture
     page = rdoc_page(relative_name: "automatic-url.rdoc", comment: "https://example.test/a_b")
 
-    assert_equal "[https://example.test/a\\_b](https://example.test/a_b)\n",
+    assert_equal "[example.test/a\\_b](https://example.test/a_b)\n",
       read_generated("automatic-url_rdoc.md", pages: [page])
   end
 
@@ -24,8 +24,9 @@ class TestMarkdownFormatter < Minitest::Test
     markdown = read_generated("footnotes_rdoc.md", pages: [page])
     html = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown, options: {render: {unsafe: true}}))
 
-    assert_includes markdown, '<a id="footmark-1"></a>'
-    assert_includes markdown, '<a id="foottext-1"></a>'
+    assert_equal "#foottext-1", html.at_css("sup a[id=footmark-1]")["href"]
+    assert_equal "#footmark-1", html.at_css("sup a[id=foottext-1]")["href"]
+    assert_equal ["1", "1"], html.css("sup a").map(&:text)
     assert_equal ["#foottext-1", "#footmark-1"], html.css("a[href]").map { |link| link["href"] }
     html.css("a[href]").each { |link| assert html.at_css("[id=\"#{link["href"].delete_prefix("#")}\"]") }
   end

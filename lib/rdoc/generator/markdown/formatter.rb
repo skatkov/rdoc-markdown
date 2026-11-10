@@ -2,6 +2,9 @@
 
 require "rdoc/markup/to_markdown"
 require "prism"
+require "commonmarker"
+require_relative "markdown_links"
+require_relative "inline_html"
 require_relative "inline"
 require_relative "blocks"
 
@@ -18,6 +21,10 @@ class RDoc::Generator::Markdown
     # Immutable render configuration and document-scoped heading IDs.
     # @return [Rendering] Current document context.
     attr_reader :rendering
+
+    # Child visitors inherit the final HTML boundary of a definition-list body.
+    # @return [Boolean, nil] Whether blocks are inside a definition description.
+    attr_accessor :definition_body
 
     # Block visitors emit their own paragraph spacing.
     alias_method :accept_blank_line, :ignore

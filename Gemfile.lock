@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     rdoc-markdown (0.21.2)
+      commonmarker (~> 2.8)
       csv
       erb
       nokogiri
@@ -216,7 +217,6 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (>= 2.0)
-  commonmarker
   erb_lint
   minitest (~> 5.0)
   minitest-strict (~> 1.0)

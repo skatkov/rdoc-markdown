@@ -8,16 +8,26 @@ class TestMarkdownSyntax < Minitest::Test
 
   Syntax = RDoc::Generator::Markdown::Syntax
 
+  def test_ast_text_preserves_inline_content_and_breaks_without_rendering_html
+    source = "one *two* `three`\nfour  \nfive<a id=\"marker\"></a> [label](url) ![alt](image)"
+    assert_equal "one two three four five label alt", Syntax.node_text(Commonmarker.parse(source))
+    assert_equal "", Syntax.node_text(Commonmarker.parse(""))
+  end
+
   def test_literal_text_escapes_every_markdown_metacharacter
     assert_equal '\\\\\\`\\*\\_\\[\\]\\<\\>\\#', Syntax.escape('\\`*_[]<>#')
     assert_equal "12\\. item", Syntax.escape("12. item")
     assert_equal "12.item", Syntax.escape("12.item")
     assert_equal "a 12. item", Syntax.escape("a 12. item")
     assert_equal "plain. text", Syntax.escape("plain. text")
+    assert_equal "a b c", Syntax.escape("a\t b   c")
+    assert_equal "&amp;lt; &amp;amp; &amp;\\#65; &amp;\\#x41;", Syntax.escape("&lt; &amp; &#65; &#x41;")
   end
 
   def test_code_spans_choose_and_pad_their_delimiters
+    assert_equal "<code></code>", Syntax.code("")
     assert_equal "`plain`", Syntax.code("plain")
+    assert_equal "`one  two`", Syntax.code("one  two")
     assert_equal "``a`b``", Syntax.code("a`b")
     assert_equal "```a``b```", Syntax.code("a``b")
     assert_equal "`` `start ``", Syntax.code("`start")

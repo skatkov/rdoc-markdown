@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Parse mixed Markdown links with Commonmarker's AST, now a runtime dependency, while retaining native RDoc label formatting and resolving documentation targets.
+- Restore loose-list spacing, inline definition terms, footnote superscripts, and typography-dependent heading aliases without an HTML conversion round trip.
+- Preserve entity-looking literal text and empty inline code, and avoid adding newlines to non-Ruby definition-list examples.
 - Render comment documents through RDoc's Markdown formatter, keeping code examples, including those nested in lists and blockquotes, out of HTML conversion while preserving existing links, anchors, and HTML compatibility.
 - Remove the ReverseMarkdown dependency and converter-fork override; preserve literal code rather than rewriting list-looking examples as prose.
 - Preserve footnote anchor IDs and external source-file URLs, and keep instance-variable code spans out of heading-link resolution.

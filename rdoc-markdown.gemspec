@@ -27,9 +27,9 @@ Gem::Specification.new do |spec|
   spec.add_dependency "erb"
   spec.add_dependency "rdoc", ">= 8.0"
   spec.add_dependency "nokogiri"
+  spec.add_dependency "commonmarker", "~> 2.8"
 
   spec.add_development_dependency "bundler", ">= 2.0"
-  spec.add_development_dependency "commonmarker"
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "minitest-strict", "~> 1.0"
   spec.add_development_dependency "rake", "~> 13.0"
