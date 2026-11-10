@@ -55,20 +55,28 @@ class RDoc::Generator::Markdown
     # @return [String] Markdown link, image, or unresolved label.
     def gen_url(url, label)
       return explicit_reference(url.delete_prefix("rdoc-ref:"), label) if url.start_with?("rdoc-ref:")
-      if url.start_with?("rdoc-label:")
-        target, id = url.delete_prefix("rdoc-label:").split(":", 2)
-        anchor = id ? Syntax.anchor(id) : ""
-        return "#{anchor}#{Syntax.link(label, "##{target}")}"
-      end
+      return label_reference(url, label) if url.start_with?("rdoc-label:")
 
       _, target, = parse_url(url)
-      target = target.sub(/\.(rb|rdoc)(?=[#?]|\z)/i) { "_#{Regexp.last_match(1)}.md" }
+      unless target.match?(%r{\A(?:[a-z][a-z0-9+.-]*:|//|www\.|#)}i)
+        target = target.sub(/\.(rb|rdoc)(?=[#?]|\z)/i) { "_#{Regexp.last_match(1)}.md" }
+      end
       return "![](#{target})" if target.match?(/\Ahttps?:.+\.(?:png|gif|jpe?g|bmp)\z/)
 
       Syntax.link(label, target)
     end
 
     private
+
+    # Keeps the optional source anchor without parsing HTML attribute strings.
+    # @param url [String] Native rdoc-label URL.
+    # @param label [String] Inline Markdown label.
+    # @return [String] Anchored Markdown reference.
+    def label_reference(url, label)
+      target, id = url.delete_prefix("rdoc-label:").split(":", 2)
+      anchor = Syntax.anchor(id) if id
+      "#{anchor}#{Syntax.link(label, "##{target}")}"
+    end
 
     # Registers native reference handlers on the markup instance initialized by super.
     # @return [void]

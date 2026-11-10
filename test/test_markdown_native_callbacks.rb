@@ -69,6 +69,14 @@ class TestMarkdownNativeCallbacks < Minitest::Test
     assert_equal "![](https://example.test/a.jpeg)", visitor.gen_url("https://example.test/a.jpeg", "Image")
     assert_equal "[Local](local.png)", visitor.gen_url("link:local.png", "Local")
     assert_equal "[Guide](../guide_rdoc.md)", formatter(relative_name: "nested/source.rdoc").gen_url("link:guide.rdoc", "Guide")
+    assert_equal "[Source](source_RB.md)", visitor.gen_url("link:source.RB", "Source")
+    %w[https://example.test/file.rb HTTP://example.test/file.rdoc //example.test/file.rb www.example.test/file.rb ftp://example.test/file.rb mailto:file.rb #file.rb].each do |url|
+      target = url.start_with?("www.") ? "https://#{url}" : url
+      assert_equal "[Source](#{target})", visitor.gen_url(url, "Source")
+    end
+    %w[png gif jpg jpeg bmp].each do |extension|
+      assert_equal "![](http://example.test/image.#{extension})", visitor.gen_url("http://example.test/image.#{extension}", "Image")
+    end
   end
 
   def test_rdoc_labels_keep_both_the_target_and_the_explicit_source_anchor
@@ -77,6 +85,7 @@ class TestMarkdownNativeCallbacks < Minitest::Test
     assert_equal '<a id="marker"></a>[Note](#target)', visitor.gen_url("rdoc-label:target:marker", "Note")
     assert_equal "[Note](#target)", visitor.gen_url("rdoc-label:target", "Note")
     assert_equal '<a id="marker&quot;&amp;"></a>[Note](#target)', visitor.gen_url('rdoc-label:target:marker"&', "Note")
+    assert_equal '<a id="scope:marker"></a>[Note](#target)', visitor.gen_url("rdoc-label:target:scope:marker", "Note")
   end
 
   def test_link_label_boundaries_suppress_automatic_links_and_escape_visible_text

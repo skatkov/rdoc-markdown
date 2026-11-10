@@ -27,9 +27,10 @@ class TestMarkdownReferences < Minitest::Test
     hidden.comment = "Hidden docs."
     hidden.add_method(rdoc_method("run", comment: "Run."))
     guide = rdoc_page(store, relative_name: "guide.rdoc", comment: "Guide.")
+    marked_guide = rdoc_page(store, relative_name: "_guide_.rdoc", comment: "Guide.")
     store.complete(options.visibility)
     RDoc::Generator::Markdown::Formatter.new(source,
-      output_object_ids: Set[source.object_id, target.object_id, guide.object_id], heading_level_offset: 0)
+      output_object_ids: Set[source.object_id, target.object_id, guide.object_id, marked_guide.object_id], heading_level_offset: 0)
   end
 
   def test_resolved_targets_distinguish_code_objects_pages_and_explicit_labels
@@ -41,6 +42,9 @@ class TestMarkdownReferences < Minitest::Test
     assert_equal "[guide](guide_rdoc.md)", visitor.reference_link("guide")
     assert_equal "[Guide](guide_rdoc.md)", visitor.reference_link("guide", label: "Guide")
     assert_nil visitor.reference_link("Missing")
+    assert_nil visitor.reference_link("Missing@Heading")
+    assert_nil visitor.reference_link("")
+    assert_equal '[\_guide\_.rdoc](_guide__rdoc.md)', visitor.reference_link("_guide_.rdoc")
     assert_equal "[`Target#do_work`](Target.md#method-i-do_work)", visitor.reference_link("Target#do_work", label: 'Target\\#do\\_work')
   end
 
@@ -66,6 +70,7 @@ class TestMarkdownReferences < Minitest::Test
     assert_equal "[Heading](Target.md#class-target-some-heading)", visitor.reference_link("Target@Some+Heading", label: "Heading")
     assert_equal "[Method](Target.md#method-i-run-some-heading)", visitor.reference_link("Target#run@Some+Heading", label: "Method")
     assert_equal "[Local](#some-heading)", visitor.reference_link("@Some+Heading", label: "Local")
+    assert_equal "[@Some+Heading](#some-heading)", visitor.reference_link("@Some+Heading")
   end
 
   def test_inline_code_resolves_valid_references_but_not_arbitrary_lowercase_words
@@ -76,6 +81,8 @@ class TestMarkdownReferences < Minitest::Test
     assert_equal "[`run`](Source.md#method-i-run)", formatter(hyperlink_all: true).attributes("+run+")
     assert_equal "[`run`](Source.md#method-i-run)", formatter(hyperlink_all: true).attributes("run")
     assert_equal "[`#run`](Source.md#method-i-run)", visitor.attributes("+#run+")
+    assert_equal "[`#run`](Source.md#method-i-run)", formatter(hyperlink_all: true).attributes("+#run+")
+    assert_equal '[\_guide\_.rdoc](_guide__rdoc.md)', visitor.attributes("+_guide_.rdoc+")
     assert_equal "`Missing`", visitor.attributes("+Missing+")
   end
 
@@ -86,8 +93,10 @@ class TestMarkdownReferences < Minitest::Test
     visitor.options.autolink_excluded_words = nil
     assert_equal "[`Target`](Target.md)", visitor.handle_regexp_CROSSREF("Target")
     assert_equal "Foo@example.test", visitor.handle_regexp_CROSSREF("Foo@example.test")
+    assert_equal "Target@example.test", visitor.handle_regexp_CROSSREF("Target@example.test")
     assert_equal "Missing\\_Name", visitor.handle_regexp_CROSSREF("Missing_Name")
     assert_equal "[Target](https://example.test)", visitor.attributes("{Target}[https://example.test]")
     assert_equal "[`Target`](https://example.test)", visitor.attributes("{<code>Target</code>}[https://example.test]")
+    assert_equal "[Target](https://example.test)", visitor.attributes("{rdoc-ref:Target}[https://example.test]")
   end
 end

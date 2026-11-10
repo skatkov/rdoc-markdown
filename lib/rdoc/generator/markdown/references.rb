@@ -34,7 +34,8 @@ class RDoc::Generator::Markdown
     def handle_regexp_RDOCLINK(url)
       return super unless url.start_with?("rdoc-ref:")
 
-      explicit_reference(url.delete_prefix("rdoc-ref:"))
+      name = url.delete_prefix("rdoc-ref:")
+      in_link_label? ? convert_string(name) : explicit_reference(name)
     end
 
     # Reports missing explicit references and retains their visible labels.
@@ -57,7 +58,7 @@ class RDoc::Generator::Markdown
     def reference_link(name, label: nil)
       target_name, section = split_reference(name)
       local = target_name.empty?
-      ref = rendering.reference.resolve(target_name) unless local
+      ref = rendering.reference.resolve(target_name)
       return if !ref && !(local && section)
 
       text = reference_text(name, label, ref)
@@ -92,10 +93,10 @@ class RDoc::Generator::Markdown
     # @param name [String] Reference name.
     # @return [Array(String, String, nil)] Target and optional heading label.
     def split_reference(name)
-      return [name, nil] if name.end_with?("+@", "-@")
+      return [name] if name.end_with?("+@", "-@")
 
       target, separator, section = name.partition("@")
-      [target, separator.empty? ? nil : section]
+      [target, (section unless separator.empty?)]
     end
 
     # Tests the owning page rather than the individual member's identity.
@@ -117,7 +118,7 @@ class RDoc::Generator::Markdown
       slug = RDoc::Text.to_anchor(decoded)
       return "#{path}-#{slug}" if path.include?("#")
 
-      named = ref.sections.find { |candidate| candidate.title == decoded } if RDoc::Context === ref
+      named = ref.sections.find { |candidate| candidate.title == decoded } if ref
       anchor = if named
         named.aref
       elsif RDoc::ClassModule === ref
