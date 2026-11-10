@@ -172,6 +172,10 @@ class RDoc::Generator::Markdown
     classes = Selection.classes(store)
     class_output_paths = classes.to_h { |klass| [klass.full_name, output_path_for(klass)] }
     pages = Selection.pages(store)
+    known_output_paths = Set.new
+    (class_output_paths.values + pages.map { |page| page_output_path(page) }).each do |path|
+      warn "rdoc-markdown: several inputs write #{path}; only the last one is kept" unless known_output_paths.add?(path)
+    end
 
     @output_dir = output_dir
     @generation_state = GenerationState.new(
@@ -179,7 +183,7 @@ class RDoc::Generator::Markdown
       pages: pages,
       class_output_paths: class_output_paths,
       markdown_output_object_ids: (classes + pages).to_set(&:object_id),
-      known_output_paths: class_output_paths.values.to_set.merge(pages.map { |page| page_output_path(page) }),
+      known_output_paths: known_output_paths,
       root_path_segment: Pathname.new(options.root || ".").basename
     )
   end

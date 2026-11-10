@@ -314,6 +314,27 @@ class TestClassDocs < Minitest::Test
     assert_includes File.read(File.join(dir, "DotRoot/Thing.md")), "[guide](../guides/rooted_rdoc.md)"
   end
 
+  def test_setup_warns_when_inputs_share_an_output_path
+    klass = build_rdoc_class(full_name: "Getting_started_rdoc", description: "Class")
+    pages = [
+      rdoc_page(relative_name: "Getting.started.rdoc", comment: "Dotted"),
+      rdoc_page(relative_name: "other.rdoc", comment: "Other")
+    ]
+
+    _stdout, stderr = capture_io { generate_from_store([klass], pages: pages) }
+
+    assert_equal "rdoc-markdown: several inputs write Getting_started_rdoc.md; only the last one is kept\n", stderr
+  end
+
+  def test_setup_does_not_warn_when_output_paths_are_unique
+    klass = build_rdoc_class(full_name: "Getting", description: "Class")
+    page = rdoc_page(relative_name: "getting.rdoc", comment: "Page")
+
+    _stdout, stderr = capture_io { generate_from_store([klass], pages: [page]) }
+
+    assert_empty stderr
+  end
+
   def test_setup_keeps_crossrefs_to_emitted_pages
     source = rdoc_page(relative_name: "source.rdoc", comment: "{Target}[rdoc-ref:target]")
     target = rdoc_page(relative_name: "target.rdoc", comment: "Target")
