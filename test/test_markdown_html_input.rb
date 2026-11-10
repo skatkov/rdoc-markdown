@@ -46,6 +46,10 @@ class TestMarkdownHtmlInput < Minitest::Test
     assert_equal "```json\n{}\n```", render('<div class="highlight-json"><pre>{}</pre></div>')
     assert_equal "```\nx\n```", render('<pre class="highlight">x</pre>')
     assert_equal "```\nx\n```", render('<pre class="9invalid">x</pre>')
+    assert_equal "```\nx\n```", render('<pre class="ruby extra">x</pre>')
+    %w[r R c++ foo-bar a1 a_b].each do |language|
+      assert_equal "```#{language}\nx\n```", render("<pre class=\"#{language}\">x</pre>")
+    end
   end
 
   def test_heading_aliases_and_offsets_are_explicit
@@ -54,6 +58,10 @@ class TestMarkdownHtmlInput < Minitest::Test
     assert_equal "## Topic<a id=\"old\"></a>", render('<h2>Topic<span class="legacy-anchor" id="old"></span></h2>')
     assert_equal "## Topic<a id=\"old\"></a>", render('<h2><span class="legacy-anchor" id="old"></span><a href="#topic">Topic</a></h2>')
     assert_equal "# Topic<a id=\"old\"></a>", render('<span class="legacy-anchor" id="old"></span><h1>Topic</h1>')
+    assert_equal "## Topic<a id=\"old\"></a>", render('<span class="legacy-anchor" id="old"></span><h2>Topic</h2>')
+    assert_equal "###### Topic<a id=\"old\"></a>", render('<span class="legacy-anchor" id="old"></span><h6>Topic</h6>')
+    assert_equal '<a id="old"></a><h7>Topic</h7>', render('<span class="legacy-anchor" id="old"></span><h7>Topic</h7>')
+    assert_equal '<a id="old"></a><h2x>Topic</h2x>', render('<span class="legacy-anchor" id="old"></span><h2x>Topic</h2x>')
     assert_equal "# Topic", render('<span class="legacy-anchor" id="class-Topic"></span><h1>Topic</h1>')
     assert_equal "# Topic", render('<span class="legacy-anchor" id="module-Topic"></span><h1>Topic</h1>')
     assert_equal "# Topic<a id=\"notclass-Topic\"></a>", render('<span class="legacy-anchor" id="notclass-Topic"></span><h1>Topic</h1>')

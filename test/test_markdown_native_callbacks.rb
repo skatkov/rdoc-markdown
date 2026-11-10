@@ -70,7 +70,11 @@ class TestMarkdownNativeCallbacks < Minitest::Test
     assert_equal "[Local](local.png)", visitor.gen_url("link:local.png", "Local")
     assert_equal "[Guide](../guide_rdoc.md)", formatter(relative_name: "nested/source.rdoc").gen_url("link:guide.rdoc", "Guide")
     assert_equal "[Source](source_RB.md)", visitor.gen_url("link:source.RB", "Source")
-    %w[https://example.test/file.rb HTTP://example.test/file.rdoc //example.test/file.rb www.example.test/file.rb ftp://example.test/file.rb mailto:file.rb #file.rb].each do |url|
+    assert_equal "[Source](folder/a:file_rb.md)", visitor.gen_url("link:folder/a:file.rb", "Source")
+    assert_equal "[Source](wwwXfile_rb.md)", visitor.gen_url("link:wwwXfile.rb", "Source")
+    assert_equal "[Source](file_rb.md)", visitor.gen_url("link:/file.rb", "Source")
+    assert_equal "[Source](1local:file_rb.md)", visitor.gen_url("link:1local:file.rb", "Source")
+    %w[https://example.test/file.rb HTTP://example.test/file.rdoc //example.test/file.rb www.example.test/file.rb ftp://example.test/file.rb mailto:file.rb #file.rb x:file.rb a1:file.rb a+z:file.rb a-z:file.rb a.z:file.rb].each do |url|
       target = url.start_with?("www.") ? "https://#{url}" : url
       assert_equal "[Source](#{target})", visitor.gen_url(url, "Source")
     end

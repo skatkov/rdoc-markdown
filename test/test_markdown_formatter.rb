@@ -9,8 +9,6 @@ class TestMarkdownFormatter < Minitest::Test
   cover "RDoc::Generator::Markdown::Blocks*"
   cover "RDoc::Generator::Markdown::Inline*"
   cover "RDoc::Generator::Markdown::References*"
-  cover "RDoc::Generator::Markdown::Syntax*"
-  cover "RDoc::Generator::Markdown::HtmlInput*"
 
   def test_automatic_urls_are_linked_without_the_rails_fixture
     page = rdoc_page(relative_name: "automatic-url.rdoc", comment: "https://example.test/a_b")

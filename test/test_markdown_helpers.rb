@@ -9,8 +9,6 @@ require_relative "support/markdown_validator"
 
 class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#initialize"
-  cover "RDoc::Generator::Markdown::Syntax*"
-  cover "RDoc::Generator::Markdown::HtmlInput*"
   cover "RDoc::Generator::Markdown::References*"
   cover "RDoc::Generator::Markdown::Descriptions*"
   cover "RDoc::Generator::Markdown::Formatter*"
