@@ -1,19 +1,11 @@
-GIT
-  remote: https://github.com/skatkov/fork_reverse_markdown.git
-  revision: faff54bc4e8408cfbd8ee922306a07406dd7e742
-  ref: faff54bc4e8408cfbd8ee922306a07406dd7e742
-  specs:
-    reverse_markdown (3.0.3)
-      nokogiri
-
 PATH
   remote: .
   specs:
     rdoc-markdown (0.21.2)
       csv
       erb
+      nokogiri
       rdoc (>= 8.0)
-      reverse_markdown
 
 GEM
   remote: https://rubygems.org/
@@ -233,7 +225,6 @@ DEPENDENCIES
   rake (~> 13.0)
   rdoc-markdown!
   reek
-  reverse_markdown!
   ruby-lsp
   simplecov
   standard

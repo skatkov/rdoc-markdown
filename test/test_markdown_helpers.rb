@@ -9,33 +9,13 @@ require_relative "support/markdown_validator"
 
 class TestMarkdownHelpers < Minitest::Test
   cover "RDoc::Generator::Markdown#initialize"
-  cover "RDoc::Generator::Markdown::Conversion*"
+  cover "RDoc::Generator::Markdown::References*"
   cover "RDoc::Generator::Markdown::Descriptions*"
+  cover "RDoc::Generator::Markdown::Formatter*"
+  cover "RDoc::Generator::Markdown::Blocks*"
+  cover "RDoc::Generator::Markdown::Inline*"
   cover "RDoc::Generator::Markdown#debug"
   cover "RDoc::Generator::Markdown::Paths*"
-  cover "RDoc::Generator::Markdown::CrossrefExtension*"
-
-  def generate_markdown(classes: [], pages: [], root: nil)
-    dir = stable_tmpdir("generated-markdown")
-    options = generator_options(op_dir: dir, root: root)
-
-    RDoc::Generator::Markdown.new(
-      rdoc_store(classes: classes, pages: pages, options: options),
-      options
-    ).generate
-    dir
-  end
-
-  def read_generated(path, classes: [], pages: [], root: nil)
-    dir = generate_markdown(classes: classes, pages: pages, root: root)
-    File.read(File.join(dir, path))
-  end
-
-  def raw_html_page(relative_name:, html:)
-    rdoc_page(relative_name: relative_name, comment: "placeholder").tap do |page|
-      page.define_singleton_method(:description) { html }
-    end
-  end
 
   def rewrite_internal_links(markdown, known_output_paths, root_path_segment: "project")
     state = Struct.new(:root_path_segment, :known_output_paths).new(root_path_segment, known_output_paths)
@@ -77,7 +57,7 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "[ParentClass](../Foo.md#top)"
     assert_includes markdown, "[ModulePath](Bar.md)"
     assert_includes markdown, "[ParentModule](../Bar.md#top)"
-    assert_includes markdown, "bird:\n- speak"
+    assert_equal "bird::\n* speak\n", Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).at_css("pre code").text
     assert_equal "\n", markdown[-1]
   end
 
@@ -188,50 +168,6 @@ class TestMarkdownHelpers < Minitest::Test
     assert_equal "Site\n", read_generated("missing-href_rdoc.md", pages: [page])
   end
 
-  def test_crossrefs_to_omitted_objects_are_rendered_without_links
-    source = build_rdoc_class(full_name: "Source", description: "Source docs")
-    hidden = build_rdoc_class(full_name: "Hidden", description: "Hidden docs")
-    hidden_method = rdoc_method("run")
-    hidden.add_method(hidden_method)
-    guide = rdoc_page(relative_name: "guide.rdoc", comment: "Guide")
-    formatter = Class.new do
-      attr_reader :rdoc_ref
-
-      def link(*, rdoc_ref: false)
-        @rdoc_ref = rdoc_ref
-        "linked"
-      end
-    end.new
-    resolver = Struct.new(:refs) do
-      def resolve(name) = refs.fetch(name)
-    end.new({
-      "Hidden" => hidden,
-      "Hidden#run" => hidden_method,
-      "guide" => guide,
-      "Missing" => "Missing"
-    })
-    formatter.extend(RDoc::Generator::Markdown::CrossrefExtension)
-
-    formatter.with_markdown_cross_references(resolver, Set[source.object_id]) do
-      assert_equal "<code>Hidden</code>", formatter.link("Hidden", "Hidden")
-      assert_equal "Hidden", formatter.link("Hidden", "Hidden", false)
-      assert_equal "<code>Hidden&lt;T&gt;</code>", formatter.link("Hidden", "Hidden&lt;T&gt;")
-      assert_equal "Hidden&lt;T&gt;", formatter.link("Hidden", "Hidden&lt;T&gt;", false)
-      assert_equal "Guide", formatter.link("guide", "Guide")
-      assert_equal "linked", formatter.link(nil, "Missing")
-      assert_equal "linked", formatter.link("Missing", "Missing")
-      assert_false formatter.rdoc_ref
-    end
-
-    formatter.with_markdown_cross_references(resolver, Set[hidden.object_id, guide.object_id]) do
-      assert_equal "linked", formatter.link("Hidden", "Hidden", false, rdoc_ref: true)
-      assert_true formatter.rdoc_ref
-      assert_equal "linked", formatter.link("Hidden#run", "run")
-      assert_equal "linked", formatter.link("guide", "Guide")
-    end
-    refute_includes RDoc::Markup::ToHtmlCrossref.ancestors, RDoc::Generator::Markdown::CrossrefExtension
-  end
-
   def test_generator_applies_crossref_policy_only_while_rendering
     page = rdoc_page(relative_name: "guide.rdoc", comment: "Hidden")
     hidden = RDoc::NormalModule.new("Hidden")
@@ -263,6 +199,21 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "Translated introduction"
     assert_includes markdown, "Translated details"
     assert_equal "Section body", section_comment.text
+  end
+
+  def test_native_reopened_class_comments_keep_their_individual_markup_formats
+    klass = rdoc_class("MixedMarkup", comment: "= RDoc heading")
+    comment = RDoc::Comment.new("# Markdown heading\n\n[Link](https://example.test)")
+    comment.format = "markdown"
+    klass.add_comment(comment, rdoc_file(klass.store, name: "extra.rb"))
+
+    markdown = read_generated("MixedMarkup.md", classes: [klass])
+
+    assert_includes markdown, "# RDoc heading"
+    assert_includes markdown, "# Markdown heading"
+    assert_includes markdown, "[Link](https://example.test)"
+    assert_equal 1, markdown.scan("# RDoc heading").length
+    assert_equal 1, markdown.scan("# Markdown heading").length
   end
 
   def test_localized_markdown_sections_keep_their_markup_format
@@ -306,20 +257,6 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "More details"
   end
 
-  def test_markdownify_accepts_frozen_converter_output
-    page = raw_html_page(
-      relative_name: "frozen.rdoc",
-      html: '<h1><a href="#topic-alias">Topic</a></h1>'
-    )
-    converted = (+"# TopicRDocMarkdownAnchor0End").freeze
-
-    ReverseMarkdown.stub(:convert, converted) do
-      markdown = read_generated("frozen_rdoc.md", pages: [page])
-
-      assert_equal "# Topic<a id=\"topic-alias\"></a>\n", markdown
-    end
-  end
-
   def test_markdownify_uses_github_flavored_markdown
     page = raw_html_page(relative_name: "github-flavored.rdoc", html: "<p><del>old</del></p>")
 
@@ -328,39 +265,8 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "~~old~~"
   end
 
-  def test_method_descriptions_preserve_nested_source_and_destination_type_lists
-    klass = rdoc_class("IO")
-    method = rdoc_method("copy_stream", comment: <<~'RDOC')
-      - The given +src+ must be one of the following:
-
-        - The path to a readable file, from which source data is to be read.
-        - An \IO-like object, opened for reading and capable of responding
-          to method +:readpartial+ or method +:read+.
-
-      - The given +dst+ must be one of the following:
-
-        - The path to a writable file, to which data is to be written.
-        - An \IO-like object, opened for writing and capable of responding
-          to method +:write+.
-    RDOC
-    method.singleton = true
-    klass.add_method(method)
-
-    markdown = read_generated("IO.md", classes: [klass])
-
-    assert_includes markdown, <<~MARKDOWN
-      - The given `src` must be one of the following:
-
-        - The path to a readable file, from which source data is to be read.
-
-        - An IO-like object, opened for reading and capable of responding to method `:readpartial` or method `:read`.
-
-      - The given `dst` must be one of the following:
-
-        - The path to a writable file, to which data is to be written.
-
-        - An IO-like object, opened for writing and capable of responding to method `:write`.
-    MARKDOWN
+  def test_html_conversion_keeps_heading_levels_by_default
+    assert_equal "# Topic", RDoc::Generator::Markdown::HtmlInput.new(heading_level_offset: 0).render("<h1>Topic</h1>")
   end
 
   def test_markdown_unknown_tags_pass_through
@@ -435,6 +341,108 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "```ruby\nrequire 'erb'\nputs :ok\n```"
   end
 
+  def test_nested_lists_and_quotes_keep_code_out_of_html_conversion
+    code = RDoc::Markup::Verbatim.new("<a href=\"example.com\">literal &amp; text</a>\n````\n")
+    code.format = :text
+    document = RDoc::Markup::Document.new(
+      RDoc::Markup::Paragraph.new("Before."),
+      RDoc::Markup::List.new(:BULLET,
+        RDoc::Markup::ListItem.new(nil,
+          RDoc::Markup::Paragraph.new("First item."),
+          RDoc::Markup::List.new(:NUMBER,
+            RDoc::Markup::ListItem.new(nil, RDoc::Markup::Paragraph.new("Nested item."), code)),
+          RDoc::Markup::BlockQuote.new(RDoc::Markup::Paragraph.new("Quoted."), code)),
+        RDoc::Markup::ListItem.new(nil, RDoc::Markup::Paragraph.new("Second item."))),
+      RDoc::Markup::Paragraph.new("After.")
+    )
+    page = rdoc_page(relative_name: "native-containers.rdoc", comment: "")
+    page.comment = RDoc::Comment.from_document(document)
+    html_calls = []
+    trace = TracePoint.new(:call) do |event|
+      if [:accept_list_start, :accept_block_quote, :accept_verbatim].include?(event.method_id) && RDoc::Markup::ToHtml === event.self
+        html_calls << event.method_id
+      end
+    end
+
+    markdown = trace.enable { read_generated("native-containers_rdoc.md", pages: [page]) }
+    rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+    assert_empty html_calls
+    assert_equal 2, rendered.css("ul > li").length
+    assert_equal code.text, rendered.at_css("ul ol pre code").text
+    assert_equal code.text, rendered.at_css("ul blockquote pre code").text
+    assert_equal "Before.", rendered.css("p").first.text
+    assert_equal "After.", rendered.css("p").last.text
+    assert_includes markdown, "- Second item."
+  end
+
+  def test_native_definition_lists_render_their_contents_as_markdown
+    [:LABEL, :NOTE].each do |type|
+      code = RDoc::Markup::Verbatim.new("<b>literal &amp; text</b>\n````\n")
+      code.format = :text
+      document = RDoc::Markup::Document.new(
+        RDoc::Markup::Heading.new(2, "Before"),
+        RDoc::Markup::List.new(type,
+          RDoc::Markup::ListItem.new(["Term", "+code+"],
+            RDoc::Markup::Paragraph.new("Description."), code,
+            RDoc::Markup::List.new(:BULLET,
+              RDoc::Markup::ListItem.new(nil, RDoc::Markup::Paragraph.new("Nested bullet.")))),
+          RDoc::Markup::ListItem.new(nil, RDoc::Markup::Paragraph.new("Extra description."))),
+        RDoc::Markup::Heading.new(2, "After")
+      )
+      page = rdoc_page(relative_name: "native-#{type}.rdoc", comment: "")
+      page.comment = RDoc::Comment.from_document(document)
+
+      dir = generate_markdown(pages: [page])
+      markdown = File.read(File.join(dir, "native-#{type}_rdoc.md"))
+      rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown, options: {render: {unsafe: true}}))
+
+      assert_equal ["Term", "code"], rendered.css("dl > dt").map { |term| term.text.strip }
+      assert_equal 2, rendered.css("dl > dd").length
+      assert_equal code.text, rendered.at_css("dd pre code").text
+      assert_equal "Nested bullet.", rendered.at_css("dd ul li").text.strip
+      assert_equal "Extra description.", rendered.css("dd").last.text.strip
+      assert_equal ["Before", "After"], rendered.css("h2").map(&:text)
+      assert_equal "rdoc-list #{type.to_s.downcase}-list", rendered.at_css("dl")["class"]
+      assert_equal 1, MarkdownValidator.new(dir).validate!
+    end
+  end
+
+  def test_native_ordered_lists_indent_code_after_double_digit_markers
+    [:NUMBER, :LALPHA, :UALPHA].each do |type|
+      items = (1..11).map do |number|
+        RDoc::Markup::ListItem.new(nil, RDoc::Markup::Paragraph.new("Entry #{number}."))
+      end
+      items.last << RDoc::Markup::Verbatim.new("puts :ok\n")
+      page = rdoc_page(relative_name: "ordered-#{type}.rdoc", comment: "")
+      page.comment = RDoc::Comment.from_document(RDoc::Markup::Document.new(RDoc::Markup::List.new(type, *items)))
+
+      markdown = read_generated("ordered-#{type}_rdoc.md", pages: [page])
+      rendered = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+      assert_equal 11, rendered.css("ol > li").length
+      assert_equal "puts :ok\n", rendered.at_css("ol > li:last-child pre code").text
+      assert_includes markdown, "1. Entry 1."
+      assert_includes markdown, "11. Entry 11."
+    end
+  end
+
+  def test_native_container_errors_restore_the_outer_output_buffer
+    page = rdoc_page(rdoc_store, relative_name: "error.rdoc", comment: "")
+    formatter = RDoc::Generator::Markdown::Formatter.new(page, output_object_ids: Set[page.object_id], heading_level_offset: 0)
+    formatter.start_accepting
+    RDoc::Markup::Paragraph.new("Before.").accept(formatter)
+    quote = RDoc::Markup::BlockQuote.new(
+      RDoc::Markup::Paragraph.new("Discarded."),
+      RDoc::Markup::List.new(:INVALID)
+    )
+
+    error = assert_raises(RDoc::Error) { quote.accept(formatter) }
+    assert_equal "Invalid list type: :INVALID", error.message
+    RDoc::Markup::Paragraph.new("After.").accept(formatter)
+    assert_equal "Before.\n\nAfter.\n\n", formatter.end_accepting
+  end
+
   def test_pre_block_language_classes_are_preserved
     page = raw_html_page(relative_name: "json-block.rdoc", html: "<pre class=\"json\">{&quot;ok&quot;: true}</pre>")
     r_page = raw_html_page(relative_name: "r-block.rdoc", html: "<pre class=\"r\">1</pre>")
@@ -497,15 +505,6 @@ class TestMarkdownHelpers < Minitest::Test
       read_generated("context-legacy-anchors_rdoc.md", pages: [page])
   end
 
-  def test_requiring_generator_does_not_replace_reverse_markdown_converters
-    assert_equal "[Thing](:foo)",
-      ReverseMarkdown.convert('<a href=":foo">Thing</a>', github_flavored: true)
-    assert_equal "legacy",
-      ReverseMarkdown.convert('<span class="legacy-anchor">legacy</span>', github_flavored: true)
-    assert_equal "# [Heading](#heading)\n",
-      ReverseMarkdown.convert('<h1><a href="#heading">Heading</a></h1>', github_flavored: true)
-  end
-
   def test_invalid_definition_list_blocks_remain_plain_text
     page = rdoc_page(relative_name: "invalid-definition.rdoc", comment: "= Heading\n\n  bird::\n  plain text\n")
 
@@ -523,12 +522,21 @@ class TestMarkdownHelpers < Minitest::Test
 
     markdown = read_generated("spaced-definition_rdoc.md", pages: [page])
 
-    assert_includes markdown, "bird:\n\n- speak\n- fly"
-    assert_includes markdown, "fly\n\nBetween\n\nwaterfowl:"
-    assert_includes markdown, "waterfowl:\n\n- swim"
-    refute_includes markdown, "- \n"
-    refute_includes markdown, "* speak"
-    refute_includes markdown, "* swim"
+    blocks = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown)).css("pre code").map(&:text)
+    assert_equal 2, blocks.length
+    assert_includes blocks.first, "bird::"
+    assert_includes blocks.first, "* speak"
+    assert_includes blocks.last, "waterfowl::"
+    assert_includes blocks.last, "* swim"
+  end
+
+  def test_html_definition_list_lookalikes_remain_literal_code
+    page = raw_html_page(
+      relative_name: "html-definition-code.rdoc",
+      html: "<pre>bird::\n* speak</pre>"
+    )
+
+    assert_equal "```\nbird::\n* speak\n```\n", read_generated("html-definition-code_rdoc.md", pages: [page])
   end
 
   def test_internal_links_are_rewritten_relative_to_generated_output
@@ -543,7 +551,7 @@ class TestMarkdownHelpers < Minitest::Test
     single = rdoc_page(relative_name: "docs/single.rdoc", comment: "{Intro}[guides/intro_rdoc.html#top]")
     empty_anchor = rdoc_page(
       relative_name: "docs/empty-anchor.rdoc",
-      comment: "{EmptyAnchor}[guides/simple_rdoc.html#] [RootIntro](/guides/root-intro.md)"
+      comment: "{EmptyAnchor}[guides/simple_rdoc.html#] {RootIntro}[/guides/root-intro.md]"
     )
     readme = rdoc_page(
       relative_name: "docs/readme.rdoc",
@@ -573,7 +581,7 @@ class TestMarkdownHelpers < Minitest::Test
       "[Legacy](../guides/intro_rdoc.md#class-ActiveSupport::Messages::MessageVerifier-label-Signing+is+not+encryption)"
     assert_includes markdown, "[Query](../guides/intro_rdoc.md?tag=-label-test)"
     assert_eql "[Intro](../guides/intro_rdoc.md#top)\n", File.read(File.join(dir, "docs/single_rdoc.md"))
-    assert_eql "[EmptyAnchor](../guides/simple_rdoc.md#) [RootIntro](/guides/root-intro.md)\n",
+    assert_eql "[EmptyAnchor](../guides/simple_rdoc.md#) [RootIntro](guides/root-intro.md)\n",
       File.read(File.join(dir, "docs/empty-anchor_rdoc.md"))
   end
 
@@ -731,7 +739,7 @@ class TestMarkdownHelpers < Minitest::Test
     html = "<h1>Before</h1><pre># Literal heading\n## Literal subheading\n#\tTab comment</pre>" \
       "<h2>Between</h2><pre class=\"ruby\"># =&gt; &quot;http&quot;</pre><h3>After</h3>"
 
-    markdown = RDoc::Generator::Markdown::Conversion.markdownify(html, heading_level_offset: 3)
+    markdown = RDoc::Generator::Markdown::HtmlInput.new(heading_level_offset: 3).render(html)
 
     assert_equal <<~MARKDOWN.chomp, markdown
       #### Before
@@ -776,6 +784,13 @@ class TestMarkdownHelpers < Minitest::Test
     markdown = read_generated("literal-definition-list_rdoc.md", pages: [page])
 
     assert_eql "```text\n</dl>\nnot a new paragraph\n```\n", markdown
+
+    unlabelled = raw_html_page(
+      relative_name: "unlabelled-definition-list.rdoc",
+      html: "<pre>&lt;/dl&gt;\nnot a new paragraph</pre>"
+    )
+    assert_equal "```\n</dl>\nnot a new paragraph\n```\n",
+      read_generated("unlabelled-definition-list_rdoc.md", pages: [unlabelled])
   end
 
   def test_markdown_method_descriptions_preserve_explicit_heading_levels

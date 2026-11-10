@@ -1,8 +1,9 @@
 ---
 detectors:
-  BooleanParameter:
+  # A native reference has a target and a visible label; it needs no wrapper object.
+  DataClump:
     exclude:
-      - RDoc::Generator::Markdown::CrossrefExtension#link
+      - RDoc::Generator::Markdown::References
   ControlParameter:
     exclude:
       - RDoc::Generator::Markdown::Descriptions#method_link
@@ -13,14 +14,27 @@ detectors:
       - RDoc::Generator::Markdown::Signatures#self.split_signature_list
   FeatureEnvy:
     exclude:
-      - RDoc::Generator::Markdown::Conversion
       - RDoc::Generator::Markdown::Descriptions
-  LongParameterList:
+      - RDoc::Generator::Markdown::Blocks
+      - RDoc::Generator::Markdown::HtmlInput
+      - RDoc::Generator::Markdown::References#emitted_reference?
+  # RDoc's native inline callback protocol owns these parser buffers and names.
+  InstanceVariableAssumption:
     exclude:
-      - RDoc::Generator::Markdown::CrossrefExtension#link
+      - RDoc::Generator::Markdown::Inline
+  UncommunicativeMethodName:
+    exclude:
+      - RDoc::Generator::Markdown::Inline#handle_PLAIN_TEXT
+      - RDoc::Generator::Markdown::Inline#handle_TT
+      - RDoc::Generator::Markdown::Inline#handle_TIDYLINK
+      - RDoc::Generator::Markdown::References#handle_regexp_CROSSREF
+      - RDoc::Generator::Markdown::References#handle_regexp_HYPERLINK
+      - RDoc::Generator::Markdown::References#handle_regexp_RDOCLINK
   TooManyStatements:
     max_statements: 12
   TooManyInstanceVariables:
     max_instance_variables: 5
   UtilityFunction:
     public_methods_only: true
+    exclude:
+      - RDoc::Generator::Markdown::Inline#convert_string

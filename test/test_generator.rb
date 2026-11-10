@@ -71,8 +71,8 @@ class TestGenerator < Minitest::Test
     refute_includes duck_doc, "[](#"
     assert_includes duck_doc, "#### `useful? -> bool`"
     refute_includes duck_doc, "### Public Instance Methods\n\n"
-    assert_includes duck_doc, "bird:\n\n- speak\n- fly"
-    refute_includes duck_doc, "```\nbird::"
+    assert_includes duck_doc, "```\nbird::\n\n  * speak\n  * fly"
+    refute_includes duck_doc, "bird:\n\n- speak\n- fly"
 
     bird_doc = File.read("#{dir}/Bird.md")
     refute_includes bird_doc, "| **Includes** |"

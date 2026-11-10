@@ -4,7 +4,7 @@ require "erb"
 # standard:disable Lint/RedundantRequireStatement
 require "set"
 # standard:enable Lint/RedundantRequireStatement
-require "reverse_markdown"
+require "nokogiri"
 require "csv"
 require "fileutils"
 
@@ -12,9 +12,11 @@ require "fileutils"
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
 
-  require_relative "markdown/conversion"
-  require_relative "markdown/crossref"
+  require_relative "markdown/syntax"
+  require_relative "markdown/references"
+  require_relative "markdown/html_input"
   require_relative "markdown/descriptions"
+  require_relative "markdown/formatter"
   require_relative "markdown/index"
   require_relative "markdown/paths"
   require_relative "markdown/selection"
@@ -153,7 +155,7 @@ class RDoc::Generator::Markdown
 
       next FileUtils.cp(File.expand_path(page.absolute_name, source_dir), out_file) if page.relative_name.match?(/\.(?:md|markdown)\z/i)
 
-      content = Conversion.markdownify(render_description(page))
+      content = describe(page)
       File.write(out_file, finalize_markdown(content, current_output_path: output_path))
     end
   end
