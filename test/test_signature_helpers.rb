@@ -31,6 +31,12 @@ class TestSignatureHelpers < Minitest::Test
     end
   end
 
+  def test_signatures_containing_backticks_stay_one_code_span
+    doc = generated_class_doc([visible_method("`", params: "(cmd)")])
+
+    assert_includes doc, '### `` `(cmd) ``<a id="method-i-60"></a>'
+  end
+
   def test_bracket_call_sequences_preserve_documented_arguments_and_anchors
     lookup = bracket_method("[]", "ENV[name] -> value", params: "(p1)")
     assignment = bracket_method("[]=", "ENV[name] = value -> value", params: "(p1, p2)")
