@@ -95,11 +95,11 @@ class TestGenerator < Minitest::Test
       ["Duck.rubber_ducks", "Method", "Duck.md#method-c-rubber_ducks"],
       ["Duck.new", "Method", "Duck.md#method-c-new"],
       ["Duck#useful?", "Method", "Duck.md#method-i-useful-3F"],
-      ["Duck.MAX_VELOCITY", "Constant", "Duck.md#MAX_VELOCITY"],
-      ["Duck.domestic", "Attribute", "Duck.md#attribute-i-domestic"],
-      ["Duck.rubber", "Attribute", "Duck.md#attribute-i-rubber"],
+      ["Duck::MAX_VELOCITY", "Constant", "Duck.md#MAX_VELOCITY"],
+      ["Duck#domestic", "Attribute", "Duck.md#attribute-i-domestic"],
+      ["Duck#rubber", "Attribute", "Duck.md#attribute-i-rubber"],
       ["Object", "Class", "Object.md"],
-      ["Object.DEFAULT_DUCK_VELOCITY", "Constant", "Object.md#DEFAULT_DUCK_VELOCITY"],
+      ["Object::DEFAULT_DUCK_VELOCITY", "Constant", "Object.md#DEFAULT_DUCK_VELOCITY"],
       ["Waterfowl", "Module", "Waterfowl.md"],
       ["Waterfowl#swim", "Method", "Waterfowl.md#method-i-swim"]
     ]

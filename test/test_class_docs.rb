@@ -371,6 +371,7 @@ class TestClassDocs < Minitest::Test
     klass.add_attribute(rdoc_attribute("beta", visible: true))
     klass.add_attribute(rdoc_attribute("hidden", visible: false))
     klass.add_attribute(rdoc_attribute("alpha", visible: true))
+    klass.add_attribute(rdoc_attribute("gamma", visible: true).tap { |attr| attr.singleton = true })
     page = rdoc_page(relative_name: 'docs\guide.rdoc', comment: "Guide page")
     dir = generate_from_store([klass], pages: [page])
 
@@ -384,13 +385,14 @@ class TestClassDocs < Minitest::Test
     assert_includes entries, ["docs/guide.rdoc", "File", "docs/guide_rdoc.md"]
 
     assert_eql [
-      ["Csv::Thing.ALPHA", "Constant", "Csv/Thing.md#ALPHA"],
-      ["Csv::Thing.BETA", "Constant", "Csv/Thing.md#BETA"]
+      ["Csv::Thing::ALPHA", "Constant", "Csv/Thing.md#ALPHA"],
+      ["Csv::Thing::BETA", "Constant", "Csv/Thing.md#BETA"]
     ], entries.select { |_name, type, _path| type == "Constant" }
 
     assert_eql [
-      ["Csv::Thing.alpha", "Attribute", "Csv/Thing.md#attribute-i-alpha"],
-      ["Csv::Thing.beta", "Attribute", "Csv/Thing.md#attribute-i-beta"]
+      ["Csv::Thing.gamma", "Attribute", "Csv/Thing.md#attribute-c-gamma"],
+      ["Csv::Thing#alpha", "Attribute", "Csv/Thing.md#attribute-i-alpha"],
+      ["Csv::Thing#beta", "Attribute", "Csv/Thing.md#attribute-i-beta"]
     ], entries.select { |_name, type, _path| type == "Attribute" }
   end
 

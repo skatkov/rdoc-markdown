@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Name constants (`Class::CONST`) and attributes (`Class#attr`, or `Class.attr` for class-level attributes) in Ruby notation in search-index names, like methods. Document paths and anchors are unchanged.
 - Replace `reverse_markdown` and its converter fork with RDoc's native `RDoc::Markup::ToMarkdown` formatter.
 
 ## 0.21.2
