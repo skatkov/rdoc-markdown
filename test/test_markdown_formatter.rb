@@ -11,6 +11,36 @@ class TestMarkdownFormatter < Minitest::Test
   cover "RDoc::Generator::Markdown::References*"
   cover "RDoc::Generator::Markdown::Syntax*"
 
+  def test_method_descriptions_preserve_nested_source_and_destination_type_lists
+    klass = rdoc_class("IO")
+    method = rdoc_method("copy_stream", comment: <<~'RDOC')
+      - The given +src+ must be one of the following:
+
+        - The path to a readable file, from which source data is to be read.
+        - An \IO-like object, opened for reading and capable of responding
+          to method +:readpartial+ or method +:read+.
+
+      - The given +dst+ must be one of the following:
+
+        - The path to a writable file, to which data is to be written.
+        - An \IO-like object, opened for writing and capable of responding
+          to method +:write+.
+    RDOC
+    method.singleton = true
+    klass.add_method(method)
+
+    html = Nokogiri::HTML.fragment(Commonmarker.to_html(read_generated("IO.md", classes: [klass])))
+
+    assert_equal 3, html.css("ul").length
+    assert_equal 2, html.css("ul > li > ul").length
+    assert_equal [
+      "The path to a readable file, from which source data is to be read.",
+      "An IO-like object, opened for reading and capable of responding to method :readpartial or method :read.",
+      "The path to a writable file, to which data is to be written.",
+      "An IO-like object, opened for writing and capable of responding to method :write."
+    ], html.css("ul > li > ul > li").map { |node| node.text.strip }
+  end
+
   def test_code_blocks_do_not_pass_through_the_html_formatter
     code = 'link_sanitizer.sanitize(\'<a href="example.com">Only the link text will be kept.</a>\')'
     page = rdoc_page(relative_name: "native-code.rdoc", comment: "= Example\n\n    #{code}\n")

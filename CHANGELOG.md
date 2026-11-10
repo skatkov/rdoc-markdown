@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Render comment documents through RDoc's Markdown formatter, keeping code examples, including those nested in lists and blockquotes, out of HTML conversion while preserving existing links, anchors, and HTML compatibility.
+- Preserve nested source/destination type lists in API documentation using native list visitors, without the converter fork.
 - Show documented method aliases below method headings.
 
 ## 0.21.2

@@ -16,6 +16,9 @@ If Bundler is not being used to manage dependencies, install the gem by executin
 
     $ gem install rdoc-markdown
 
+Comments render directly through RDoc's native Markdown visitor. No
+`reverse_markdown` dependency or converter-fork override is required.
+
 
 ## Usage
 RDoc will auto-detect the rdoc-markdown plugin if it is installed. You just need to instruct RDoc to produce markdown output instead of standard HTML through the `format` parameter.
