@@ -91,9 +91,9 @@ class RDoc::Generator::Markdown
 
     # Separates heading labels without mistaking unary operator method names.
     # @param name [String] Reference name.
-    # @return [Array(String, String, nil)] Target and optional heading label.
+    # @return [String, Array(String, String, nil)] Target and optional heading label.
     def split_reference(name)
-      return [name] if name.end_with?("+@", "-@")
+      return name if name.end_with?("+@", "-@")
 
       target, separator, section = name.partition("@")
       [target, (section unless separator.empty?)]

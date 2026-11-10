@@ -98,5 +98,7 @@ class TestMarkdownReferences < Minitest::Test
     assert_equal "[Target](https://example.test)", visitor.attributes("{Target}[https://example.test]")
     assert_equal "[`Target`](https://example.test)", visitor.attributes("{<code>Target</code>}[https://example.test]")
     assert_equal "[Target](https://example.test)", visitor.attributes("{rdoc-ref:Target}[https://example.test]")
+    visitor.inline_nodes(["Label"])
+    assert_equal '\_label\_', visitor.handle_regexp_RDOCLINK("rdoc-ref:_label_")
   end
 end

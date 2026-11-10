@@ -52,11 +52,15 @@ class TestMarkdownSyntax < Minitest::Test
       "www.example.test" => "https://www.example.test",
       "HTTPS://example.test/a.html" => "HTTPS://example.test/a.html",
       "mailto:a@example.test" => "mailto:a@example.test",
+      "mailto:docs@example.test?subject=guide.html" => "mailto:docs@example.test?subject=guide.html",
+      "http://example.test/a.html" => "http://example.test/a.html",
       "#a.html" => "#a.html",
       "Thing.HTML#part" => "Thing.md#part",
       "Thing.html?query" => "Thing.md?query",
       "Thing.htmlx" => "Thing.htmlx",
       "/Thing.md" => "Thing.md",
+      "/Thing.md?query" => "Thing.md?query",
+      "/Thing.md#part" => "Thing.md#part",
       "/Thing.txt" => "/Thing.txt",
       "../classes/Thing.html" => "../Thing.md",
       "../../modules/Thing.html?x#y" => "../../Thing.md?x#y",
@@ -69,6 +73,9 @@ class TestMarkdownSyntax < Minitest::Test
   def test_links_recover_only_ruby_receiver_indexing_expressions
     assert_equal "`Thing[:key]`", Syntax.link("Thing", ":key")
     assert_equal '`A::Thing["key"]`', Syntax.link("A::Thing", '"key"')
+    assert_equal "`A::B[:key]`", Syntax.link("A::B", ":key")
+    assert_equal "`a[:key]`", Syntax.link("a", ":key")
+    assert_equal "`_[:key]`", Syntax.link("_", ":key")
     assert_equal "`thing_name[:key]`", Syntax.link('thing\\_name', ":key")
     assert_equal "[Label](Thing.md)", Syntax.link("Label", "Thing.html")
     assert_equal "[two words](:key)", Syntax.link("two words", ":key")
