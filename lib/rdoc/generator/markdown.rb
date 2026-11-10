@@ -89,15 +89,6 @@ class RDoc::Generator::Markdown
 
   attr_reader :generation_state, :options, :source_dir, :output_dir
 
-  # Builds an HTML anchor tag.
-  #
-  # @param id [String] Fragment identifier for the generated anchor.
-  #
-  # @return [String] HTML anchor tag.
-  def anchor(id)
-    %(<a id="#{id}"></a>)
-  end
-
   # Applies final whitespace and link normalization before writing Markdown.
   # Blank-line cleanup skips code: a fence is longer than any backtick run it contains.
   #

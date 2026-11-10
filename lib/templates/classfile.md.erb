@@ -1,4 +1,4 @@
-# <%= klass.type.capitalize %> <%= klass.full_name %><%= anchor(klass.aref.strip) %>
+# <%= klass.type.capitalize %> <%= klass.full_name %><%= Syntax.anchor(klass.aref.strip) %>
 <%- superclass = klass.superclass if klass.type == "class" -%>
 <%- includes = klass.includes -%>
 <%- source_files = klass.in_files -%>
@@ -42,7 +42,7 @@
 <%= "#" * group_heading_level %> Constants
 <% constants.sort_by(&:name).each do |const| -%>
 
-<%= "#" * member_heading_level %> `<%= const.name %>`<%= anchor(const.name) %>
+<%= "#" * member_heading_level %> `<%= const.name %>`<%= Syntax.anchor(const.name) %>
 <%= describe(const, fallback: "Not documented.", heading_level_offset: member_heading_level) %>
 <% end -%>
 <%- end -%>
@@ -51,7 +51,7 @@
 <%= "#" * group_heading_level %> Attributes
 <% attributes.sort_by(&:name).each do |attr| -%>
 
-<%= "#" * member_heading_level %> `<%= attr.name %>` [<%= attr.rw %>]<%= anchor(attr.aref.strip) %>
+<%= "#" * member_heading_level %> `<%= attr.name %>` [<%= attr.rw %>]<%= Syntax.anchor(attr.aref.strip) %>
 <%= describe(attr, fallback: "Not documented.", heading_level_offset: member_heading_level) %>
 <% end -%>
 <%- end -%>
@@ -63,7 +63,7 @@
 <%= "#" * group_heading_level %> <%= visibility.capitalize %> <%= type.capitalize %> Methods
 <% methods.each do |method| -%>
 
-<%= "#" * member_heading_level %> <%= Syntax.code(Signatures.render_method_signature(method, store)) %><%= anchor(method.aref) %>
+<%= "#" * member_heading_level %> <%= Syntax.code(Signatures.render_method_signature(method, store)) %><%= Syntax.anchor(method.aref) %>
 <%- aliases = method_aliases(method) -%>
 <%- if aliases -%>
 <%= aliases %>
