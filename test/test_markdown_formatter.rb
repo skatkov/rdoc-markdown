@@ -19,6 +19,26 @@ class TestMarkdownFormatter < Minitest::Test
       read_generated("automatic-url_rdoc.md", pages: [page])
   end
 
+  def test_markdown_footnotes_keep_working_forward_and_back_links
+    page = rdoc_page(relative_name: "footnotes.rdoc", comment: "")
+    page.comment.format = "markdown"
+    page.comment.text = "Here is a note[^one].\n\n[^one]: Footnote text."
+    markdown = read_generated("footnotes_rdoc.md", pages: [page])
+    html = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown, options: {render: {unsafe: true}}))
+
+    assert_includes markdown, '<a id="footmark-1"></a>'
+    assert_includes markdown, '<a id="foottext-1"></a>'
+    assert_equal ["#foottext-1", "#footmark-1"], html.css("a[href]").map { |link| link["href"] }
+    html.css("a[href]").each { |link| assert html.at_css("[id=\"#{link["href"].delete_prefix("#")}\"]") }
+  end
+
+  def test_instance_variable_code_is_not_mistaken_for_a_local_heading_reference
+    code = "@document = Document.find(params[:id])"
+    page = rdoc_page(relative_name: "instance-code.rdoc", comment: "Where <code>#{code}</code>.")
+
+    assert_equal "Where `#{code}`.\n", read_generated("instance-code_rdoc.md", pages: [page])
+  end
+
   def test_method_descriptions_preserve_nested_source_and_destination_type_lists
     klass = rdoc_class("IO")
     method = rdoc_method("copy_stream", comment: <<~'RDOC')

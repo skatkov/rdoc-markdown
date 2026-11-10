@@ -21,7 +21,7 @@ class RDoc::Generator::Markdown
     # @param text [String] Literal code.
     # @return [void]
     def handle_TT(text)
-      linked = reference_link(text, label: convert_string(text)) if !@in_link && reference_pattern.match?(text)
+      linked = reference_link(text, label: convert_string(text)) if !@in_link && !text.start_with?("@") && reference_pattern.match?(text)
       emit_inline(linked || Syntax.code(text))
     end
 
@@ -55,6 +55,11 @@ class RDoc::Generator::Markdown
     # @return [String] Markdown link, image, or unresolved label.
     def gen_url(url, label)
       return explicit_reference(url.delete_prefix("rdoc-ref:"), label) if url.start_with?("rdoc-ref:")
+      if url.start_with?("rdoc-label:")
+        target, id = url.delete_prefix("rdoc-label:").split(":", 2)
+        anchor = id ? Syntax.anchor(id) : ""
+        return "#{anchor}#{Syntax.link(label, "##{target}")}"
+      end
 
       _, target, = parse_url(url)
       target = target.sub(/\.(rb|rdoc)(?=[#?]|\z)/i) { "_#{Regexp.last_match(1)}.md" }

@@ -126,7 +126,7 @@ class RDoc::Generator::Markdown
       spans.remove
       first = node.element_children.first
       href = first&.[]("href").to_s
-      if first&.name == "a" && href.match?(/\A#.+/) &&
+      if first&.name == "a" && href.match?(/\A#./) &&
           first.text.match?(/\S/) && first.xpath("preceding-sibling::node()").none? { |sibling| sibling.text.match?(/\S/) }
         id = href.delete_prefix("#")
         first.replace(first.children)

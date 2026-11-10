@@ -35,10 +35,10 @@ class TestMarkdownNativeCallbacks < Minitest::Test
   def test_raw_blocks_join_all_parts_and_keep_the_following_paragraph_separate
     visitor = formatter
     document = RDoc::Markup::Document.new(
-      RDoc::Markup::Raw.new("<h1>Topic</h1>", "<p>Body</p>"), RDoc::Markup::Paragraph.new("After.")
+      RDoc::Markup::Raw.new("<h1>Topic</h1>", "<p>Body", "text</p>"), RDoc::Markup::Paragraph.new("After.")
     )
 
-    assert_equal "### Topic\n\nBody\n\nAfter.\n\n", document.accept(visitor)
+    assert_equal "### Topic\n\nBody text\n\nAfter.\n\n", document.accept(visitor)
   end
 
   def test_tables_render_inline_markup_and_escape_every_pipe_in_every_cell
@@ -68,6 +68,15 @@ class TestMarkdownNativeCallbacks < Minitest::Test
     assert_equal "[WWW](https://www.example.test)", visitor.gen_url("www.example.test", "WWW")
     assert_equal "![](https://example.test/a.jpeg)", visitor.gen_url("https://example.test/a.jpeg", "Image")
     assert_equal "[Local](local.png)", visitor.gen_url("link:local.png", "Local")
+    assert_equal "[Guide](../guide_rdoc.md)", formatter(relative_name: "nested/source.rdoc").gen_url("link:guide.rdoc", "Guide")
+  end
+
+  def test_rdoc_labels_keep_both_the_target_and_the_explicit_source_anchor
+    visitor = formatter
+
+    assert_equal '<a id="marker"></a>[Note](#target)', visitor.gen_url("rdoc-label:target:marker", "Note")
+    assert_equal "[Note](#target)", visitor.gen_url("rdoc-label:target", "Note")
+    assert_equal '<a id="marker&quot;&amp;"></a>[Note](#target)', visitor.gen_url('rdoc-label:target:marker"&', "Note")
   end
 
   def test_link_label_boundaries_suppress_automatic_links_and_escape_visible_text

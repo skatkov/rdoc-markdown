@@ -48,6 +48,7 @@ class TestMarkdownHtmlInput < Minitest::Test
 
   def test_heading_aliases_and_offsets_are_explicit
     assert_equal "#### Topic", render("<h2> Topic </h2>", offset: 2)
+    assert_equal "## Topic\n\nBody", render("<h2> Topic </h2><p>Body</p>")
     assert_equal "## Topic<a id=\"old\"></a>", render('<h2>Topic<span class="legacy-anchor" id="old"></span></h2>')
     assert_equal "# Topic<a id=\"old\"></a>", render('<span class="legacy-anchor" id="old"></span><h1>Topic</h1>')
     assert_equal "# Topic", render('<span class="legacy-anchor" id="class-Topic"></span><h1>Topic</h1>')
@@ -66,5 +67,6 @@ class TestMarkdownHtmlInput < Minitest::Test
     assert_equal "## [ ](#alias)Topic", render('<h2><a href="#alias"> </a>Topic</h2>')
     assert_equal "## Topic", render("<h2><a>Topic</a></h2>")
     assert_equal "## *Topic*", render("<h2><em>Topic</em></h2>")
+    assert_equal "## Topic", render('<h2><span href="#alias">Topic</span></h2>')
   end
 end
