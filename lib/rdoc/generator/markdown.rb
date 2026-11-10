@@ -99,6 +99,7 @@ class RDoc::Generator::Markdown
   end
 
   # Applies final whitespace and link normalization before writing Markdown.
+  # Blank-line cleanup skips code: a fence is longer than any backtick run it contains.
   #
   # @param content [String] Markdown content.
   # @param current_output_path [String] Output path for the file being written.
@@ -108,7 +109,8 @@ class RDoc::Generator::Markdown
     normalized = Paths.rewrite_internal_links(
       content.lines.map(&:rstrip).join("\n"),
       current_output_path, generation_state
-    ).sub(/\n{3,}/, "\n\n").gsub(/^(#+ .+)\n\n/, "\\1\n")
+    ).gsub(/(`{3,}).+?\1|\n{3,}/m) { ($1) ? $& : "\n\n" }
+      .gsub(/(`{3,}).+?\1|^(#+ [^\n]+)\n\n/m) { ($2) ? "#{$2}\n" : $& }
     "#{normalized}\n"
   end
 

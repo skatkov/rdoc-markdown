@@ -777,6 +777,23 @@ class TestMarkdownHelpers < Minitest::Test
     assert_includes markdown, "Line 1\n\nLine 2"
   end
 
+  def test_blank_line_cleanup_leaves_code_blocks_alone
+    html = "<p>One</p>\n<pre># step\n\nrun\n\n\n\nfinish</pre>\n<p>Two</p>\n<pre># again\n\nrun\n\n\n\nend\n```</pre>\n<h2>Three</h2>\n<p>Four</p>"
+    page = raw_html_page(relative_name: "code.rdoc", html: html)
+
+    markdown = read_generated("code_rdoc.md", pages: [page])
+
+    assert_equal "One\n\n```\n# step\n\nrun\n\n\n\nfinish\n```\n\nTwo\n\n````\n# again\n\nrun\n\n\n\nend\n```\n````\n\n## Three\nFour\n", markdown
+  end
+
+  def test_blank_line_cleanup_continues_after_code_blocks
+    klass = build_rdoc_class(full_name: "Example", description: "Doc\n\n  # step\n\n  run\n", methods: 1)
+
+    markdown = read_generated("Example.md", classes: [klass])
+
+    assert_includes markdown, "```ruby\n# step\n\nrun\n```\n\n## Public Instance Methods\n### `method_0()`"
+  end
+
   def test_debug_output_is_suppressed_by_default
     page = rdoc_page(relative_name: "quiet.rdoc", comment: "Quiet page")
 
