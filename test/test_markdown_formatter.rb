@@ -10,6 +10,14 @@ class TestMarkdownFormatter < Minitest::Test
   cover "RDoc::Generator::Markdown::Inline*"
   cover "RDoc::Generator::Markdown::References*"
   cover "RDoc::Generator::Markdown::Syntax*"
+  cover "RDoc::Generator::Markdown::HtmlInput*"
+
+  def test_automatic_urls_are_linked_without_the_rails_fixture
+    page = rdoc_page(relative_name: "automatic-url.rdoc", comment: "https://example.test/a_b")
+
+    assert_equal "[https://example.test/a\\_b](https://example.test/a_b)\n",
+      read_generated("automatic-url_rdoc.md", pages: [page])
+  end
 
   def test_method_descriptions_preserve_nested_source_and_destination_type_lists
     klass = rdoc_class("IO")

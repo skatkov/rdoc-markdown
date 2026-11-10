@@ -6,7 +6,7 @@ class RDoc::Generator::Markdown
     # Options attached to the RDoc context being documented.
     # @return [RDoc::Options] Current options.
     def options
-      rendering.context.store.options
+      rendering.context.options
     end
 
     # Resolves automatic references outside explicit link labels.

@@ -32,7 +32,7 @@ class RDoc::Generator::Markdown
 
       items = list.items.each_with_index.map { |item, index| list_item(type, item, index) }.join("\n")
       if [:LABEL, :NOTE].include?(type)
-        res << %(<dl class="rdoc-list #{type.to_s.downcase}-list">\n\n#{items}</dl>\n\n)
+        res << %(<dl class="rdoc-list #{type.downcase}-list">\n\n#{items}</dl>\n\n)
       else
         res << items << "\n\n"
       end
@@ -66,7 +66,7 @@ class RDoc::Generator::Markdown
     # @param raw [RDoc::Markup::Raw] Raw HTML block.
     # @return [void]
     def accept_raw(raw)
-      res << RDoc::Generator::Markdown::HtmlInput.new(heading_level_offset: rendering.heading_offset).render(raw.parts.join("\n")) << "\n\n"
+      res << HtmlInput.new(heading_level_offset: rendering.heading_offset).render(raw.parts.join("\n")) << "\n\n"
     end
 
     # Emits code without HTML escaping or syntax-highlighting round trips.
@@ -74,7 +74,7 @@ class RDoc::Generator::Markdown
     # @param verbatim [RDoc::Markup::Verbatim] Literal code block.
     # @return [void]
     def accept_verbatim(verbatim)
-      text = verbatim.text.rstrip
+      text = verbatim.text
       language = verbatim.format
       language = "ruby" if verbatim.ruby? || (!language && Prism.parse_success?(text))
       res << Syntax.code_block(text, language) << "\n\n"
