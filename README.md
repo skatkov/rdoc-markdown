@@ -38,7 +38,7 @@ gem build rdoc-markdown.gemspec
 ```
 
 ```
-gem install <path-to>/rdoc-markdown-0.1.2.gem
+gem install <path-to>/rdoc-markdown-<version>.gem
 ```
 
 or you can do the same through a Gemfile:
@@ -92,7 +92,7 @@ Find examples in the [/example](/example/) folder.
 
 ```
 gem build rdoc-markdown.gemspec
-gem push rdoc-markdown-0.1.2.gem
+gem push rdoc-markdown-<version>.gem
 ```
 
 There is a `./bin/publish.sh` script that does that. However, it assumes that you have the [gum library](https://github.com/charmbracelet/gum) installed.
