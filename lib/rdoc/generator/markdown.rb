@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 require "erb"
-# standard:disable Lint/RedundantRequireStatement
-require "set"
-# standard:enable Lint/RedundantRequireStatement
 require "nokogiri"
 require "csv"
 require "fileutils"
