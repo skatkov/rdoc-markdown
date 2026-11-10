@@ -128,7 +128,8 @@ class RDoc::Generator::Markdown
 
       _, target, = parse_url(url)
       unless target.match?(%r{\A(?:[a-z][a-z0-9+.-]*:|//|www\.|#)}i)
-        target = target.sub(/\.(rb|rdoc)(?=[#?]|\z)/i) { "_#{Regexp.last_match(1)}.md" }
+        # Like page output paths, every dot in the file name becomes an underscore.
+        target = target.sub(%r{[^/]+\.(?:rb|rdoc)(?=[#?]|\z)}i) { |name| "#{name.tr(".", "_")}.md" }
       end
       return "![](#{target})" if target.match?(/\Ahttps?:.+\.(?:png|gif|jpe?g|bmp)\z/)
 

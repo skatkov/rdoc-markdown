@@ -238,6 +238,7 @@ class TestMarkdownNativeCallbacks < Minitest::Test
     assert_equal "[Guide](../guide_rdoc.md)", formatter(relative_name: "nested/source.rdoc").gen_url("link:guide.rdoc", "Guide")
     assert_equal "[Source](source_RB.md)", visitor.gen_url("link:source.RB", "Source")
     assert_equal "[Source](folder/a:file_rb.md)", visitor.gen_url("link:folder/a:file.rb", "Source")
+    assert_equal "[Start](v1.2/getting_started_rdoc.md#top)", visitor.gen_url("link:v1.2/getting.started.rdoc#top", "Start")
     assert_equal "[Source](wwwXfile_rb.md)", visitor.gen_url("link:wwwXfile.rb", "Source")
     assert_equal "[Source](file_rb.md)", visitor.gen_url("link:/file.rb", "Source")
     assert_equal "[Source](1local:file_rb.md)", visitor.gen_url("link:1local:file.rb", "Source")
