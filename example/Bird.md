@@ -16,5 +16,6 @@ Flying is the most critical feature of birds.
 ```ruby
 fly(:south, 70)
 ```
+
 ### `speak() { |text| ... }`<a id="method-i-speak"></a>
 Produce some noise.

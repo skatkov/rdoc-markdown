@@ -32,6 +32,7 @@ Not documented.
 ## Public Class Methods
 ### `new(_tag_name, text, _tokens)`<a id="method-c-new"></a>
 Not documented.
+
 ### `template()`<a id="method-c-template"></a>
 Not documented.
 
