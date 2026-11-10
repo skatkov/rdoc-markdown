@@ -6,10 +6,63 @@ require "rdoc/markdown"
 require_relative "test/support/markdown_validator"
 require "reek/rake/task"
 
-JEKYLL_SEO_TAG_NAME = "jekyll-seo-tag"
-JEKYLL_SEO_TAG_REF = "v2.8.0"
-JEKYLL_SEO_TAG_TITLE = "#{JEKYLL_SEO_TAG_NAME} #{JEKYLL_SEO_TAG_REF.delete_prefix("v")}"
-JEKYLL_SEO_TAG_VENDOR_PATH = "vendor/#{JEKYLL_SEO_TAG_NAME}"
+def minitest_docs_files(root)
+  Dir[File.join(root, "lib/**/*.rb")] + Dir[File.join(root, "*.rdoc")]
+end
+
+def reverse_markdown_docs_files(root)
+  Dir[File.join(root, "lib/**/*.rb")] + Dir[File.join(root, "*.md")]
+end
+
+def jekyll_seo_tag_docs_files(root)
+  Dir[File.join(root, "lib/**/*.rb")]
+end
+
+def rails_docs_files(root)
+  Dir[File.join(root, "*/lib/**/*.rb")] + Dir[File.join(root, "activerecord/README.rdoc")]
+end
+
+def rails_validation_files(root)
+  globs = %w[
+    activesupport/lib/**/*.rb
+    activemodel/lib/**/*.rb
+    activerecord/lib/**/*.rb
+    actionpack/lib/**/*.rb
+    actionview/lib/action_view/helpers/asset_tag_helper.rb
+    railties/lib/**/*.rb
+    {active*,action*,railties}/README.{rdoc,md,markdown}
+  ]
+  globs.flat_map { |glob| Dir[File.join(root, glob)] }.uniq
+end
+
+# Vendored projects used for generated docs and validation.
+VENDORS = {
+  jekyll_seo_tag: {
+    url: "https://github.com/jekyll/jekyll-seo-tag.git",
+    ref: "v2.8.0",
+    path: "vendor/jekyll-seo-tag",
+    files: method(:jekyll_seo_tag_docs_files)
+  },
+  minitest: {
+    url: "https://github.com/minitest/minitest.git",
+    ref: "v6.0.1",
+    path: "vendor/minitest",
+    files: method(:minitest_docs_files)
+  },
+  reverse_markdown: {
+    url: "https://github.com/xijo/reverse_markdown.git",
+    ref: "v3.0.2",
+    path: "vendor/reverse_markdown",
+    files: method(:reverse_markdown_docs_files)
+  },
+  rails: {
+    url: "https://github.com/rails/rails.git",
+    ref: ENV.fetch("RAILS_REF", "v8.1.4.1"),
+    path: "vendor/rails",
+    files: method(:rails_docs_files),
+    validation_files: method(:rails_validation_files)
+  }
+}.freeze
 
 Rake::TestTask.new do |t|
   t.verbose = true
@@ -33,83 +86,6 @@ namespace :erb do
 
     sh "bundle", "exec", "erb_lint", *files
   end
-end
-
-namespace :markdown do
-  desc "Validate generated markdown as GitHub Flavored Markdown"
-  task :validate do
-    validation_root = File.expand_path("tmp/markdown-validate", __dir__)
-    FileUtils.rm_rf(validation_root)
-    FileUtils.mkdir_p(validation_root)
-
-    sample_output = File.join(validation_root, "sample")
-    generate_sample_docs(output: sample_output)
-
-    sample_count = MarkdownValidator.new(sample_output).validate!
-    puts "Validated #{sample_count} markdown files in #{sample_output}"
-
-    example_dir = File.expand_path("example", __dir__)
-    if Dir.exist?(example_dir)
-      example_count = MarkdownValidator.new(example_dir).validate!
-      puts "Validated #{example_count} markdown files in #{example_dir}"
-    end
-
-    Rake::Task["vendor:setup:minitest"].invoke
-    minitest_root = File.expand_path("vendor/minitest", __dir__)
-    minitest_output = File.join(validation_root, "minitest")
-    generate_markdown_docs(
-      title: "minitest",
-      root: minitest_root,
-      output: minitest_output,
-      files: minitest_docs_files(minitest_root)
-    )
-    minitest_count = MarkdownValidator.new(minitest_output).validate!
-    puts "Validated #{minitest_count} markdown files in #{minitest_output}"
-
-    Rake::Task["vendor:setup:reverse_markdown"].invoke
-    reverse_markdown_root = File.expand_path("vendor/reverse_markdown", __dir__)
-    reverse_markdown_output = File.join(validation_root, "reverse_markdown")
-    generate_markdown_docs(
-      title: "reverse_markdown",
-      root: reverse_markdown_root,
-      output: reverse_markdown_output,
-      files: reverse_markdown_docs_files(reverse_markdown_root)
-    )
-    reverse_markdown_count = MarkdownValidator.new(reverse_markdown_output).validate!
-    puts "Validated #{reverse_markdown_count} markdown files in #{reverse_markdown_output}"
-
-    Rake::Task["vendor:setup:jekyll_seo_tag"].invoke
-    jekyll_seo_tag_output = File.join(validation_root, JEKYLL_SEO_TAG_NAME)
-    generate_jekyll_seo_tag_docs(output: jekyll_seo_tag_output)
-    jekyll_seo_tag_count = MarkdownValidator.new(jekyll_seo_tag_output).validate!
-    puts "Validated #{jekyll_seo_tag_count} markdown files in #{jekyll_seo_tag_output}"
-
-    Rake::Task["vendor:setup:rails"].invoke
-    rails_root = File.expand_path("vendor/rails", __dir__)
-    rails_output = File.join(validation_root, "rails")
-    generate_markdown_docs(
-      title: "rails validation",
-      root: rails_root,
-      output: rails_output,
-      files: rails_validation_files(rails_root)
-    )
-    rails_count = MarkdownValidator.new(rails_output).validate!
-    puts "Validated #{rails_count} markdown files in #{rails_output}"
-
-    puts "Markdown validation artifacts written to #{validation_root}"
-  end
-end
-
-def ensure_git_checkout(path:, url:, ref: nil)
-  return if Dir.exist?(path)
-
-  FileUtils.mkdir_p(File.dirname(path))
-
-  clone_command = ["git", "clone", "--depth", "1"]
-  clone_command += ["--branch", ref] if ref
-  clone_command += [url, path]
-
-  sh clone_command.join(" ")
 end
 
 def generate_markdown_docs(title:, root:, output:, files:)
@@ -139,22 +115,37 @@ def generate_sample_docs(output:)
   )
 end
 
-def jekyll_seo_tag_root
-  File.expand_path(JEKYLL_SEO_TAG_VENDOR_PATH, __dir__)
+# Generates docs for a vendored project, by default from its full file list.
+def generate_vendor_docs(name, output:, files: VENDORS.fetch(name).fetch(:files))
+  path = VENDORS.fetch(name).fetch(:path)
+  root = File.expand_path(path, __dir__)
+  raise "Missing #{path}. Run `rake vendor:setup:#{name}` first." unless Dir.exist?(root)
+
+  generate_markdown_docs(title: name.to_s, root: root, output: output, files: files.call(root))
 end
 
-def generate_jekyll_seo_tag_docs(output:)
-  root = jekyll_seo_tag_root
-  unless Dir.exist?(root)
-    raise "Missing #{JEKYLL_SEO_TAG_VENDOR_PATH}. Run `rake vendor:setup:jekyll_seo_tag` first."
-  end
+namespace :markdown do
+  desc "Validate generated markdown as GitHub Flavored Markdown"
+  task :validate do
+    validation_root = File.expand_path("tmp/markdown-validate", __dir__)
+    FileUtils.rm_rf(validation_root)
+    FileUtils.mkdir_p(validation_root)
 
-  generate_markdown_docs(
-    title: JEKYLL_SEO_TAG_TITLE,
-    root: root,
-    output: output,
-    files: Dir[File.join(root, "lib/**/*.rb")].uniq
-  )
+    outputs = [File.join(validation_root, "sample")]
+    generate_sample_docs(output: outputs.last)
+    outputs << File.expand_path("example", __dir__)
+
+    VENDORS.each do |name, vendor|
+      Rake::Task["vendor:setup:#{name}"].invoke
+      outputs << File.join(validation_root, File.basename(vendor.fetch(:path)))
+      generate_vendor_docs(name, output: outputs.last, files: vendor.fetch(:validation_files, vendor.fetch(:files)))
+    end
+
+    outputs.each do |output|
+      puts "Validated #{MarkdownValidator.new(output).validate!} markdown files in #{output}"
+    end
+    puts "Markdown validation artifacts written to #{validation_root}"
+  end
 end
 
 namespace :examples do
@@ -168,136 +159,49 @@ namespace :examples do
 
     FileUtils.rm_rf(staging_root)
     generate_sample_docs(output: staged_sample_output)
-    generate_jekyll_seo_tag_docs(output: File.join(staged_sample_output, JEKYLL_SEO_TAG_NAME))
+    generate_vendor_docs(:jekyll_seo_tag, output: File.join(staged_sample_output, "jekyll-seo-tag"))
 
     FileUtils.rm_rf(sample_output)
     FileUtils.mv(staged_sample_output, sample_output)
 
-    puts "Generated sample markdown docs in #{sample_output}"
-    puts "Generated #{JEKYLL_SEO_TAG_NAME} markdown docs in #{File.join(sample_output, JEKYLL_SEO_TAG_NAME)}"
+    puts "Generated sample and jekyll-seo-tag markdown docs in #{sample_output}"
   ensure
     FileUtils.rm_rf(staging_root) if staging_root
   end
 end
 
-def minitest_docs_files(root)
-  files = Dir[File.join(root, "lib/**/*.rb")]
-  files.concat(Dir[File.join(root, "*.rdoc")])
-
-  files.uniq
-end
-
-def reverse_markdown_docs_files(root)
-  Dir[File.join(root, "lib/**/*.rb")] + Dir[File.join(root, "*.md")]
-end
-
-def rails_validation_files(root)
-  files = Dir[File.join(root, "activesupport/lib/**/*.rb")]
-  files.concat(Dir[File.join(root, "activemodel/lib/**/*.rb")])
-  files.concat(Dir[File.join(root, "activerecord/lib/**/*.rb")])
-  files.concat(Dir[File.join(root, "actionpack/lib/**/*.rb")])
-  files.concat(Dir[File.join(root, "actionview/lib/action_view/helpers/asset_tag_helper.rb")])
-  files.concat(Dir[File.join(root, "railties/lib/**/*.rb")])
-
-  files.concat(Dir[File.join(root, "{active*,action*,railties}/README.{rdoc,md,markdown}")])
-
-  files.uniq
-end
-
 namespace :vendor do
   namespace :setup do
-    minitest_ref = "v6.0.1"
-    rails_ref = ENV.fetch("RAILS_REF", "main")
-    reverse_markdown_ref = "v3.0.2"
-
-    desc "Clone/update vendor/jekyll-seo-tag and checkout docs-aligned tag"
-    task :jekyll_seo_tag do
-      ensure_git_checkout(
-        path: JEKYLL_SEO_TAG_VENDOR_PATH,
-        url: "https://github.com/jekyll/jekyll-seo-tag.git",
-        ref: JEKYLL_SEO_TAG_REF
-      )
-      Dir.chdir(JEKYLL_SEO_TAG_VENDOR_PATH) do
-        sh "git fetch --tags --force"
-        sh "git checkout #{JEKYLL_SEO_TAG_REF}"
+    VENDORS.each do |name, vendor|
+      desc "Clone vendor/#{File.basename(vendor.fetch(:path))} and checkout #{vendor.fetch(:ref)}"
+      task name do
+        path = vendor.fetch(:path)
+        ref = vendor.fetch(:ref)
+        unless Dir.exist?(path)
+          FileUtils.mkdir_p(File.dirname(path))
+          sh "git", "clone", "--depth", "1", "--branch", ref, vendor.fetch(:url), path
+        end
+        # A copy without .git would make git act on this repository instead.
+        Dir.chdir(path) { sh "git", "checkout", "--quiet", ref } if Dir.exist?(File.join(path, ".git"))
       end
-    end
-
-    desc "Clone/update vendor/minitest and checkout docs-aligned tag"
-    task :minitest do
-      ensure_git_checkout(path: "vendor/minitest", url: "https://github.com/minitest/minitest.git", ref: minitest_ref)
-      Dir.chdir("vendor/minitest") { sh "git checkout #{minitest_ref}" }
-    end
-
-    desc "Clone/update vendor/rails"
-    task :rails do
-      ensure_git_checkout(path: "vendor/rails", url: "https://github.com/rails/rails.git", ref: rails_ref)
-    end
-
-    desc "Clone/update vendor/reverse_markdown and checkout dependency-aligned tag"
-    task :reverse_markdown do
-      ensure_git_checkout(
-        path: "vendor/reverse_markdown",
-        url: "https://github.com/xijo/reverse_markdown.git",
-        ref: reverse_markdown_ref
-      )
-      Dir.chdir("vendor/reverse_markdown") { sh "git checkout #{reverse_markdown_ref}" }
     end
   end
 
   desc "Prepare all vendored repositories"
-  task setup: ["vendor:setup:jekyll_seo_tag", "vendor:setup:minitest", "vendor:setup:rails", "vendor:setup:reverse_markdown"]
+  task setup: VENDORS.keys.map { |name| "vendor:setup:#{name}" }
 
   namespace :docs do
-    desc "Generate markdown docs for vendored jekyll-seo-tag"
-    task :jekyll_seo_tag do
-      output = File.expand_path("vendor/docs/#{JEKYLL_SEO_TAG_NAME}", __dir__)
-      generate_jekyll_seo_tag_docs(output: output)
-      puts "Generated #{JEKYLL_SEO_TAG_NAME} markdown docs in #{output}"
-    end
-
-    desc "Generate markdown docs for vendored minitest"
-    task :minitest do
-      root = File.expand_path("vendor/minitest", __dir__)
-      raise "Missing vendor/minitest. Run `rake vendor:setup:minitest` first." unless Dir.exist?(root)
-
-      output = File.expand_path("vendor/docs/minitest", __dir__)
-      generate_markdown_docs(title: "minitest", root: root, output: output, files: minitest_docs_files(root))
-      puts "Generated minitest markdown docs in #{output}"
-    end
-
-    desc "Generate markdown docs for vendored reverse_markdown"
-    task :reverse_markdown do
-      root = File.expand_path("vendor/reverse_markdown", __dir__)
-      raise "Missing vendor/reverse_markdown. Run `rake vendor:setup:reverse_markdown` first." unless Dir.exist?(root)
-
-      output = File.expand_path("vendor/docs/reverse_markdown", __dir__)
-      generate_markdown_docs(
-        title: "reverse_markdown",
-        root: root,
-        output: output,
-        files: reverse_markdown_docs_files(root)
-      )
-      puts "Generated reverse_markdown markdown docs in #{output}"
-    end
-
-    desc "Generate markdown docs for vendored rails"
-    task :rails do
-      root = File.expand_path("vendor/rails", __dir__)
-      raise "Missing vendor/rails. Run `rake vendor:setup:rails` first." unless Dir.exist?(root)
-
-      files = Dir[File.join(root, "*/lib/**/*.rb")]
-
-      active_record_readme = File.join(root, "activerecord/README.rdoc")
-      files << active_record_readme if File.file?(active_record_readme)
-
-      output = File.expand_path("vendor/docs/rails", __dir__)
-      generate_markdown_docs(title: "rails", root: root, output: output, files: files)
-      puts "Generated rails markdown docs in #{output}"
+    VENDORS.each do |name, vendor|
+      desc "Generate markdown docs for vendored #{name}"
+      task name do
+        output = File.expand_path("vendor/docs/#{File.basename(vendor.fetch(:path))}", __dir__)
+        generate_vendor_docs(name, output: output)
+        puts "Generated #{name} markdown docs in #{output}"
+      end
     end
 
     desc "Generate markdown docs for all vendored repositories"
-    task all: [:jekyll_seo_tag, :minitest, :reverse_markdown, :rails]
+    task all: VENDORS.keys
   end
 
   desc "Generate markdown docs for all vendored repositories"
