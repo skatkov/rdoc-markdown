@@ -1,114 +1,37 @@
 # frozen_string_literal: true
 
 require "rdoc/markup/to_markdown"
+require "prism"
+require_relative "inline"
+require_relative "blocks"
 
-# Renders comment documents with a native path for standalone code blocks.
-class RDoc::Generator::Markdown::Formatter < RDoc::Markup::ToMarkdown
-  # Block visitors already emit their required paragraph spacing.
-  alias_method :accept_blank_line, :ignore
+class RDoc::Generator::Markdown
+  # One native visitor with separate block, inline, and reference responsibilities.
+  class Formatter < RDoc::Markup::ToMarkdown
+    include References
+    include Inline
+    include Blocks
 
-  # Creates a Markdown visitor with the object's existing RDoc link resolver.
-  #
-  # @param html_formatter [RDoc::Markup::ToHtmlCrossref] Scoped compatibility formatter.
-  # @param heading_level_offset [Integer] Levels to add to comment headings.
-  def initialize(html_formatter, heading_level_offset:)
-    @html_formatter = html_formatter
-    @heading_level_offset = heading_level_offset
-    @hard_break = "<br>\n"
-  end
+    # Context shared by child visitors; each child owns its native output buffer.
+    Rendering = Data.define(:object, :context, :reference, :output_ids, :heading_offset, :heading_ids)
 
-  # Resets output and heading IDs for a new document.
-  #
-  # @return [void]
-  def start_accepting
-    super
-    @html_formatter.start_accepting
-  end
+    # Immutable render configuration and document-scoped heading IDs.
+    # @return [Rendering] Current document context.
+    attr_reader :rendering
 
-  # Visits nested documents, retaining HTML for list and quotation compatibility.
-  #
-  # @param document [RDoc::Markup::Document] Parsed comment document.
-  # @return [void]
-  def accept_document(document)
-    document.each do |part|
-      case part
-      when RDoc::Markup::Document
-        accept_document(part)
-      # shortcut: lists and quotes still use HTML; replace their visitors when migrating nested code blocks.
-      when RDoc::Markup::List, RDoc::Markup::BlockQuote
-        res << render_html(part) << "\n\n"
-      else
-        part.accept(self)
-      end
+    # Block visitors emit their own paragraph spacing.
+    alias_method :accept_blank_line, :ignore
+
+    # Initializes the native formatter and its document-scoped references.
+    # @param code_object [RDoc::CodeObject, RDoc::Context::Section] Described object.
+    # @param output_object_ids [Set<Integer>] Emitted objects.
+    # @param heading_level_offset [Integer] Levels to add to comment headings.
+    def initialize(code_object, output_object_ids:, heading_level_offset:)
+      super()
+      context = (RDoc::Context === code_object) ? code_object : code_object.parent
+      @rendering = Rendering.new(code_object, context, RDoc::CrossReference.new(context), output_object_ids, heading_level_offset, Hash.new(0))
+      @from_path = context.path
+      configure_inline
     end
-  end
-
-  # Preserves RDoc's namespaced and legacy heading anchors.
-  #
-  # @param heading [RDoc::Markup::Heading] Comment heading.
-  # @return [void]
-  def accept_heading(heading)
-    res << render_html(heading) << "\n\n"
-  end
-
-  # Converts embedded HTML using the existing compatibility rules.
-  #
-  # @param raw [RDoc::Markup::Raw] Raw HTML block.
-  # @return [void]
-  def accept_raw(raw)
-    res << render_html(raw) << "\n\n"
-  end
-
-  # Emits code without HTML escaping or syntax-highlighting round trips.
-  #
-  # @param verbatim [RDoc::Markup::Verbatim] Literal code block.
-  # @return [void]
-  def accept_verbatim(verbatim)
-    text = verbatim.text.rstrip
-    language = verbatim.format
-    language = "ruby" if verbatim.ruby? || (!language && @html_formatter.parseable?(text))
-    res << RDoc::Generator::Markdown::Conversion.verbatim(text, language: language) << "\n\n"
-  end
-
-  # Separates native tables from the paragraph that follows them.
-  #
-  # @param header [Array<String>] Column headings.
-  # @param body [Array<Array<String>>] Table rows.
-  # @param aligns [Array<Symbol, nil>] Column alignment hints.
-  # @return [void]
-  def accept_table(header, body, aligns)
-    super
-    res << "\n"
-  end
-
-  # Reuses RDoc's inline cross-reference and escaping behavior.
-  #
-  # @param text [String] Inline RDoc markup.
-  # @return [String] Inline Markdown.
-  def attributes(text)
-    render_html(RDoc::Markup::Paragraph.new(text))
-  end
-
-  # Emits paragraphs without wrapping Markdown links across lines.
-  #
-  # @param text [String] Inline Markdown.
-  # @return [void]
-  def wrap(text)
-    res << text << "\n\n"
-  end
-
-  private
-
-  # GFM needs HTML definition lists; keep RDoc's cross-reference and anchor policies.
-  #
-  # @param node [Object] RDoc markup node supporting the visitor protocol.
-  # @return [String] Compatible Markdown fragment.
-  def render_html(node)
-    @html_formatter.res.clear
-    node.accept(@html_formatter)
-    RDoc::Generator::Markdown::Conversion.markdownify(
-      @html_formatter.end_accepting,
-      heading_level_offset: @heading_level_offset
-    )
   end
 end

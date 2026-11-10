@@ -1,0 +1,131 @@
+# frozen_string_literal: true
+
+class RDoc::Generator::Markdown
+  # Native reference policy, independent of HTML rendering and output buffers.
+  module References
+    # Options attached to the RDoc context being documented.
+    # @return [RDoc::Options] Current options.
+    def options
+      rendering.context.store.options
+    end
+
+    # Resolves automatic references outside explicit link labels.
+    # @param name [String] Reference candidate.
+    # @return [String] Linked or literal Markdown.
+    def handle_regexp_CROSSREF(name)
+      text = convert_string(name)
+      return text if in_link_label? || options.autolink_excluded_words&.include?(name)
+      return text if name.match?(/@[\w-]+\.[\w-]/)
+
+      reference_link(name) || text
+    end
+
+    # Formats automatic URLs without linking URLs inside link labels.
+    # @param url [String] URL candidate.
+    # @return [String] Linked or literal Markdown.
+    def handle_regexp_HYPERLINK(url)
+      label = convert_string(url)
+      in_link_label? ? label : gen_url(url, label)
+    end
+
+    # Resolves explicit rdoc-ref schemes; other schemes use ToMarkdown.
+    # @param url [String] RDoc URL.
+    # @return [String] Native Markdown.
+    def handle_regexp_RDOCLINK(url)
+      return super unless url.start_with?("rdoc-ref:")
+
+      explicit_reference(url.delete_prefix("rdoc-ref:"))
+    end
+
+    # Reports missing explicit references and retains their visible labels.
+    # @param name [String] Reference name.
+    # @param label [String, nil] Optional native label.
+    # @return [String] Reference or visible fallback.
+    def explicit_reference(name, label = nil)
+      found = reference_link(name, label: label)
+      return found if found
+
+      text = label || convert_string(name)
+      puts "#{rendering.context.path}: `rdoc-ref:#{name}` can't be resolved for `#{text}`" if options.warn_missing_rdoc_ref
+      text
+    end
+
+    # Resolves a reference only when its owning page is emitted.
+    # @param name [String] Reference name.
+    # @param label [String, nil] Optional native label.
+    # @return [String, nil] Native link, unlinked code, or an unresolved reference.
+    def reference_link(name, label: nil)
+      target_name, section = split_reference(name)
+      local = target_name.empty?
+      ref = rendering.reference.resolve(target_name) unless local
+      return if !ref && !(local && section)
+
+      text = reference_text(name, label, ref)
+      return text if ref && !emitted_reference?(ref)
+
+      path = ref ? ref.as_href(rendering.context.path) : ""
+      path = reference_section(path, ref, section) if section
+      Syntax.link(text, path)
+    end
+
+    private
+
+    # Separates inline-code display policy from target resolution.
+    # @param name [String] Reference name.
+    # @param label [String, nil] Explicit native label.
+    # @param ref [RDoc::CodeObject, nil] Resolved target.
+    # @return [String] Native inline Markdown.
+    def reference_text(name, label, ref)
+      display = options.show_hash ? name : name.delete_prefix("#")
+      plain = label ? label.delete("\\") : display
+      text = label || convert_string(display)
+      (ref && !(RDoc::TopLevel === ref) && (!label || plain == name)) ? Syntax.code(plain) : text
+    end
+
+    # Matches both explicit method hashes and hyperlink-all method notation.
+    # @return [Regexp] Valid reference syntax for inline code.
+    def reference_pattern
+      options.hyperlink_all ? Regexp.union(RDoc::CrossReference::CROSSREF_REGEXP, RDoc::CrossReference::ALL_CROSSREF_REGEXP) : RDoc::CrossReference::CROSSREF_REGEXP
+    end
+
+    # Separates heading labels without mistaking unary operator method names.
+    # @param name [String] Reference name.
+    # @return [Array(String, String, nil)] Target and optional heading label.
+    def split_reference(name)
+      return [name, nil] if name.end_with?("+@", "-@")
+
+      target, separator, section = name.partition("@")
+      [target, separator.empty? ? nil : section]
+    end
+
+    # Tests the owning page rather than the individual member's identity.
+    # @param ref [RDoc::CodeObject] Resolved target.
+    # @return [Boolean] Whether that target has a generated page.
+    def emitted_reference?(ref)
+      owner = ref
+      owner = owner.parent until RDoc::ClassModule === owner || RDoc::TopLevel === owner
+      rendering.output_ids.include?(owner.object_id)
+    end
+
+    # Applies RDoc's canonical method, named-section, and page heading anchors.
+    # @param path [String] Relative RDoc target.
+    # @param ref [RDoc::CodeObject, nil] Target or a local heading reference.
+    # @param section [String] Encoded heading label.
+    # @return [String] Anchored target.
+    def reference_section(path, ref, section)
+      decoded = RDoc::Text.decode_legacy_label(section)
+      slug = RDoc::Text.to_anchor(decoded)
+      return "#{path}-#{slug}" if path.include?("#")
+
+      named = ref.sections.find { |candidate| candidate.title == decoded } if RDoc::Context === ref
+      anchor = if named
+        named.aref
+      elsif RDoc::ClassModule === ref
+        "#{ref.aref}-#{slug}"
+      else
+        slug
+      end
+      "#{path}##{anchor}"
+    end
+  end
+end

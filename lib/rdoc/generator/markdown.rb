@@ -4,7 +4,7 @@ require "erb"
 # standard:disable Lint/RedundantRequireStatement
 require "set"
 # standard:enable Lint/RedundantRequireStatement
-require "reverse_markdown"
+require "nokogiri"
 require "csv"
 require "fileutils"
 
@@ -12,8 +12,9 @@ require "fileutils"
 class RDoc::Generator::Markdown
   RDoc::RDoc.add_generator self
 
-  require_relative "markdown/conversion"
-  require_relative "markdown/crossref"
+  require_relative "markdown/syntax"
+  require_relative "markdown/references"
+  require_relative "markdown/html_input"
   require_relative "markdown/descriptions"
   require_relative "markdown/formatter"
   require_relative "markdown/index"

@@ -37,26 +37,12 @@ module RDoc::Generator::Markdown::Descriptions
   #
   # @return [String] Markdown description.
   def render_description(code_object, heading_level_offset:)
-    formatter = description_formatter(code_object)
-    formatter.extend(RDoc::Generator::Markdown::CrossrefExtension)
-    formatter.with_markdown_cross_references(
-      RDoc::CrossReference.new(formatter.context),
-      generation_state.markdown_output_object_ids
-    ) do
-      markdown_formatter = RDoc::Generator::Markdown::Formatter.new(formatter, heading_level_offset: heading_level_offset)
-      render_formatted_description(code_object, markdown_formatter, options.locale).rstrip
-    end
-  end
-
-  # Returns the formatter appropriate for an object or section.
-  #
-  # @param code_object [RDoc::CodeObject, RDoc::Context::Section] Described object.
-  #
-  # @return [RDoc::Markup::Formatter] Formatter configured for the object.
-  def description_formatter(code_object)
-    return code_object.formatter unless RDoc::Context::Section === code_object
-
-    code_object.parent.formatter.dup.tap { |copy| copy.code_object = code_object }
+    formatter = RDoc::Generator::Markdown::Formatter.new(
+      code_object,
+      output_object_ids: generation_state.markdown_output_object_ids,
+      heading_level_offset: heading_level_offset
+    )
+    render_formatted_description(code_object, formatter, options.locale).rstrip
   end
 
   # Renders an object through its configured formatter.

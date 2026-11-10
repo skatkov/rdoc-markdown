@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Render comment documents through RDoc's Markdown formatter, keeping standalone code examples out of HTML conversion while preserving existing links, anchors, and HTML compatibility.
+- Render comment documents through RDoc's Markdown formatter, keeping code examples, including those nested in lists and blockquotes, out of HTML conversion while preserving existing links, anchors, and HTML compatibility.
 - Show documented method aliases below method headings.
 
 ## 0.21.2
