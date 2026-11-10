@@ -32,7 +32,7 @@
 
 <%= "#" * section_heading_level %> <%= section_title %>
 <%- end -%>
-<%- section_description = section_description(section, heading_level_offset: section_heading_level) -%>
+<%- section_description = render_description(section, heading_level_offset: section_heading_level) -%>
 <%- unless section_description.empty? -%>
 
 <%= section_description %>

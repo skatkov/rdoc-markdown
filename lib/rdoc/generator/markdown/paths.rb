@@ -2,15 +2,6 @@
 
 # Resolves source and generated documentation paths.
 module RDoc::Generator::Markdown::Paths
-  # Converts a qualified object name into a Markdown path.
-  #
-  # @param class_name [String] Qualified class or module name.
-  #
-  # @return [String] Relative Markdown path.
-  def turn_to_path(class_name)
-    "#{class_name.gsub("::", "/")}.md"
-  end
-
   # Builds the Markdown output path for an RDoc page.
   #
   # @param page [RDoc::TopLevel] Page object to render.
@@ -35,24 +26,10 @@ module RDoc::Generator::Markdown::Paths
   #
   # @return [String] Relative Markdown path.
   def output_path_for(code_object)
-    turn_to_path(code_object.full_name)
+    "#{code_object.full_name.gsub("::", "/")}.md"
   end
 
-  # Rewrites local Markdown links relative to the current output file.
-  #
-  # @param markdown [String] Markdown content.
-  # @param current_output_path [String] Output path for the file being written.
-  #
-  # @return [String] Markdown with normalized internal links.
-  def normalize_internal_links(markdown, current_output_path:)
-    RDoc::Generator::Markdown::Paths.rewrite_internal_links(
-      markdown,
-      current_output_path,
-      generation_state
-    )
-  end
-
-  private :turn_to_path, :page_output_path, :output_path_for, :normalize_internal_links
+  private :page_output_path, :output_path_for
 
   # Rewrites links using explicit generated-path state.
   #

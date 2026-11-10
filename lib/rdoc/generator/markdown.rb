@@ -107,9 +107,9 @@ class RDoc::Generator::Markdown
   #
   # @return [String] Final Markdown ending with one newline.
   def finalize_markdown(content, current_output_path:)
-    normalized = normalize_internal_links(
+    normalized = Paths.rewrite_internal_links(
       content.lines.map(&:rstrip).join("\n"),
-      current_output_path: current_output_path
+      current_output_path, generation_state
     ).sub(/\n{3,}/, "\n\n").gsub(/^(#+ .+)\n\n/, "\\1\n")
     "#{normalized}\n"
   end

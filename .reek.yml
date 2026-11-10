@@ -7,7 +7,6 @@ detectors:
   ControlParameter:
     exclude:
       - RDoc::Generator::Markdown::Descriptions#method_link
-      - RDoc::Generator::Markdown::Signatures#self.top_level_signature_separator?
   DuplicateMethodCall:
     exclude:
       - RDoc::Generator::Markdown::Paths#self.resolve_output_path_from
