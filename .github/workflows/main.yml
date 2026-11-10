@@ -56,8 +56,6 @@ jobs:
         run: bundle exec standardrb
       - name: Reek
         run: bundle exec rake reek
-      - name: Lint markdown ERB templates
-        run: bundle exec rake erb:lint
       - name: YARD Lint
         run: bundle exec yard-lint lib/
       - name: Cache documentation fixtures

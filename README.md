@@ -65,12 +65,6 @@ sections: an anchor appearing only in a code example or a raw HTML block is not
 enough. This catches method headings swallowed by an unterminated Markdown HTML
 block, including aliases that link back to those methods.
 
-To lint markdown ERB templates:
-
-```
-bundle exec rake erb:lint
-```
-
 ### Generate vendored docs
 Use rake tasks to generate markdown output for vendored projects:
 
