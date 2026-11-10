@@ -157,7 +157,7 @@ class RDoc::Generator::Markdown
       return definition_item(item.label, body) if definition
 
       marker = (type == :BULLET) ? "-" : "#{index + 1}."
-      Syntax.item(marker, body)
+      "#{marker} #{body.gsub("\n", "\n#{" " * (marker.length + 1)}")}"
     end
 
     # Blank lines allow GFM to parse native Markdown inside definition containers.

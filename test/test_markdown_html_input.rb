@@ -27,6 +27,8 @@ class TestMarkdownHtmlInput < Minitest::Test
     assert_equal "plain", render("<a>plain</a>")
     assert_equal '<a id="first"></a><a id="second"></a>', render('<a id="first" href="Thing.html">ignored</a><span class="legacy-anchor" id="second">ignored</span>')
     assert_equal "not an anchor", render('<span class="legacy-anchor">not an anchor</span>')
+    assert_equal '<a id="same"></a><a id="same"></a>', render('<span class="legacy-anchor" id="same"></span>' * 2)
+    assert_equal "`Mime[:csv]`", render('<a href=":csv">Mime</a>')
   end
 
   def test_paragraph_boundaries_do_not_depend_on_surrounding_blank_nodes
@@ -41,6 +43,10 @@ class TestMarkdownHtmlInput < Minitest::Test
   end
 
   def test_preformatted_code_keeps_indentation_and_language_metadata
+    highlighted = '<pre class="ruby"><span class="ruby-keyword">return</span> ' \
+      '<a href=":csv"><span class="ruby-constant">Mime</span></a> ' \
+      '<span class="legacy-anchor" id="label-Example">value</span></pre>'
+    assert_equal "```ruby\nreturn Mime value\n```", render(highlighted)
     assert_equal "```ruby\n  return value\n```", render("<pre class=\"ruby\">\n  return value \n</pre>")
     assert_equal "```sql\nSELECT 1\n```", render('<pre class="brush: sql;">SELECT 1</pre>')
     assert_equal "```json\n{}\n```", render('<div class="highlight-json"><pre>{}</pre></div>')
@@ -70,6 +76,8 @@ class TestMarkdownHtmlInput < Minitest::Test
   end
 
   def test_only_leading_nonempty_heading_self_links_are_flattened
+    assert_equal '# Topic[Details](Elsewhere.md)<a id="topic"></a>',
+      render('<h1><a href="#topic">Topic</a><a href="Elsewhere.md">Details</a></h1>')
     assert_equal "## Topic", render('<h2><a href="#topic">Topic</a></h2>')
     assert_equal "## Topic<a id=\"alias\"></a>", render('<h2> <a href="#alias">Topic</a></h2>')
     assert_equal "## Prefix [Topic](#alias)", render('<h2>Prefix <a href="#alias">Topic</a></h2>')

@@ -59,21 +59,12 @@ class RDoc::Generator::Markdown
         range = link_range(node)
         next if !range || (covered_until && range.begin < covered_until)
 
-        edits << register(node, range, prefix)
+        token = "\0#{prefix}#{@nodes.length}\0"
+        @nodes[token] = Link.new(node, original_label(node))
+        edits << [range, token]
         covered_until = range.end
       end
       edits
-    end
-
-    # Registers a typed node without serializing metadata into a made-up URL.
-    # @param node [Commonmarker::Node] Link or image node.
-    # @param range [Range<Integer>] Source bytes occupied by the node.
-    # @param prefix [String] Prefix absent from the original input.
-    # @return [Array(Range, String)] Source range and its opaque parser token.
-    def register(node, range, prefix)
-      token = "\0#{prefix}#{@nodes.length}\0"
-      @nodes[token] = Link.new(node, original_label(node))
-      [range, token]
     end
 
     # Keeps native RDoc links and literal code ahead of Markdown interpretation.

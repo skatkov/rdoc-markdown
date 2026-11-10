@@ -64,14 +64,6 @@ module RDoc::Generator::Markdown::Syntax
     "#{"#" * [level, 6].min} #{text}#{aliases.map { |id| anchor(id) }.join}"
   end
 
-  # Indents all continuation blocks beneath their actual list marker.
-  # @param marker [String] Bullet or ordered marker.
-  # @param body [String] Native block Markdown.
-  # @return [String] Indented list item.
-  def self.item(marker, body)
-    "#{marker} #{body.gsub("\n", "\n#{" " * (marker.length + 1)}")}"
-  end
-
   # Maps legacy local HTML targets while preserving external URLs and fragments.
   # @param href [String] Original target.
   # @return [String] Markdown target.

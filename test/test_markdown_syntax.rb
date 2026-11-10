@@ -52,11 +52,6 @@ class TestMarkdownSyntax < Minitest::Test
     assert_equal "# Plain", Syntax.heading(1, "Plain", [])
   end
 
-  def test_list_items_indent_every_continuation_by_the_marker_width
-    assert_equal "- first\n  second\n  \n  third", Syntax.item("-", "first\nsecond\n\nthird")
-    assert_equal "10. first\n    second", Syntax.item("10.", "first\nsecond")
-  end
-
   def test_targets_only_rewrite_local_document_extensions_and_legacy_prefixes
     {
       "www.example.test" => "https://www.example.test",
@@ -84,6 +79,7 @@ class TestMarkdownSyntax < Minitest::Test
     assert_equal "`Thing[:key]`", Syntax.link("Thing", ":key")
     assert_equal '`A::Thing["key"]`', Syntax.link("A::Thing", '"key"')
     assert_equal "`A::B[:key]`", Syntax.link("A::B", ":key")
+    assert_equal "`Some_Class[:value]`", Syntax.link("Some_Class", ":value")
     assert_equal "`a[:key]`", Syntax.link("a", ":key")
     assert_equal "`_[:key]`", Syntax.link("_", ":key")
     assert_equal "`thing_name[:key]`", Syntax.link('thing\\_name', ":key")

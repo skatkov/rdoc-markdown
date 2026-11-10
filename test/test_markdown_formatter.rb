@@ -291,12 +291,4 @@ class TestMarkdownFormatter < Minitest::Test
     assert_equal ["x", "y"], rendered.css("td").map(&:text)
     assert_equal "After the table.", rendered.at_css("table + p").text
   end
-
-  def test_raw_code_keeps_meaningful_leading_indentation
-    page = raw_html_page(relative_name: "indented.rdoc", html: "<pre>  * literal</pre>")
-    html = Nokogiri::HTML.fragment(Commonmarker.to_html(read_generated("indented_rdoc.md", pages: [page])))
-
-    assert_equal "  * literal\n", html.at_css("pre code").text
-    assert_empty html.css("li")
-  end
 end

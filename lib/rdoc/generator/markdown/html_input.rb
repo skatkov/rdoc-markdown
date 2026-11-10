@@ -47,7 +47,7 @@ class RDoc::Generator::Markdown
     # @param node [Nokogiri::XML::Node] HTML input node.
     # @return [String] Native Markdown or preserved raw HTML.
     def render_node(node)
-      return text_node(node) if node.text?
+      return Syntax.escape(node.content.tr("\n", " ")) if node.text?
 
       case node.name
       when "p" then paragraph(node)
@@ -60,13 +60,6 @@ class RDoc::Generator::Markdown
       end
     end
 
-    # Escapes literal HTML text without changing preformatted code.
-    # @param node [Nokogiri::XML::Text] Literal text.
-    # @return [String] Native inline Markdown.
-    def text_node(node)
-      Syntax.escape(node.text.tr("\n", " "))
-    end
-
     # Separates paragraphs from preceding standalone anchor spans.
     # @param node [Nokogiri::XML::Element] Paragraph element.
     # @return [String] Paragraph Markdown.
@@ -75,20 +68,14 @@ class RDoc::Generator::Markdown
       "#{prefix}#{render_nodes(node.children)}\n\n"
     end
 
-    # Reads supported language metadata without interpreting the code itself.
-    # @param node [Nokogiri::XML::Element] Preformatted element.
-    # @return [String, nil] Explicit language metadata.
-    def code_language(node)
-      css = node["class"].to_s
-      css[/\A(?!highlight\z)[A-Za-z][A-Za-z0-9_+-]*\z/] ||
-        css[/\Abrush: (\w+);\z/, 1] || node.parent["class"].to_s[/\Ahighlight-(\w+)\z/, 1]
-    end
-
     # Keeps literal indentation while removing the conventional opening newline.
     # @param node [Nokogiri::XML::Element] Preformatted HTML input.
     # @return [String] Native fenced code.
     def preformatted(node)
-      "#{Syntax.code_block(node.text.delete_prefix("\n"), code_language(node))}\n\n"
+      css = node["class"].to_s
+      language = css[/\A(?!highlight\z)[A-Za-z][A-Za-z0-9_+-]*\z/] ||
+        css[/\Abrush: (\w+);\z/, 1] || node.parent["class"].to_s[/\Ahighlight-(\w+)\z/, 1]
+      "#{Syntax.code_block(node.text.delete_prefix("\n"), language)}\n\n"
     end
 
     # Converts only known inline tags, preserving explicit anchor identities.
