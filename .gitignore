@@ -17,3 +17,5 @@ vendor/rails/
 vendor/jekyll-seo-tag/
 vendor/reverse_markdown/
 vendor/docs/
+# Mutants that swap the output directory write under its inspect string.
+/#<*/
