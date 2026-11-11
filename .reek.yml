@@ -25,6 +25,7 @@ detectors:
   UncommunicativeMethodName:
     exclude:
       - RDoc::Generator::Markdown::Inline#handle_PLAIN_TEXT
+      - RDoc::Generator::Markdown::Inline#handle_HARD_BREAK
       - RDoc::Generator::Markdown::Inline#handle_TT
       - RDoc::Generator::Markdown::Inline#handle_TIDYLINK
       - RDoc::Generator::Markdown::References#handle_regexp_CROSSREF

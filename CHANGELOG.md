@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Preserve explicit paragraph line breaks when rendered with standard GFM soft-break behavior.
 - Keep nested cross-references on their owning page when a root class has the same name.
 - Preserve meaningful boundary spaces in inline code, including embedded HTML code spans.
 - Render comment documents through RDoc's Markdown formatter, keeping code examples, including those nested in lists and blockquotes, out of HTML conversion while preserving existing links, anchors, and HTML compatibility.

@@ -23,6 +23,10 @@ class TestMarkdownNativeCallbacks < Minitest::Test
     assert_equal "日本語latin\n\n", RDoc::Markup::Document.new(RDoc::Markup::Paragraph.new("日本語\nlatin")).accept(visitor)
   end
 
+  def test_explicit_inline_breaks_do_not_depend_on_trailing_spaces
+    assert_equal "first<br>second<br>third", formatter.attributes("first<br>second<br>third")
+  end
+
   def test_class_subheadings_keep_legacy_aliases_even_when_the_title_does_not
     klass = rdoc_class("Sample", comment: "Docs.")
     visitor = RDoc::Generator::Markdown::Formatter.new(klass, output_object_ids: Set[klass.object_id], heading_level_offset: 2)

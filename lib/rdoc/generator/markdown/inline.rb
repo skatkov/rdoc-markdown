@@ -17,6 +17,12 @@ class RDoc::Generator::Markdown
       emit_inline(convert_string(text))
     end
 
+    # Keeps explicit breaks after the generator strips trailing whitespace.
+    # @return [void]
+    def handle_HARD_BREAK
+      emit_inline("<br>")
+    end
+
     # Emits inline code, resolving only valid reference syntax outside link labels.
     # @param text [String] Literal code.
     # @return [void]

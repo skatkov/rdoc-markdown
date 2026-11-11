@@ -299,7 +299,9 @@ class TestMarkdownFormatter < Minitest::Test
 
     assert_includes markdown, "first line second line"
     assert_includes markdown, "日本語の文章"
-    assert_includes markdown, "hard line\n break"
+    html = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown, options: {render: {unsafe: true, hardbreaks: false}}))
+    assert_equal 1, html.css("br").length
+    assert_includes markdown, "hard line<br>"
   end
 
   def test_tables_do_not_swallow_following_paragraphs
