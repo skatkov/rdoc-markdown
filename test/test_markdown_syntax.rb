@@ -2,6 +2,8 @@
 
 require_relative "test_helper"
 require "rdoc/markdown"
+require "commonmarker"
+require "nokogiri"
 
 class TestMarkdownSyntax < Minitest::Test
   cover "RDoc::Generator::Markdown::Syntax*"
@@ -23,6 +25,14 @@ class TestMarkdownSyntax < Minitest::Test
     assert_equal "`` `start ``", Syntax.code("`start")
     assert_equal "`` end` ``", Syntax.code("end`")
     assert_equal "`` `both` ``", Syntax.code("`both`")
+  end
+
+  def test_code_spans_preserve_significant_boundary_spaces
+    [" x ", "  x ", " x  ", " leading", "trailing ", " ", " \n ", " \r ", " x\ny\r\nz\rw "].each do |text|
+      html = Nokogiri::HTML.fragment(Commonmarker.to_html(Syntax.code(text)))
+
+      assert_equal text.gsub(/\r\n?|\n/, " "), html.at_css("code").text
+    end
   end
 
   def test_fenced_code_is_literal_and_uses_the_explicit_language

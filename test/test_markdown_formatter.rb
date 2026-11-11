@@ -266,6 +266,18 @@ class TestMarkdownFormatter < Minitest::Test
     assert html.at_css('a[id="marker"]')
   end
 
+  def test_inline_code_preserves_boundary_spaces_in_native_and_html_comments
+    native = rdoc_page(relative_name: "native-spaces.rdoc", comment: "Value <code> x </code>.")
+    raw = raw_html_page(relative_name: "html-spaces.rdoc", html: "<p>Value <code> x </code>.</p>")
+
+    [native, raw].each do |page|
+      markdown = read_generated(page.relative_name.sub(".rdoc", "_rdoc.md"), pages: [page])
+      html = Nokogiri::HTML.fragment(Commonmarker.to_html(markdown))
+
+      assert_equal " x ", html.at_css("code").text
+    end
+  end
+
   def test_paragraphs_preserve_rdoc_line_break_handling
     page = rdoc_page(relative_name: "native-paragraphs.rdoc", comment: "")
     page.comment.format = "markdown"
