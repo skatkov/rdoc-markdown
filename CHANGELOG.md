@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep nested cross-references on their owning page when a root class has the same name.
 - Preserve meaningful boundary spaces in inline code, including embedded HTML code spans.
 - Render comment documents through RDoc's Markdown formatter, keeping code examples, including those nested in lists and blockquotes, out of HTML conversion while preserving existing links, anchors, and HTML compatibility.
 - Remove the ReverseMarkdown dependency and converter-fork override; preserve literal code rather than rewriting list-looking examples as prose.

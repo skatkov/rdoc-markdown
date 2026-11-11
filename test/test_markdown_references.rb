@@ -61,6 +61,17 @@ class TestMarkdownReferences < Minitest::Test
     assert_equal "[`#run`](Source.md#method-i-run)", formatter(show_hash: true).reference_link("#run")
   end
 
+  def test_nested_references_keep_their_canonical_page_before_output_normalization
+    source = formatter.rendering.context
+    nested = source.add_class(RDoc::NormalClass, "Target")
+    nested.add_method(rdoc_method("run", comment: "Nested method."))
+    visitor = RDoc::Generator::Markdown::Formatter.new(nested,
+      output_object_ids: Set[source.object_id, nested.object_id], heading_level_offset: 0)
+
+    assert_equal "[`run`](Source/Target.md#method-i-run)", visitor.reference_link("#run")
+    assert_equal "[`Source`](Source.md)", visitor.reference_link("Source")
+  end
+
   def test_unary_operators_and_encoded_heading_labels_keep_their_meaning
     visitor = formatter
 

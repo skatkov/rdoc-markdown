@@ -64,7 +64,7 @@ class RDoc::Generator::Markdown
       text = reference_text(name, label, ref)
       return text if ref && !emitted_reference?(ref)
 
-      path = ref ? ref.as_href(rendering.context.path) : ""
+      path = ref ? ref.path : ""
       path = reference_section(path, ref, section) if section
       Syntax.link(text, path)
     end
@@ -109,7 +109,7 @@ class RDoc::Generator::Markdown
     end
 
     # Applies RDoc's canonical method, named-section, and page heading anchors.
-    # @param path [String] Relative RDoc target.
+    # @param path [String] Canonical RDoc target before output normalization.
     # @param ref [RDoc::CodeObject, nil] Target or a local heading reference.
     # @param section [String] Encoded heading label.
     # @return [String] Anchored target.

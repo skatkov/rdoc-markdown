@@ -253,6 +253,18 @@ class TestMarkdownFormatter < Minitest::Test
     assert_includes markdown, "[`Target#+@`](Target.md#method-i-2B-40)"
   end
 
+  def test_nested_crossrefs_do_not_link_to_a_root_class_with_the_same_name
+    root = rdoc_class("Target", comment: "Root namespace.")
+    nested = rdoc_class("Outer::Target", comment: "See #run.")
+    nested.add_method(rdoc_method("run", comment: "Nested method."))
+    dir = generate_markdown(classes: [root, nested])
+    markdown = File.read(File.join(dir, "Outer/Target.md"))
+
+    assert_includes markdown, "[`run`](Target.md#method-i-run)"
+    refute_includes markdown, "../Target.md#method-i-run"
+    assert_equal 2, MarkdownValidator.new(dir).validate!
+  end
+
   def test_raw_inline_markup_and_backticks_use_native_primitives
     page = raw_html_page(relative_name: "inline.rdoc", html: '<p><a id="marker"></a><span>Text</span> ' \
       "<code>`tick`</code> <code>tail`</code> <b>bold</b> <i>emphasis</i><br>After</p>")
