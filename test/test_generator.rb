@@ -328,6 +328,39 @@ class TestGenerator < Minitest::Test
     assert_includes result, ["Duck#quack", "Method", "Duck.md#method-i-quack"]
   end
 
+  def test_generator_preserves_optional_parameters_from_source
+    source_dir = stable_tmpdir("optional-parameters-source")
+    ruby_file = File.join(source_dir, "json.rb")
+    File.write(ruby_file, <<~RUBY)
+      module JSON
+        # call-seq:
+        #   parse(source, opts) -> object
+        #
+        # Parses source with optional opts.
+        def self.parse(source, opts = nil)
+        end
+
+        def self.generate(object, opts = {})
+        end
+
+        # call-seq:
+        #   split(text, separator) -> Array
+        #
+        # Splits text with an optional separator.
+        def self.split(text, separator = ",")
+        end
+      end
+    RUBY
+
+    dir = run_generator(ruby_file, "optional parameters")
+    doc = File.read(File.join(dir, "JSON.md"))
+
+    assert_includes doc, '### `parse(source, opts = nil) -> object`<a id="method-c-parse"></a>'
+    assert_includes method_headings(doc), "generate(object, opts = {})"
+    assert_includes doc, '### `split(text, separator = ",") -> Array`<a id="method-c-split"></a>'
+    assert_includes index_entries(dir), ["JSON.parse", "Method", "JSON.md#method-c-parse"]
+  end
+
   def test_generator_uses_rbs_signatures_for_ruby_methods
     source_dir = stable_tmpdir("rbs-signature-source")
     ruby_file = File.join(source_dir, "bird.rb")

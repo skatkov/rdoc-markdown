@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "prism"
+
 # Normalizes RDoc and RBS method signatures for headings.
 module RDoc::Generator::Markdown::Signatures
   # Signature opening delimiters and their matching closers.
@@ -15,18 +17,17 @@ module RDoc::Generator::Markdown::Signatures
   # @return [String] Complete signature including the method name or documented receiver.
   def self.render_method_signature(method, store)
     name = method.name
-    signatures = method.type_signature_lines || store.rbs_signature_for(method)
-    if !signatures && ["[]", "[]="].include?(name) && (call_seq = method.call_seq)
+    type_signatures = method.type_signature_lines || store.rbs_signature_for(method)
+    if !type_signatures && ["[]", "[]="].include?(name) && (call_seq = method.call_seq)
       return call_seq.lines.map { |line| normalize_signature(line) }.join(" | ")
     end
-    signatures ||= [method.param_seq]
+    params = method.params
 
-    signatures = signatures.filter_map do |signature|
+    signatures = (type_signatures || [method.param_seq]).filter_map do |signature|
       next unless signature&.match?(/\S/)
 
-      signature = normalize_signature(signature)
-      signature = " #{signature}" if signature.start_with?("->")
-      merge_method_signature_arguments(signature, method.params)
+      signature = merge_method_signature_arguments(signature, params)
+      type_signatures ? signature : restore_method_parameter_defaults(signature, params)
     end
 
     "#{name}#{signatures.empty? ? "()" : signatures.join(" | ")}"
@@ -41,13 +42,43 @@ module RDoc::Generator::Markdown::Signatures
     signature.gsub("->", " -> ").gsub(/\s+/, " ").strip
   end
 
-  # Merges RDoc parameter names into a type-only signature.
+  # Restores source defaults for bare argument names in an untyped call sequence.
+  #
+  # @param signature [String] Normalized call sequence without the method name.
+  # @param raw_params [String, nil] Method parameter list from RDoc.
+  # @return [String] Signature with matching source default expressions preserved.
+  def self.restore_method_parameter_defaults(signature, raw_params)
+    signature_args, signature_suffix = split_signature_arguments_and_suffix(signature)
+    source_params = ruby_parameters(raw_params)
+    documented_params = ruby_parameters(signature_args)
+    return signature unless source_params && documented_params
+
+    defaults = source_params.optionals.to_h { |param| [param.name.to_s, param.slice] }
+    signature_parts = documented_params.compact_child_nodes.map(&:slice)
+    default_parts = signature_parts.map { |part| defaults.fetch(part, part) }
+    return signature if default_parts == signature_parts
+
+    "(#{default_parts.join(", ")})#{signature_suffix}"
+  end
+
+  # Parses Ruby parameter boundaries without evaluating or rewriting default expressions.
+  #
+  # @param params [String, nil] Parenthesized or bare Ruby parameters.
+  # @return [Prism::ParametersNode, nil] Parameters, or nil for empty or invalid syntax.
+  def self.ruby_parameters(params)
+    result = Prism.parse("def _ #{params.to_s.lstrip}\nend")
+    result.value.statements.body.first.parameters if result.success?
+  end
+
+  # Normalizes a signature and merges RDoc parameter names into type-only arguments.
   #
   # @param signature [String] Method signature from RDoc call sequence.
   # @param raw_params [String, nil] Method parameter list from RDoc.
   #
   # @return [String] Signature with names added when safe.
   def self.merge_method_signature_arguments(signature, raw_params)
+    signature = normalize_signature(signature)
+    signature = " #{signature}" if signature.start_with?("->")
     params = raw_params.to_s.strip
     params = params[1...-1] if params.start_with?("(") && params.end_with?(")")
 
@@ -106,25 +137,20 @@ module RDoc::Generator::Markdown::Signatures
   # @return [Array<String>] Signature parts.
   def self.split_signature_list(list)
     parts = []
-    current = +""
+    start = 0
     delimiters = []
 
-    list.each_char do |char|
+    list.each_char.with_index do |char, index|
       if char == "," && delimiters.empty?
-        parts << current.strip
-        current.clear
-      else
-        closing = DELIMITER_PAIRS[char]
-        if closing
-          delimiters << closing
-        elsif char == delimiters.last
-          delimiters.pop
-        end
-        current << char
+        parts << list[start...index].strip
+        start = index + 1
       end
+      closing = DELIMITER_PAIRS[char]
+      delimiters << closing if closing
+      delimiters.pop if char == delimiters.last
     end
 
-    parts << current.strip unless current.empty?
+    parts << list[start..].strip if start < list.length
     parts
   end
 end

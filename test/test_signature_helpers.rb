@@ -72,6 +72,99 @@ class TestSignatureHelpers < Minitest::Test
     assert_includes method_headings(doc), "[]=(name: String, value: String) -> String"
   end
 
+  def test_call_sequences_restore_matching_parameter_defaults
+    doc = generated_class_doc([
+      visible_method("parse", signature: "(source, opts) -> object", params: "(source, opts = nil)"),
+      visible_method("compact", signature: "(source, opts)", params: "(source, opts={})"),
+      visible_method("whitespace", signature: "(source, opts)", params: "(source, opts\t  = nil)"),
+      visible_method("nested_defaults", signature: "(source, opts, fallback)", params: "(source, opts = {a: [1, 2]}, fallback = [3, 4])"),
+      visible_method("renamed", signature: "(source, options)", params: "(source, opts = nil)"),
+      visible_method("prefix", signature: "(source, opt)", params: "(source, opts = nil)"),
+      visible_method("suffix", signature: "(source, opts)", params: "(source, other_opts = nil)"),
+      visible_method("literal", signature: "(source, opts?)", params: "(source, opts = nil)"),
+      visible_method("typed", signature: "(String, Hash) -> object", params: "(source, opts = nil)"),
+      visible_method("documented_default", signature: "(source, opts = {})", params: "(source, opts = nil)")
+    ])
+
+    headings = method_headings(doc)
+    assert_includes headings, "parse(source, opts = nil) -> object"
+    assert_includes headings, "compact(source, opts={})"
+    assert_includes headings, "whitespace(source, opts\t  = nil)"
+    assert_includes headings, "nested_defaults(source, opts = {a: [1, 2]}, fallback = [3, 4])"
+    assert_includes headings, "renamed(source, options)"
+    assert_includes headings, "prefix(source, opt)"
+    assert_includes headings, "suffix(source, opts)"
+    assert_includes headings, "literal(source, opts?)"
+    assert_includes headings, "typed(String, Hash) -> object"
+    assert_includes headings, "documented_default(source, opts = {})"
+  end
+
+  def test_source_defaults_do_not_override_inline_or_sidecar_types
+    inline = visible_method("inline", signature: "(format)", params: "(format = :json)")
+    inline.type_signature_lines = ["(format) -> String"]
+    sidecar = visible_method("sidecar", signature: "(untyped)", params: "(untyped = nil)")
+
+    doc = generated_class_doc([inline, sidecar], rbs_signatures: {
+      "SignatureExamples#inline" => ["(format) -> Integer"],
+      "SignatureExamples#sidecar" => ["(untyped) -> bool", "(?untyped) -> String"]
+    })
+
+    headings = method_headings(doc)
+    assert_includes headings, "inline(format) -> String"
+    assert_includes headings, "sidecar(untyped) -> bool | (?untyped) -> String"
+  end
+
+  def test_restored_defaults_preserve_significant_literal_content
+    doc = generated_class_doc([
+      visible_method("spaces", signature: "(text, separator)", params: '(text, separator = "  ")'),
+      visible_method("arrow", signature: "(text, separator)", params: '(text, separator = "->")')
+    ])
+
+    headings = method_headings(doc)
+    assert_includes headings, 'spaces(text, separator = "  ")'
+    assert_includes headings, 'arrow(text, separator = "->")'
+  end
+
+  def test_defaults_are_extracted_as_ruby_expressions
+    doc = generated_class_doc([
+      visible_method("comma", signature: "(text, separator)", params: '(text, separator = ",")'),
+      visible_method("bracket", signature: "(text, separator, opts)", params: '(text, separator = "[", opts = {})'),
+      visible_method("regexp", signature: "(text, separator)", params: "(text, separator = /[,)]/)"),
+      visible_method("percent", signature: "(text, separator)", params: "(text, separator = %q{a,b})"),
+      visible_method("interpolated", signature: "(text, separator)", params: "(text, separator = \"\#{[1, 2].join(\",\")}\")"),
+      visible_method("lambda", signature: "(text, callback)", params: "(text, callback = ->(a, b) { [a, b] })"),
+      visible_method("spaced_default", signature: "(text, separator)", params: " \n(text, separator = nil)\n "),
+      visible_method("bare_params", signature: "(text, separator)", params: "text, separator = nil"),
+      visible_method("invalid_params", signature: "(text, separator)", params: "(text, separator = )"),
+      visible_method("unchanged", signature: "( text , separator ) -> object", params: "(text, separator)"),
+      visible_method("mixed", signature: "(text, separator)", params: '(text, separator = ",", **options, &block)')
+    ])
+
+    headings = method_headings(doc)
+    assert_includes headings, 'comma(text, separator = ",")'
+    assert_includes headings, 'bracket(text, separator = "[", opts = {})'
+    assert_includes headings, "regexp(text, separator = /[,)]/)"
+    assert_includes headings, "percent(text, separator = %q{a,b})"
+    assert_includes headings, "interpolated(text, separator = \"\#{[1, 2].join(\",\")}\")"
+    assert_includes headings, "lambda(text, callback = ->(a, b) { [a, b] })"
+    assert_includes headings, "spaced_default(text, separator = nil)"
+    assert_includes headings, "bare_params(text, separator = nil)"
+    assert_includes headings, "invalid_params(text, separator)"
+    assert_includes headings, "unchanged( text , separator ) -> object"
+    assert_includes headings, 'mixed(text, separator = ",")'
+  end
+
+  def test_signature_lists_do_not_require_spaces_after_commas
+    doc = generated_class_doc([
+      visible_method("compact_types", signature: "(String,Integer) -> bool", params: "(name, count)"),
+      visible_method("compact_names", signature: "(String, Integer) -> bool", params: "(name,count)")
+    ])
+
+    headings = method_headings(doc)
+    assert_includes headings, "compact_types(name: String, count: Integer) -> bool"
+    assert_includes headings, "compact_names(name: String, count: Integer) -> bool"
+  end
+
   def test_method_signatures_are_rendered_from_public_generation
     nil_param_seq = visible_method("nil_param_seq")
     nil_param_seq.define_singleton_method(:param_seq) { nil }
