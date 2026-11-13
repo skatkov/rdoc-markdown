@@ -137,25 +137,20 @@ module RDoc::Generator::Markdown::Signatures
   # @return [Array<String>] Signature parts.
   def self.split_signature_list(list)
     parts = []
-    current = +""
+    start = 0
     delimiters = []
 
-    list.each_char do |char|
+    list.each_char.with_index do |char, index|
       if char == "," && delimiters.empty?
-        parts << current.strip
-        current.clear
-      else
-        closing = DELIMITER_PAIRS[char]
-        if closing
-          delimiters << closing
-        elsif char == delimiters.last
-          delimiters.pop
-        end
-        current << char
+        parts << list[start...index].strip
+        start = index + 1
       end
+      closing = DELIMITER_PAIRS[char]
+      delimiters << closing if closing
+      delimiters.pop if char == delimiters.last
     end
 
-    parts << current.strip unless current.empty?
+    parts << list[start..].strip if start < list.length
     parts
   end
 end
