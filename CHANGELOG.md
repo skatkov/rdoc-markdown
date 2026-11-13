@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Show optional argument defaults in method headings.
+- Preserve Ruby expressions in optional argument defaults.
 
 ## 0.22.0
 

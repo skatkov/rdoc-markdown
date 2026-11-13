@@ -125,6 +125,35 @@ class TestSignatureHelpers < Minitest::Test
     assert_includes headings, 'arrow(text, separator = "->")'
   end
 
+  def test_defaults_are_extracted_as_ruby_expressions
+    doc = generated_class_doc([
+      visible_method("comma", signature: "(text, separator)", params: '(text, separator = ",")'),
+      visible_method("bracket", signature: "(text, separator, opts)", params: '(text, separator = "[", opts = {})'),
+      visible_method("regexp", signature: "(text, separator)", params: "(text, separator = /[,)]/)"),
+      visible_method("percent", signature: "(text, separator)", params: "(text, separator = %q{a,b})"),
+      visible_method("interpolated", signature: "(text, separator)", params: "(text, separator = \"\#{[1, 2].join(\",\")}\")"),
+      visible_method("lambda", signature: "(text, callback)", params: "(text, callback = ->(a, b) { [a, b] })"),
+      visible_method("spaced_default", signature: "(text, separator)", params: " \n(text, separator = nil)\n "),
+      visible_method("bare_params", signature: "(text, separator)", params: "text, separator = nil"),
+      visible_method("invalid_params", signature: "(text, separator)", params: "(text, separator = )"),
+      visible_method("unchanged", signature: "( text , separator ) -> object", params: "(text, separator)"),
+      visible_method("mixed", signature: "(text, separator)", params: '(text, separator = ",", **options, &block)')
+    ])
+
+    headings = method_headings(doc)
+    assert_includes headings, 'comma(text, separator = ",")'
+    assert_includes headings, 'bracket(text, separator = "[", opts = {})'
+    assert_includes headings, "regexp(text, separator = /[,)]/)"
+    assert_includes headings, "percent(text, separator = %q{a,b})"
+    assert_includes headings, "interpolated(text, separator = \"\#{[1, 2].join(\",\")}\")"
+    assert_includes headings, "lambda(text, callback = ->(a, b) { [a, b] })"
+    assert_includes headings, "spaced_default(text, separator = nil)"
+    assert_includes headings, "bare_params(text, separator = nil)"
+    assert_includes headings, "invalid_params(text, separator)"
+    assert_includes headings, "unchanged( text , separator ) -> object"
+    assert_includes headings, 'mixed(text, separator = ",")'
+  end
+
   def test_method_signatures_are_rendered_from_public_generation
     nil_param_seq = visible_method("nil_param_seq")
     nil_param_seq.define_singleton_method(:param_seq) { nil }

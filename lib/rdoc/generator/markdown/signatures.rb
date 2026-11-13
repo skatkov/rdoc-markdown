@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "prism"
+
 # Normalizes RDoc and RBS method signatures for headings.
 module RDoc::Generator::Markdown::Signatures
   # Signature opening delimiters and their matching closers.
@@ -47,20 +49,25 @@ module RDoc::Generator::Markdown::Signatures
   # @return [String] Signature with matching source default expressions preserved.
   def self.restore_method_parameter_defaults(signature, raw_params)
     signature_args, signature_suffix = split_signature_arguments_and_suffix(signature)
-    return signature unless signature_args
+    source_params = ruby_parameters(raw_params)
+    documented_params = ruby_parameters(signature_args)
+    return signature unless source_params && documented_params
 
-    params = raw_params.to_s.strip
-    params = params[1...-1] if params.start_with?("(") && params.end_with?(")")
-    param_parts = split_signature_list(params)
-    signature_parts = split_signature_list(signature_args)
-    return signature unless param_parts.length.eql?(signature_parts.length)
-
-    default_parts = signature_parts.zip(param_parts).map do |part, param|
-      param.match?(/\A#{Regexp.escape(part)}\s*=/) ? param : part
-    end
+    defaults = source_params.optionals.to_h { |param| [param.name.to_s, param.slice] }
+    signature_parts = documented_params.compact_child_nodes.map(&:slice)
+    default_parts = signature_parts.map { |part| defaults.fetch(part, part) }
     return signature if default_parts == signature_parts
 
     "(#{default_parts.join(", ")})#{signature_suffix}"
+  end
+
+  # Parses Ruby parameter boundaries without evaluating or rewriting default expressions.
+  #
+  # @param params [String, nil] Parenthesized or bare Ruby parameters.
+  # @return [Prism::ParametersNode, nil] Parameters, or nil for empty or invalid syntax.
+  def self.ruby_parameters(params)
+    result = Prism.parse("def _ #{params.to_s.lstrip}\nend")
+    result.value.statements.body.first.parameters if result.success?
   end
 
   # Normalizes a signature and merges RDoc parameter names into type-only arguments.

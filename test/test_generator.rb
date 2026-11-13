@@ -342,6 +342,13 @@ class TestGenerator < Minitest::Test
 
         def self.generate(object, opts = {})
         end
+
+        # call-seq:
+        #   split(text, separator) -> Array
+        #
+        # Splits text with an optional separator.
+        def self.split(text, separator = ",")
+        end
       end
     RUBY
 
@@ -350,6 +357,7 @@ class TestGenerator < Minitest::Test
 
     assert_includes doc, '### `parse(source, opts = nil) -> object`<a id="method-c-parse"></a>'
     assert_includes method_headings(doc), "generate(object, opts = {})"
+    assert_includes doc, '### `split(text, separator = ",") -> Array`<a id="method-c-split"></a>'
     assert_includes index_entries(dir), ["JSON.parse", "Method", "JSON.md#method-c-parse"]
   end
 
