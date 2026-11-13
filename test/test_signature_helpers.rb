@@ -154,6 +154,17 @@ class TestSignatureHelpers < Minitest::Test
     assert_includes headings, 'mixed(text, separator = ",")'
   end
 
+  def test_signature_lists_do_not_require_spaces_after_commas
+    doc = generated_class_doc([
+      visible_method("compact_types", signature: "(String,Integer) -> bool", params: "(name, count)"),
+      visible_method("compact_names", signature: "(String, Integer) -> bool", params: "(name,count)")
+    ])
+
+    headings = method_headings(doc)
+    assert_includes headings, "compact_types(name: String, count: Integer) -> bool"
+    assert_includes headings, "compact_names(name: String, count: Integer) -> bool"
+  end
+
   def test_method_signatures_are_rendered_from_public_generation
     nil_param_seq = visible_method("nil_param_seq")
     nil_param_seq.define_singleton_method(:param_seq) { nil }
