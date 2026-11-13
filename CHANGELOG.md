@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.23.0
 
 - Show optional argument defaults in method headings.
 - Preserve Ruby expressions in optional argument defaults.

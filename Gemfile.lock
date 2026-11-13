@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rdoc-markdown (0.22.0)
+    rdoc-markdown (0.23.0)
       commonmarker (~> 2.8)
       csv
       erb
