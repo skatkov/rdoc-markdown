@@ -15,18 +15,17 @@ module RDoc::Generator::Markdown::Signatures
   # @return [String] Complete signature including the method name or documented receiver.
   def self.render_method_signature(method, store)
     name = method.name
-    signatures = method.type_signature_lines || store.rbs_signature_for(method)
-    if !signatures && ["[]", "[]="].include?(name) && (call_seq = method.call_seq)
+    type_signatures = method.type_signature_lines || store.rbs_signature_for(method)
+    if !type_signatures && ["[]", "[]="].include?(name) && (call_seq = method.call_seq)
       return call_seq.lines.map { |line| normalize_signature(line) }.join(" | ")
     end
-    signatures ||= [method.param_seq]
+    params = method.params
 
-    signatures = signatures.filter_map do |signature|
+    signatures = (type_signatures || [method.param_seq]).filter_map do |signature|
       next unless signature&.match?(/\S/)
 
-      signature = normalize_signature(signature)
-      signature = " #{signature}" if signature.start_with?("->")
-      merge_method_signature_arguments(signature, method.params)
+      signature = merge_method_signature_arguments(signature, params)
+      type_signatures ? signature : restore_method_parameter_defaults(signature, params)
     end
 
     "#{name}#{signatures.empty? ? "()" : signatures.join(" | ")}"
@@ -41,13 +40,38 @@ module RDoc::Generator::Markdown::Signatures
     signature.gsub("->", " -> ").gsub(/\s+/, " ").strip
   end
 
-  # Merges RDoc parameter names into a type-only signature.
+  # Restores source defaults for bare argument names in an untyped call sequence.
+  #
+  # @param signature [String] Normalized call sequence without the method name.
+  # @param raw_params [String, nil] Method parameter list from RDoc.
+  # @return [String] Signature with matching source default expressions preserved.
+  def self.restore_method_parameter_defaults(signature, raw_params)
+    signature_args, signature_suffix = split_signature_arguments_and_suffix(signature)
+    return signature unless signature_args
+
+    params = raw_params.to_s.strip
+    params = params[1...-1] if params.start_with?("(") && params.end_with?(")")
+    param_parts = split_signature_list(params)
+    signature_parts = split_signature_list(signature_args)
+    return signature unless param_parts.length.eql?(signature_parts.length)
+
+    default_parts = signature_parts.zip(param_parts).map do |part, param|
+      param.match?(/\A#{Regexp.escape(part)}\s*=/) ? param : part
+    end
+    return signature if default_parts == signature_parts
+
+    "(#{default_parts.join(", ")})#{signature_suffix}"
+  end
+
+  # Normalizes a signature and merges RDoc parameter names into type-only arguments.
   #
   # @param signature [String] Method signature from RDoc call sequence.
   # @param raw_params [String, nil] Method parameter list from RDoc.
   #
   # @return [String] Signature with names added when safe.
   def self.merge_method_signature_arguments(signature, raw_params)
+    signature = normalize_signature(signature)
+    signature = " #{signature}" if signature.start_with?("->")
     params = raw_params.to_s.strip
     params = params[1...-1] if params.start_with?("(") && params.end_with?(")")
 

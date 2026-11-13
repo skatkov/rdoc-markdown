@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Show optional argument defaults in method headings.
+
 ## 0.22.0
 
 - BREAKING: Use Ruby notation in search-index names: `Duck.MAX_VELOCITY` becomes `Duck::MAX_VELOCITY`, and instance attributes use `Class#attr` instead of `Class.attr`. Consumers matching index names must update these lookups. Class-level attributes retain `Class.attr`; document paths and anchors are unchanged.
